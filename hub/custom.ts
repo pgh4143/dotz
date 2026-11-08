@@ -2,6 +2,7 @@
 // Everything is read fresh on each request (hot reload); a missing folder is an empty layer. A bad file never throws: it
 // comes back as an error entry. Data commands run through watch.ts exec with an in-memory cache; routines are kept as
 // `[routine:<id>:<hash6>] ` entries of hub/schedule.ts. customRoute() takes its gateway state as deps so tests can call it.
+import { type ComputerGroup, computerGroups, type PeerProjects, type RemoteProject } from "./custom-computers.ts";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -21,13 +22,13 @@ export type View = (typeof VIEWS)[number];
 type CardAction = { label: string; command?: string; prompt?: string; confirm?: boolean };
 type CardSpec = { title: string; note?: string; view: View; text?: string; command?: string; cwd?: string; every_minutes: number; timeout_seconds: number; link?: string; order: number; actions: CardAction[] };
 type CardEntry = { id: string; file: string; error: string } | { id: string; file: string; spec: CardSpec; renderFile?: string; rev: string };
-type PinProject = { name: string; path?: string; channel?: string; note?: string };
+type PinProject = { name: string; path?: string; channel?: string; note?: string; computer?: string };
 type Routine = { id: string; name: string; prompt: string; target: string; schedule?: { every_minutes: number } | { at: string } };
 export type Link = { name: string; url: string };
 type Pins = { projects: PinProject[]; hide_projects: string[]; routines: Routine[]; links: Link[] };
 type CustomError = { file: string; error: string };
 type ProjectLane = { name: string; title?: string; status: string; live: boolean; startedAt?: string; lastReportAt?: string; waiting?: boolean; lastText: string; reports: number; channel?: string };
-export type Project = { key: string; name: string; path?: string; note?: string; pinned: boolean; builtin?: boolean; channel?: { id: string; name: string }; record?: ProjectRecord; recordKey?: string; lanes: ProjectLane[] };
+export type Project = { key: string; name: string; path?: string; note?: string; computer?: string; pinned: boolean; builtin?: boolean; channel?: { id: string; name: string }; record?: ProjectRecord; recordKey?: string; lanes: ProjectLane[] };
 type ChannelsIn = { work?: Record<string, string>; homes?: Record<string, string>; lanes?: Record<string, string>; threads?: Record<string, { parent?: string; name?: string }> };
 export type CustomDeps = {
 	lanes: () => Array<Record<string, unknown>>;
@@ -35,6 +36,8 @@ export type CustomDeps = {
 	/** The main assistant's background work (hub/bgwork.ts); a project page lists what is tied to it. */
 	work?: () => BgWork[];
 	send: (target: "main" | `lane:${string}`, text: string, login: string) => Promise<void>;
+	machine?: () => string; // this gateway's machine name (hub/machine-name.ts), the computer its projects belong to
+	peerProjects?: () => Promise<PeerProjects[]>; // the other computers with their projects (hub/peer-projects.ts)
 };
 
 const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -388,7 +391,9 @@ function parsePins(): { pins: Pins; errors: CustomError[] } {
 		if (p.channel !== undefined && (typeof p.channel !== "string" || !/^\d+$/.test(p.channel))) return bad(`projects[${i}]: channel은 디스코드 채널 id 문자열이어야 해요`);
 		if (p.note !== undefined && typeof p.note !== "string") return bad(`projects[${i}]: note는 글이어야 해요`);
 		if (!path && p.channel === undefined) return bad(`projects[${i}]: path나 channel이 필요해요`);
-		pins.projects.push({ name, ...(path ? { path } : {}), ...(p.channel !== undefined ? { channel: p.channel as string } : {}), ...(p.note ? { note: String(p.note) } : {}) });
+		const computer = p.computer === undefined ? undefined : nonEmpty(p.computer, 40);
+		if (p.computer !== undefined && !computer) return bad(`projects[${i}]: computer는 1~40자 글이어야 해요`);
+		pins.projects.push({ name, ...(path ? { path } : {}), ...(p.channel !== undefined ? { channel: p.channel as string } : {}), ...(p.note ? { note: String(p.note) } : {}), ...(computer ? { computer } : {}) });
 	});
 	list("hide_projects").forEach((h, i) => (typeof h === "string" && h.trim() ? pins.hide_projects.push(h.trim()) : bad(`hide_projects[${i}]: 글이어야 해요`)));
 	list("routines").forEach((r, i) => {
@@ -471,8 +476,8 @@ export function syncRoutineSchedules(): void {
 type Auto = Project & { newest: number };
 
 // The title of a project, first hit wins (docs/layers.md §2): the stored record, the pinned name, the work channel name,
-// the title of its first session, the folder basename.
-export function projectsView(input: { lanes: Array<Record<string, unknown>>; channels: ChannelsIn; pins: Pins; records?: Record<string, ProjectRecord>; home?: string; tmpDirs?: string[] }): Project[] {
+// the title of its first session, the folder basename. `computer` (this machine's name) is set on every project its pin does not move.
+export function projectsView(input: { lanes: Array<Record<string, unknown>>; channels: ChannelsIn; pins: Pins; records?: Record<string, ProjectRecord>; home?: string; tmpDirs?: string[]; computer?: string }): Project[] {
 	const home = input.home ?? HOME;
 	const tmp = input.tmpDirs ?? ["/tmp", "/private/tmp", "/var/folders", tmpdir()];
 	const work = input.channels.work ?? {};
@@ -531,6 +536,7 @@ export function projectsView(input: { lanes: Array<Record<string, unknown>>; cha
 		p.name = pin.name;
 		p.pinned = true;
 		if (pin.note) p.note = pin.note;
+		if (pin.computer) p.computer = pin.computer;
 		if (np && !p.path) p.path = np;
 		if (pin.channel && !p.channel) p.channel = chan(pin.channel);
 		if (!pinned.includes(p)) pinned.push(p);
@@ -547,7 +553,7 @@ export function projectsView(input: { lanes: Array<Record<string, unknown>>; cha
 	}
 	const hidden = new Set(input.pins.hide_projects.map(h => (h.startsWith("dir:") ? `dir:${norm(h.slice(4))}` : h)));
 	const auto = [...projects.values()].filter(p => !p.pinned && !hidden.has(p.key)).sort((a, b) => b.newest - a.newest).slice(0, MAX_AUTO_PROJECTS);
-	return [...pinned, ...auto].map(({ newest, ...p }) => p);
+	return [...pinned, ...auto].map(({ newest, ...p }) => (input.computer && !p.computer ? { ...p, computer: input.computer } : p));
 }
 
 // ---- built-in project: 커스텀 ------------------------------------------------------------------------------------------
@@ -812,13 +818,28 @@ async function listAll(deps: CustomDeps) {
 		const s = sched.find(x => x.text.startsWith(`[routine:${r.id}:`));
 		return { ...r, ...(s ? { next: s.at } : {}) };
 	});
-	return { dir: customDirLabel(), cards, projects: [builtinProject(), ...projectsView({ lanes: deps.lanes(), channels: deps.channels(), pins, records: loadProjects() }).map(withPurpose)], routines, links: pins.links, errors };
+	return { dir: customDirLabel(), cards, projects: [builtinProject(), ...projectsView({ lanes: deps.lanes(), channels: deps.channels(), pins, records: loadProjects(), ...(deps.machine ? { computer: deps.machine() } : {}) }).map(withPurpose)], routines, links: pins.links, errors };
+}
+
+// What a peer reads (GET /api/peer/projects, hub/peer-auth.ts): this computer's own projects, by key, name and purpose only.
+function ownProjects(deps: CustomDeps): { name: string; projects: RemoteProject[] } {
+	const name = deps.machine?.() ?? "";
+	const list = projectsView({ lanes: deps.lanes(), channels: deps.channels(), pins: readPins({ sync: false }).pins, records: loadProjects(), computer: name }).map(withPurpose);
+	return { name, projects: list.filter(p => p.computer === name).slice(0, 30).map(p => ({ key: p.key, name: p.name, ...(p.purpose || p.note ? { note: String(p.purpose || p.note).slice(0, 200) } : {}) })) };
+}
+
+async function computersView(deps: CustomDeps): Promise<ComputerGroup[]> {
+	const self = deps.machine?.() ?? "";
+	const projects = projectsView({ lanes: deps.lanes(), channels: deps.channels(), pins: readPins({ sync: false }).pins, records: loadProjects(), computer: self });
+	return computerGroups(self, projects, (await deps.peerProjects?.().catch(() => [])) ?? []);
 }
 
 export async function customRoute(req: Request, url: URL, deps: CustomDeps): Promise<Response | undefined> {
 	const p = url.pathname;
+	if (req.method === "GET" && p === "/api/peer/projects") return jsonOf(ownProjects(deps));
 	if (!p.startsWith("/api/custom")) return undefined;
 	if (req.method === "GET" && p === "/api/custom") return jsonOf(await listAll(deps));
+	if (req.method === "GET" && p === "/api/custom/computers") return jsonOf(await computersView(deps));
 	if (req.method === "GET" && p === "/api/custom/project") {
 		const d = await projectDetail(url.searchParams.get("key") ?? "", deps);
 		return d ? jsonOf(d) : jsonOf({ error: "project not found" }, 404);

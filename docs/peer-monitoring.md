@@ -34,6 +34,8 @@ gateway that owns the item. That gateway executes it and records it.
   lists use the same shapes as `/api/monitors`, `/api/notices`, `/api/integrations` and the `mail:` / `kakao:`
   rows of `/api/conversations`. It sends an `ETag` (`rev`) and answers `304` to `If-None-Match`.
 - Detail reads go through the existing read-only GETs (`/api/history`, `/api/mail/<k>/body`, `/api/mail/<k>/files/<n>`, `/api/kakao/...`).
+- `GET /api/peer/projects` answers `{ name, projects }` for the 프로젝트 list's computer groups (`docs/customization.md`,
+  Projects by computer): the computer's own projects by key, name and purpose only.
 
 ## One rendering path (web)
 

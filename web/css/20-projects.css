@@ -20,6 +20,13 @@
 .pl-groups { display: flex; flex-direction: column; min-width: 0; }
 .pl-groups > .sec { margin: var(--sp-5) var(--sp-1) var(--sp-2); color: var(--fg-2); font: 600 var(--fs-sec)/var(--lh-sec) var(--font); }
 .pl-groups > .sec:first-child { margin-top: 0; }
+/* a computer's header (two or more computers, 18-lanes.js pcHead): the same section heading, a tap folds its card */
+.pl-groups > .pl-pc { display: flex; align-items: center; gap: var(--sp-2); padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.pl-pc .pl-pcn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-pc .pl-pcc { color: var(--fg-3); font-weight: 400; }
+.pl-pc .chev { flex: none; width: 14px; height: 14px; margin-left: auto; color: var(--fg-3); transform: rotate(90deg); transition: transform var(--m-fast) var(--m-ease); }
+.pl-pc[aria-expanded="false"] .chev { transform: none; }
+.pl-pc.off .pl-pcn { color: var(--fg-3); }
 .pl-groups > .pl-list + .sec { margin-top: var(--sp-6); }
 .pl-groups .pl-gh { margin-bottom: var(--sp-2); }
 .pl-list { background: var(--card); border-radius: var(--r-card); overflow: hidden; }

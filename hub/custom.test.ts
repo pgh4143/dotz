@@ -8,6 +8,9 @@ import { DATA_DIR } from "./config.ts";
 import { featureCatalog } from "./features.ts";
 import { saveProject } from "./projects.ts";
 import { BUILTIN_KEY, type CustomDeps, customRoute, type DetailInput, projectDetailView, projectsView, readCards, readPins, settleRefreshes, syncRoutineSchedules } from "./custom.ts";
+import { computerGroups } from "./custom-computers.ts";
+import { PEER_GET } from "./peer-auth.ts";
+import { createPeerProjects } from "./peer-projects.ts";
 import { newestRules, reportHead, ruleTitle } from "./custom-text.ts";
 import { advance, clock } from "./runtime/test-clock.ts";
 import { addSchedule, listSchedules, removeSchedule } from "./schedule.ts";
@@ -363,6 +366,78 @@ const nextKst = (now: number, hh: number, mm: number) => {
 	const t = Math.floor((now + 9 * 3_600_000) / day) * day + (hh * 60 + mm) * 60_000 - 9 * 3_600_000;
 	return t <= now ? t + day : t;
 };
+
+// ---- computers ----
+test("a pin's computer is kept trimmed; an empty, too long or non-text computer drops that pin with its own error", () => {
+	pins({ projects: [{ name: "ok", path: "~/a", computer: " office-pc " }, { name: "none", path: "~/b" }, { name: "empty", path: "~/c", computer: "  " }, { name: "long", path: "~/d", computer: "x".repeat(41) }, { name: "num", path: "~/e", computer: 7 }] });
+	const { pins: p, errors } = readPins({ sync: false });
+	expect(p.projects).toEqual([{ name: "ok", path: "~/a", computer: "office-pc" }, { name: "none", path: "~/b" }]);
+	expect(errors.map(e => e.error)).toEqual(["projects[2]: computer는 1~40자 글이어야 해요", "projects[3]: computer는 1~40자 글이어야 해요", "projects[4]: computer는 1~40자 글이어야 해요"]);
+});
+
+test("projectsView: every project belongs to this computer unless its pin names another; without a machine name none is set", () => {
+	const input = { lanes: [lane("a", `${HOME}/Code/auto`, "2026-10-01T00:00:00Z")], channels: {}, pins: { ...noPins, projects: [{ name: "There", path: "~/Code/there", computer: "office-pc" }, { name: "Here", path: "~/Code/here" }] } };
+	expect(view({ ...input, computer: "home-pc" }).map(p => [p.key, p.computer])).toEqual([["dir:~/Code/there", "office-pc"], ["dir:~/Code/here", "home-pc"], ["dir:~/Code/auto", "home-pc"]]);
+	expect(view(input).map(p => p.computer)).toEqual(["office-pc", undefined, undefined]);
+});
+
+test("computerGroups: this computer first, the others by name; a pin joins its computer's group, an offline peer has no projects", () => {
+	const projects = view({ lanes: [lane("a", `${HOME}/Code/auto`, "2026-10-01T00:00:00Z")], channels: {}, pins: { ...noPins, projects: [{ name: "There", path: "~/Code/there", computer: "office-pc" }, { name: "Lab", path: "~/Code/lab", computer: "작업실" }] }, computer: "home-pc" });
+	const peers = [
+		{ name: "office-pc", url: "https://office-pc.example:7420", online: true, projects: [{ key: "dir:~/Code/report", name: "report" }] },
+		{ name: "laptop", url: "https://laptop.example:7420", online: false, projects: [{ key: "dir:~/x", name: "stale" }] },
+		{ name: "home-pc", url: "https://twin.example:7420", online: true, projects: [{ key: "dir:~/y", name: "twin" }] },
+	];
+	const groups = computerGroups("home-pc", [{ key: BUILTIN_KEY, name: "커스텀", pinned: true, builtin: true, lanes: [] }, ...projects], peers);
+	expect(groups.map(g => [g.name, g.self, g.online, g.keys, g.remote.map(r => r.name)])).toEqual([
+		["home-pc", true, true, ["dir:~/Code/auto"], []],
+		["작업실", false, undefined, ["dir:~/Code/lab"], []],
+		["laptop", false, false, [], []],
+		["office-pc", false, true, ["dir:~/Code/there"], ["report"]],
+	]);
+	expect(computerGroups("home-pc", view({ lanes: [], channels: {}, pins: { ...noPins, projects: [{ name: "Here", path: "~/h" }] }, computer: "home-pc" }), [])).toHaveLength(1);
+});
+
+test("GET /api/custom/computers groups this gateway's projects with the peers'; GET /api/peer/projects gives its own projects only, by key and name", async () => {
+	pins({ projects: [{ name: "There", path: "~/Code/there", computer: "office-pc" }, { name: "Here", path: "~/Code/here", note: "집에서 하는 일이에요" }] });
+	const d: CustomDeps = { ...deps, machine: () => "home-pc", peerProjects: async () => [{ name: "office-pc", url: "https://office-pc.example:7420", online: true, projects: [{ key: "dir:~/r", name: "report" }] }] };
+	const groups = await json(await call("GET", "/api/custom/computers", undefined, d));
+	expect(groups.map((g: any) => [g.name, g.keys, g.remote.length])).toEqual([["home-pc", ["dir:~/Code/here"], 0], ["office-pc", ["dir:~/Code/there"], 1]]);
+	expect((await json(await call("GET", "/api/custom", undefined, d))).projects.map((p: any) => p.computer)).toEqual([undefined, "office-pc", "home-pc"]);
+	expect(await json(await call("GET", "/api/peer/projects", undefined, d))).toEqual({ name: "home-pc", projects: [{ key: "dir:~/Code/here", name: "Here", note: "집에서 하는 일이에요" }] });
+	expect(PEER_GET.some(r => r.test("/api/peer/projects"))).toBe(true);
+	const failing: CustomDeps = { ...d, peerProjects: async () => { throw new Error("down"); } };
+	expect((await json(await call("GET", "/api/custom/computers", undefined, failing))).map((g: any) => g.name)).toEqual(["home-pc", "office-pc"]);
+});
+
+test("peer projects: an online peer is read with its token and checked at the boundary; offline is not asked; a refused or old peer lists no projects", async () => {
+	const asked: string[] = [];
+	const answers: Record<string, Response> = {
+		"https://a.example": Response.json({ projects: [{ key: "dir:~/r", name: "report", note: 5 }, { key: 3, name: "bad" }, { name: "no key" }] }),
+		"https://old.example": new Response("nf", { status: 404 }),
+	};
+	const load = createPeerProjects({
+		peers: async () => [
+			{ name: "me", url: "https://me.example", self: true, online: true },
+			{ name: "a", url: "https://a.example", self: false, online: true },
+			{ name: "old", url: "https://old.example", self: false, online: true },
+			{ name: "off", url: "https://off.example", self: false, online: false },
+			{ name: "relay", url: "jandi:x", self: false, online: true, via: "jandi" },
+		],
+		token: () => "t".repeat(20),
+		pair: async () => ({ ok: false }),
+		fetch: async (u, init) => {
+			asked.push(`${u} ${(init?.headers as Record<string, string>)["x-dotz-peer"] ? "token" : "none"}`);
+			return answers[u.replace("/api/peer/projects", "")]!;
+		},
+	});
+	expect(await load()).toEqual([
+		{ name: "a", url: "https://a.example", online: true, projects: [{ key: "dir:~/r", name: "report" }] },
+		{ name: "old", url: "https://old.example", online: true },
+		{ name: "off", url: "https://off.example", online: false },
+	]);
+	expect(asked.sort()).toEqual(["https://a.example/api/peer/projects token", "https://old.example/api/peer/projects token"]);
+});
 
 test("routine sync adds one entry per scheduled routine with the contract tag, text and times", () => {
 	const at = { id: "morning", name: "아침 점검", prompt: "훑어줘", target: "main", schedule: { at: "09:00" } };

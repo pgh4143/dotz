@@ -65,6 +65,7 @@ import { updateNow } from "./update-now.ts";
 import { harnessUpdateRoute } from "./harness-update.ts";
 import { appAsset, committedText, indexPage, setAppName, webBuild } from "./webapp.ts";
 import { forgetRoute, listPeers, ownLogin } from "./peers.ts";
+import { peerProjects } from "./peer-projects.ts";
 import { relayRoute, relayRows } from "./relay-route.ts";
 import { handlePair, PAIR_PATH } from "./peer-pair.ts";
 import { checkPeer } from "./peer-auth.ts";
@@ -496,7 +497,7 @@ export function makeRoute({ busyNow, restartGateway, restartGatewayNow, mailDeps
 		// Settings → 업데이트 → 실행 하네스 (hub/harness-update.ts): the harness binary itself, from the package registry.
 		const harnessUpdateResponse = await harnessUpdateRoute(req, url, { busy: busyNow, restartIdle: restartGateway });
 		if (harnessUpdateResponse) return harnessUpdateResponse;
-		const customResponse = await customRoute(req, url, { lanes: () => withHomes(laneSummary(), discord.channels), channels: () => discord.channels, work: () => bgWork.list(), send: (target, text, login) => sendWeb({ ...(target === "main" ? {} : { lane: target.slice(5) }), channel: "web", text, mode: "default", login }) });
+		const customResponse = await customRoute(req, url, { lanes: () => withHomes(laneSummary(), discord.channels), channels: () => discord.channels, work: () => bgWork.list(), send: (target, text, login) => sendWeb({ ...(target === "main" ? {} : { lane: target.slice(5) }), channel: "web", text, mode: "default", login }), machine: () => resolveName(cfg.web?.machine_name, machineHost()), peerProjects });
 		if (customResponse) return customResponse;
 		// Project records (hub/projects.ts) and the todo strip (hub/todo.ts), docs/layers.md §4.
 		if (url.pathname === "/api/projects" && req.method === "PUT") {

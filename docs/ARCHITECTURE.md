@@ -36,7 +36,7 @@ Paths only; each file's header comment says what it does. Tests sit next to thei
 - Discord connection: `hub/discord-connection.ts` (`/api/discord/connection` GET/PUT/DELETE and `/check`: bot token file, server and owner id, `restart_needed` until the gateway restarts; the token is never returned)
 - Discord routing: `hub/discord-post.ts` (`<DATA_DIR>/discord-post.json`; kind and per-notice-class switches, `postClass` names a post's class, `/api/discord/post`; the web app always gets everything, 설정 → 앱 · 알림 adds "디스코드로도 보내기" per class)
 - push: `hub/push.ts` (per-class switches in config `notify.push`, `/api/push/classes`; news also per app, `custom/apps.json <app>.push`), `hub/webpush.ts`
-- per-install custom code (not part of the product): `hub/custom.ts` (cards, pins, routines), `hub/custom-text.ts` (rule titles and report heads of the project pages), `hub/plugins.ts` (plugin hooks, see `docs/custom-plugins.md`; loaded from `<DATA_DIR>/custom/plugins/`)
+- per-install custom code (not part of the product): `hub/custom.ts` (cards, pins, routines), `hub/custom-computers.ts` (the 프로젝트 list's computer groups), `hub/peer-projects.ts` (the other computers' project lists over the peer token), `hub/custom-text.ts` (rule titles and report heads of the project pages), `hub/plugins.ts` (plugin hooks, see `docs/custom-plugins.md`; loaded from `<DATA_DIR>/custom/plugins/`)
 - mail: `hub/mail-lines.ts` (a mail's 할 일 / 직접 답할 것 lines as fields of their own, and the brief a reply draft's card keeps)
 - mail: `hub/mail-unanswered.ts` (답 없는 메일 다시 묻기: a sent mail with no answer after the days set on its mail app gets one follow-up draft; script check, no model call until due)
 - mail: `hub/mail-move.ts` (moves a stored mail to another mail app, `/api/mail/move`)

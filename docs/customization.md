@@ -134,14 +134,14 @@ colors, font sizes or fixed heights, and no buttons: logic goes in `actions`.
 
 ```json
 {
-  "projects": [{ "name": "dotz 게이트웨이", "path": "~/Code/dotz", "channel": "<discord channel id>", "note": "..." }],
+  "projects": [{ "name": "dotz 게이트웨이", "path": "~/Code/dotz", "channel": "<discord channel id>", "note": "...", "computer": "office-pc" }],
   "hide_projects": ["dir:~/Code/old"],
   "routines": [{ "id": "morning-check", "name": "아침 점검", "prompt": "...", "target": "main", "schedule": { "at": "09:00" } }],
   "links": [{ "name": "Cloudflare", "url": "https://dash.cloudflare.com" }]
 }
 ```
 
-- Project: `name` (max 40) is required, plus `path` and/or `channel`. `note` is optional: one plain sentence the owner reads at the top of the project page, saying what the project is for in everyday words (e.g. "로직에서 만든 곡을 문서로 정리해요"). No file paths, rule files or internal terms; those belong in the project's own instructions.
+- Project: `name` (max 40) is required, plus `path` and/or `channel`. `note` is optional: one plain sentence the owner reads at the top of the project page, saying what the project is for in everyday words (e.g. "로직에서 만든 곡을 문서로 정리해요"). No file paths, rule files or internal terms; those belong in the project's own instructions. `computer` is optional (1-40 characters): the computer the project lives on, by its name in the computer switcher. Without it the project belongs to this computer.
 - Routine: `id` (the card id rule), `name` (max 40) and `prompt` (1-4000 characters) are required. `target` is `main`
   (the default) or `lane:<name>`. `schedule` is optional and takes either `{ "every_minutes": >= 5 }` or
   `{ "at": "HH:MM" }` (daily, in the owner's time zone), not both.
@@ -156,6 +156,24 @@ colors, font sizes or fixed heights, and no buttons: logic goes in `actions`.
 - A manual pin merges into the auto project with the same path or channel. Otherwise it creates a new project. The
   pin's name wins, and pinned projects come first, in file order. Auto projects follow, newest session first, at most 12.
 - `hide_projects` hides auto projects by key. It never hides a manual pin.
+
+### Projects by computer
+
+- Every project has a `computer`: this gateway's machine name (`web.machine_name`, else the one made from the hostname,
+  `hub/machine-name.ts`), unless its pin names another one.
+- `GET /api/custom/computers` returns the groups, this computer first, then the others by name:
+  `[{ name, self, url?, online?, keys, remote }]`. `keys` are the keys of this gateway's projects in that group (a pin that
+  names another computer joins that computer's group). `remote` are the other computer's own projects, `[{ key, name, note? }]`.
+- The other computers are the computer switcher's list (`GET /api/peers`) without relay and public rows. Each online one is
+  read at `GET /api/peer/projects` with the peer token (`docs/peer-monitoring.md`); it answers `{ name, projects }` with its
+  own projects only, by key, name and purpose, and no folder, channel or session detail. A computer that cannot be read (an
+  older gateway, no token) shows its header without rows. The answers are kept for a minute.
+- The 프로젝트 list draws one folding header per computer only when there are two or more groups. A single computer with no
+  pin naming another looks as before (고정 / 전체). Under a computer's header its rows come pinned first; the filters and the
+  search apply to all of them, and other computers' rows show only under 전체. A tap on another computer's project opens
+  that computer's web app at `#project/<key>`.
+- An offline computer keeps its header, greyed and marked 연결 안 됨, with no rows: the computer switcher lists it the same
+  way, and its projects would be stale.
 
 The project page (`#project/<key>`) reads `GET /api/custom/project?key=<key>`: a summary strip (running sessions, sessions
 waiting on the owner, last activity), the sessions with their last report line (from `lanes/<name>/report.md`, which
@@ -183,7 +201,8 @@ Everything is validated at the boundary, in `hub/custom.ts`:
   an error card and keeps rendering the rest.
 - A `pins.json` that does not parse adds `{ file: "pins.json", error }` to `errors`, and the pins are empty. Auto
   projects are still listed.
-- A single bad entry in `pins.json` is dropped with its own `errors` entry. The other entries stay.
+- A single bad entry in `pins.json` is dropped with its own `errors` entry. The other entries stay. A project whose
+  `computer` is not 1-40 characters of text is such an entry.
 
 ## HTTP API
 
@@ -191,6 +210,7 @@ All routes sit behind the same auth as every other `/api` route.
 
 - `GET /custom.js`: the web side (`web/custom.js`).
 - `GET /api/custom` returns `{ dir, cards, projects, routines, links, errors }`.
+- `GET /api/custom/computers` returns the computer groups of the project list (see Projects by computer).
 - `GET /api/custom/render?id=<id>` returns the card's `render.js`.
 - `POST /api/custom/refresh {id}` re-runs a card's command now.
 - `POST /api/custom/action {id, index}` runs a card action. It returns `{ ok, code, output, card }` for a command, or

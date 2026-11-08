@@ -106,11 +106,22 @@ function prjLoad() {
   if (prjFlight) return prjFlight;
   prjFlight = api("/api/custom").then(d => { PRJ = d; PRJ_FAIL = false; }, () => { if (!PRJ) PRJ_FAIL = true; }).then(() => {
     prjFlight = null; prjRev++;
+    prjPcLoad();
     if (current === "project") { if (ppWide()) renderProjects(); pmPaint(); }
     else if (current === "projects") renderProjects();
     else if (current === "home") homeSoon();   // a 진행 중 row names the session's project
   });
   return prjFlight;
+}
+// The computer groups (GET /api/custom/computers, hub/custom.ts computerGroups): this computer first, then the others, each with its own
+// projects. Read behind the project list, at most once a minute (another computer's answer can take seconds). One group: no headers.
+let PRJ_PC = null, prjPcAt = 0, prjPcFlight = null;
+function prjPcLoad() {
+  if (prjPcFlight || Date.now() - prjPcAt < 55000) return;
+  prjPcFlight = api("/api/custom/computers").then(d => { PRJ_PC = Array.isArray(d) ? d : null; prjPcAt = Date.now(); }, () => {}).then(() => {
+    prjPcFlight = null;
+    if (current === "projects" || (current === "project" && ppWide())) pjPaintRows();
+  });
 }
 // The work channel a session was started in (ch:<id>): the hub's lane list carries it as `home` (hub/laneviews.ts withHomes); the gateway's channel map is the fallback.
 const laneHome = l => l.home || (S && S.channels && S.channels.homes && S.channels.homes[l.name] ? `ch:${S.channels.homes[l.name]}` : "");
@@ -229,6 +240,42 @@ function prjRow(r) {
 }
 // The prototype's section headers: 고정 first, then 전체, the same rows sorted by what needs the owner (projRows).
 const prjGroups = rows => [["고정", rows.filter(r => r.p.pinned)], ["전체", rows.filter(r => !r.p.pinned)]].filter(g => g[1].length);
+// With two or more computers: one folding header per computer (이 컴퓨터 first), its rows pinned first. Another computer's project opens
+// that computer's own web app at the project page; an offline computer keeps its header, marked 연결 안 됨, like the computer switcher.
+const PJ_FOLD = new Set((() => { try { const l = JSON.parse(localStorage.getItem("dotz-pj-fold") || "[]"); return Array.isArray(l) ? l : []; } catch { return []; } })());
+function pcFold(name) {
+  if (PJ_FOLD.has(name)) PJ_FOLD.delete(name); else PJ_FOLD.add(name);
+  try { localStorage.setItem("dotz-pj-fold", JSON.stringify([...PJ_FOLD])); } catch { /* private mode: the fold lasts until reload */ }
+  pjPaintRows();
+}
+function pcHead(g, n) {
+  const open = !PJ_FOLD.has(g.name), mark = g.self ? "이 컴퓨터" : g.online === false ? "연결 안 됨" : "";
+  return el("button", { class: `sec pl-sec pl-pc${g.online === false ? " off" : ""}`, type: "button", "aria-expanded": String(open), "aria-label": `${g.name}${mark ? ` · ${mark}` : ""} · 프로젝트 ${n}개 · ${open ? "접기" : "펼치기"}`, onclick: () => pcFold(g.name) },
+    el("span", { class: "pl-pcn", text: g.name }), mark ? el("span", { class: "tag", text: mark }) : null, n ? el("span", { class: "pl-pcc", text: String(n) }) : null, icon("chev", "chev"));
+}
+function pcOpen(g, x) {
+  if (!g.online || !g.url) { toast(`${g.name}에 연결할 수 없어요`, true); return; }
+  toast(`${g.name}(으)로 넘어가요`);
+  prGo(`${g.url}/?did=${enc(DEVICE_ID)}#project/${enc(x.key)}`);
+}
+function pcRow(g, x) {
+  const line = prjBlurb(x.note || "");
+  return el("button", { class: "pl-row", type: "button", "data-key": x.key, "aria-label": `${g.name} · ${x.name} · 열기`, onclick: () => pcOpen(g, x) },
+    el("span", { class: "ico" }, icon("projects")),
+    el("span", { class: "pl-b" }, el("span", { class: "pl-1" }, el("span", { class: "pl-n", text: x.name })), el("span", { class: "pl-s" }, el("span", { class: "pl-sw", text: line }))),
+    el("span", { class: "li-end" }, icon("chev", "chev")));
+}
+// The rows of one page split by computer: [group, its local rows, its other-computer rows]. A filtered view hides groups with nothing in them.
+function pcSplit(pcs, page) {
+  const q = PJ.q.trim().toLowerCase(), owner = {};
+  for (const g of pcs) for (const k of g.keys || []) owner[k] = g.name;
+  const me = pcs.find(g => g.self) || pcs[0], filtered = !!q || PJ.view !== "all";
+  return pcs.map(g => {
+    const mine = page.filter(r => (owner[r.p.key] || me.name) === g.name);
+    const remote = PJ.view === "all" ? (g.remote || []).filter(x => !q || `${x.name} ${x.note || ""}`.toLowerCase().includes(q)) : [];
+    return [g, [...mine.filter(r => r.p.pinned), ...mine.filter(r => !r.p.pinned)], remote];
+  }).filter(([, mine, remote]) => !filtered || mine.length || remote.length);
+}
 function pjSearch() {
   return el("label", { class: "pl-search" }, icon("search"),
     el("input", { id: "pl-q", type: "search", placeholder: "프로젝트 검색", "aria-label": "프로젝트 검색", autocomplete: "off", value: PJ.q, oninput: ev => { PJ.q = ev.target.value; pjPaintRows(); } }));
@@ -259,18 +306,29 @@ function pjPaintRows() {
   const rows = pjFiltered(), page = rows.slice(0, PJ.more), rest = rows.length - page.length;
   const builtin = ((PRJ && PRJ.projects) || []).find(p => p.builtin), searching = !!PJ.q.trim();
   const showBuiltin = !!builtin && PJ.view === "all" && (!searching || "커스텀".includes(PJ.q.trim().toLowerCase()));
-  const sig = JSON.stringify([rows.map(r => [r.p.key, r.st.k, r.st.word, r.st.lane && r.st.lane.name, prjLastAt(r.p), prjChat(r.p) ? ts(prjChat(r.p)).unread : 0]), PJ.more, PJ.view, PJ.q, current === "project" ? ppCur : "", showBuiltin]);
+  const pcs = PRJ_PC && PRJ_PC.length > 1 ? PRJ_PC : null;
+  const sig = JSON.stringify([rows.map(r => [r.p.key, r.st.k, r.st.word, r.st.lane && r.st.lane.name, prjLastAt(r.p), prjChat(r.p) ? ts(prjChat(r.p)).unread : 0]), PJ.more, PJ.view, PJ.q, current === "project" ? ppCur : "", showBuiltin, pcs, pcs ? [...PJ_FOLD] : 0]);
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
   // Section headers and one card per group, as the prototype's 프로젝트 list; a group with no row after the filter is left out.
   const nodes = [];
   let card = null;
-  for (const [label, group] of prjGroups(page)) {
-    nodes.push(el("div", { class: "sec pl-sec", text: label }));
-    nodes.push(card = el("div", { class: "pl-list" }, ...group.map(prjRow)));
+  if (pcs) {
+    for (const [g, mine, remote] of pcSplit(pcs, page)) {
+      nodes.push(pcHead(g, mine.length + remote.length));
+      if (PJ_FOLD.has(g.name) || !(mine.length + remote.length)) continue;
+      const box = el("div", { class: "pl-list" }, ...mine.map(prjRow), ...remote.map(x => pcRow(g, x)));
+      nodes.push(box);
+      if (mine.length) card = box;
+    }
+  } else {
+    for (const [label, group] of prjGroups(page)) {
+      nodes.push(el("div", { class: "sec pl-sec", text: label }));
+      nodes.push(card = el("div", { class: "pl-list" }, ...group.map(prjRow)));
+    }
   }
-  if (rest > 0) card.append(moreRow(`프로젝트 ${rest}개 더 보기`, () => { PJ.more += PJ_PAGE; pjPaintRows(); }));
-  if (!rows.length) nodes.push(el("div", { class: "empty pl-empty", text: searching ? "찾는 프로젝트가 없어요" : PJ.view === "need" ? "확인할 프로젝트가 없어요" : PJ.view === "run" ? "지금 진행 중인 프로젝트가 없어요" : PJ.view === "done" ? "끝낸 프로젝트가 없어요" : "아직 프로젝트가 없어요" }));
+  if (rest > 0 && card) card.append(moreRow(`프로젝트 ${rest}개 더 보기`, () => { PJ.more += PJ_PAGE; pjPaintRows(); }));
+  if (!rows.length && !(pcs && nodes.length)) nodes.push(el("div", { class: "empty pl-empty", text: searching ? "찾는 프로젝트가 없어요" : PJ.view === "need" ? "확인할 프로젝트가 없어요" : PJ.view === "run" ? "지금 진행 중인 프로젝트가 없어요" : PJ.view === "done" ? "끝낸 프로젝트가 없어요" : "아직 프로젝트가 없어요" }));
   // The built-in 커스텀 page is the owner's settings list: always reachable, never part of the filters.
   if (showBuiltin) {
     nodes.push(el("div", { class: "sec pl-sec pl-gh", role: "presentation", text: "내 설정" }));
