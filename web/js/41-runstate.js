@@ -43,7 +43,7 @@ const runStateOf = () => {
   // computer's under /api/state `runs`, the other computer's in its monitoring snapshot (34-peer-monitoring.js pqRuns).
   if (isMailT(target)) return (typeof pqRuns === "function" && pqRuns(target)) || runs[target] || null;
   // A project channel or thread with a session of its own (hub/convsessions.ts) has its own line: main's work is not its work.
-  return runs[target] || (isLaneT(target) || (isProjT(target) && !projOnMain(target)) ? null : runs.main) || null;
+  return runs[target] || (isLaneT(target) || isTaskT(target) || (isProjT(target) && !projOnMain(target)) ? null : runs.main) || null;
 };
 // The only project that runs on main: one whose kind has no sessions of its own, known once GET /api/context is in.
 const projOnMain = t => isProjT(t) && !!C && !(C.conversation_kinds || []).includes("ch");

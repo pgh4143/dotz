@@ -61,6 +61,7 @@
     else if (e.kind === "quota") quotaLive(e.quota);   // the gateway's background usage read changed (09-needs-you.js)
     else if (e.kind === "peer_notice" || e.kind === "peer_counts" || e.kind === "peer_notice_done") prLive(e);
     else if (e.kind === "read") convOnRead(e);
+    else if (e.kind === "tasks") tasksLive();   // a task conversation opened, saved or closed (hub/task-conversation.ts)
     else if (e.kind === "comment" || e.kind === "comment_send" || e.kind === "comment_draft" || e.kind === "comment_sources") cmLive(e);
     else if (e.kind === "kakao" || e.kind === "kakao_send" || e.kind === "kakao_draft" || e.kind === "kakao_rooms" || e.kind === "kakao_read" || e.kind === "kakao_unreplied") kkLive(e);
     else if (e.kind === "mail_unreplied") mailLive();

@@ -291,6 +291,13 @@ export function createConvSessions(d: ConvDeps) {
 			if (c) park(c, "asked");
 		},
 		parkable,
+		/** Ends a conversation for good (a task conversation saved or closed): parked, forgotten, and its session folder removed. */
+		drop: (key: string) => {
+			const c = convs.get(key);
+			if (c) park(c, "dropped");
+			convs.delete(key);
+			rmSync(join(d.dataDir, "conv-sessions", safeDir(key)), { recursive: true, force: true });
+		},
 		/** Every session as the resume sweep sees it (hub/sessionresume.ts). */
 		resumeSessions: (asked: (c: Conv) => boolean, tell: (target: string, text: string) => void): ResumeSession[] =>
 			all().map(c => ({

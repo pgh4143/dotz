@@ -58,7 +58,7 @@ export function answerMovesToLane(place: LanePlace, asking: string | undefined):
 }
 
 // Conversations that exist only in the web app (outbound.ts isLocal).
-const LOCAL = /^(web|terminal|web:.*|mail:.*|settings:.*)$/;
+const LOCAL = /^(web|terminal|web:.*|mail:.*|settings:.*|task:.*)$/;
 
 /** A Discord message id. A web message id (8 hex chars) is not one: Discord rejects it as a message_reference. */
 export const isSnowflake = (id: string): boolean => /^\d{15,22}$/.test(id);

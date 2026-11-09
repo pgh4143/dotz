@@ -231,6 +231,8 @@ function sysLine(e, text, hm) {
   if (task) return sysTaskLine(e, task[1].trim(), hm, id);
   const st = el("span", { class: "cv-sys-st", hidden: true }, el("span", { class: "dot" }), el("span"));
   const kids = [icon("lanes"), el("span", { class: "cv-sys-tx", text }), st, hm ? el("span", { class: "cv-sys-mt", text: hm }) : null];
+  // The pointer to a task conversation opens it while it is open; a closed one stays plain text.
+  if (e.task_ref && TASKS.has(e.task_ref)) return el("button", { class: "cv-sys", type: "button", title: "작업 열기", onclick: () => go("chat", e.task_ref) }, ...kids);
   if (!id) return el("div", { class: "cv-sys", role: "note" }, ...kids);
   const row = sysRow(id, st, e);
   return el("button", { class: "cv-sys", type: "button", title: "작업 열기", onclick: () => sysOpen(row, id, text.replace(/^[^:]*:\s*/, ""), e) }, ...kids);

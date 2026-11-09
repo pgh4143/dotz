@@ -123,6 +123,15 @@ function load(): void {
 	for (const e of [...tailEvents(paths.inbox), ...tailEvents(paths.outbox)].sort((a, b) => String(a.ts).localeCompare(String(b.ts)))) note(e);
 }
 
+// Events moved between conversations (hub/task-conversation.ts): previews, order and unread are counted again from the log.
+export function resetConversationIndex(): void {
+	for (const t of known.keys()) known.set(t, null);
+	for (const t of [...known.keys()]) if (t !== "main" && t !== "alert" && t !== "worklog") known.delete(t);
+	incoming.clear();
+	sorted = undefined;
+	loaded = false;
+}
+
 // `live`: the targets that exist right now (live sessions, project channels); they are listed even before their first message.
 export function conversationList(live: readonly string[] = []): Conversation[] {
 	load();

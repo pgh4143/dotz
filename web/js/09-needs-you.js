@@ -292,10 +292,12 @@ function eventTarget(e) {
   if (mail) return mail;
   const settings = [e.conv, e.channel, e.target].find(v => typeof v === "string" && v.startsWith("settings:"));
   if (settings) return settings;
+  const task = [e.conv, e.channel, e.target].find(v => typeof v === "string" && isTaskT(v));
+  if (task) return task;
   let lane = typeof e.lane === "string" ? e.lane : "";
   if (!lane) for (const v of [e.source, e.target, e.channel]) if (typeof v === "string" && v.startsWith("lane:")) { lane = v.slice(5); break; }
   if (lane) return `lane:${lane}`;
-  const proj = [e.channel, e.target].find(v => typeof v === "string" && isProjT(v));
+  const proj = [e.conv, e.channel, e.target].find(v => typeof v === "string" && isProjT(v));   // a moved event names its conversation in `conv`
   if (proj) return proj;
   for (const v of [e.channel, e.target]) { const m = typeof v === "string" && /^(?:web:)?(alert|worklog)$/.exec(v); if (m) return m[1]; }
   return e.kind === "watch" ? null : MAIN;   // a watch report is 모니터링's, not a message of 알림

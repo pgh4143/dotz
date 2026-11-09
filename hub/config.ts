@@ -32,8 +32,9 @@ export type Config = {
 	accounts?: { history_days?: number };
 	// One agent session per conversation (hub/convsessions.ts): `sessions: false` turns it off (on by default, read at boot), `kinds` the conversation kinds that
 	// get one (hub/session-key.ts CONV_KINDS), `idle_stop_min` parks an idle one, `max_live` fixes how many run at once (main and lanes not counted; unset: sized from the
-	// computer's free memory and load, hub/convcapacity.ts).
-	conversations?: { sessions?: boolean; kinds?: string[]; idle_stop_min?: number; max_live?: number };
+	// computer's free memory and load, hub/convcapacity.ts). `task_split` (default false) lets the orchestrator split a repeated task out of the main chat into its own
+	// `task:<id>` conversation (hub/task-conversation.ts).
+	conversations?: { sessions?: boolean; kinds?: string[]; idle_stop_min?: number; max_live?: number; task_split?: boolean };
 	lanes: { runtime?: string; max_active?: number; compact_at?: number; keep_recent?: number; nightly_at?: string; nightly_compact_at?: number; rotate_mb?: number; max_rss_gb?: number; max_workers?: number; idle_stop_min?: number; worker_idle_min?: number; min_free_disk_gb?: number };
 	// Days an idle OmO session file is kept before the nightly hygiene deletes it (its pairs stay in recall); 0 keeps them. Default 90.
 	sessions?: { keep_days?: number };
@@ -248,6 +249,8 @@ export const convSessionsIn = (c: { conversations?: { sessions?: boolean } }): b
 export const convSessionsOn = () => convSessionsIn(cfg);
 export const convKinds = (): string[] | undefined => (Array.isArray(cfg.conversations?.kinds) ? cfg.conversations.kinds.filter(k => typeof k === "string") : undefined);
 export const convIdleStopMin = () => count(cfg.conversations?.idle_stop_min, DEFAULTS.conv_idle_stop_min, 0);
+// Read on each call: switching it off only stops new splits, the tasks already split keep resolving.
+export const taskSplitOn = (): boolean => cfg.conversations?.task_split === true;
 export const convMaxLive = (): number | undefined => cap(cfg.conversations?.max_live);
 export const lanesIdleStopMin = () => count(cfg.lanes?.idle_stop_min, DEFAULTS.idle_stop_min, 0);
 export const workerIdleMin = () => count(cfg.lanes?.worker_idle_min, DEFAULTS.worker_idle_min, 1);

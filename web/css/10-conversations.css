@@ -109,25 +109,33 @@
 /* 채팅 목록 (proto listHtml): 대화는 한 장의 카드에, '메일 · 카카오톡'은 제목과 그 아래 카드로. */
 #chat-convo:not(.mon-side) { background: transparent; border-radius: 0; }
 .cv-foot { display: flex; justify-content: center; margin-top: var(--sp-2); }
+/* 작업 대화 (task:<id>): 1280px부터는 오른쪽 열이 보여 주고, 그보다 좁으면 목록의 작업 구역이 보여 줘요 */
+#task-side { display: none; padding: 0; background: transparent; border-radius: 0; overflow: hidden auto; }
+@media (min-width: 1280px) {
+  #chat-convo .cv-tk { display: none; }
+  #v-chat { --cv-tw: 280px; }
+  #v-chat:has(> #task-side:not([hidden])) { grid-template-columns: var(--cv-w) minmax(0, 1fr) var(--cv-tw); }
+  #v-chat > #task-side:not([hidden]) { display: block; grid-column: 3; grid-row: 1 / -1; min-height: 0; margin-bottom: var(--sp-4); }
+}
 .cv-card { overflow: hidden; border-radius: var(--r-card); background: var(--card); }
 .cv-sec { margin: var(--sp-6) var(--sp-1) var(--sp-2); color: var(--fg-2); font: 600 14px/20px var(--font); }
 .cv-sec:first-child { margin-top: 0; }
 .cv-card + .cv-card { margin-top: var(--sp-6); }
-#chat-convo .cv-gh { padding: var(--sp-3) var(--sp-4) var(--sp-1); }
-#chat-convo .cv-row { min-height: 48px; padding: var(--sp-2) var(--sp-4); gap: var(--sp-3); border-radius: 0; }
-#chat-convo .cv-row + .cv-row { margin-top: 0; border-top: 1px solid var(--line); }
-#chat-convo .cv-row.on { background: var(--row-sel); }
-#chat-convo .cv-row.sub { min-height: 44px; padding-left: var(--sp-8); }
-#chat-convo .cv-row .cv-n, #chat-convo .cv-row.sub .cv-n { font: 500 15px/22px var(--font); }
-#chat-convo .cv-row.unread .cv-n { font-weight: 600; }
-#chat-convo .cv-row .cv-p { color: var(--fg-2); font: 400 12px/16px var(--font); }
-#chat-convo .cv-row.pv { align-items: center; padding-block: var(--sp-2); }
-#chat-convo .cv-row.pv .cv-m { align-self: center; }
-#chat-convo .cv-av { width: 36px; height: 36px; }
-#chat-convo .cv-av .ic { width: 20px; height: 20px; }
-#chat-convo .cv-row.sub .cv-av { width: 28px; height: 28px; }
-#chat-convo .cv-m { gap: var(--sp-2); }
-#chat-convo .cv-row.on::before { content: none; }   /* 폰 목록에서도 고른 행은 회색 면 하나로 (점 표시는 쓰지 않아요) */
+:is(#chat-convo, #task-side) .cv-gh { padding: var(--sp-3) var(--sp-4) var(--sp-1); }
+:is(#chat-convo, #task-side) .cv-row { min-height: 48px; padding: var(--sp-2) var(--sp-4); gap: var(--sp-3); border-radius: 0; }
+:is(#chat-convo, #task-side) .cv-row + .cv-row { margin-top: 0; border-top: 1px solid var(--line); }
+:is(#chat-convo, #task-side) .cv-row.on { background: var(--row-sel); }
+:is(#chat-convo, #task-side) .cv-row.sub { min-height: 44px; padding-left: var(--sp-8); }
+:is(#chat-convo, #task-side) .cv-row .cv-n, #chat-convo .cv-row.sub .cv-n { font: 500 15px/22px var(--font); }
+:is(#chat-convo, #task-side) .cv-row.unread .cv-n { font-weight: 600; }
+:is(#chat-convo, #task-side) .cv-row .cv-p { color: var(--fg-2); font: 400 12px/16px var(--font); }
+:is(#chat-convo, #task-side) .cv-row.pv { align-items: center; padding-block: var(--sp-2); }
+:is(#chat-convo, #task-side) .cv-row.pv .cv-m { align-self: center; }
+:is(#chat-convo, #task-side) .cv-av { width: 36px; height: 36px; }
+:is(#chat-convo, #task-side) .cv-av .ic { width: 20px; height: 20px; }
+:is(#chat-convo, #task-side) .cv-row.sub .cv-av { width: 28px; height: 28px; }
+:is(#chat-convo, #task-side) .cv-m { gap: var(--sp-2); }
+:is(#chat-convo, #task-side) .cv-row.on::before { content: none; }   /* 폰 목록에서도 고른 행은 회색 면 하나로 (점 표시는 쓰지 않아요) */
 
 @media (max-width: 1099px) {
   .cv-row.on { background: transparent; }

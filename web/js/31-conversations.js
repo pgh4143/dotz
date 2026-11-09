@@ -96,6 +96,7 @@ const monitorsLive = coalesced(() => loadMonitors());
 function convApply(items) {
   for (const it of items) {
     const t = it.target, prev = CONV.get(t);
+    if (it.task) TASKS.set(t, it.task.title);
     if (it.mail) MAILS.set(t, it.mail);
     if (it.last && (!prev || prev.ts <= it.last.ts)) CONV.set(t, it.last);
     else if (!CONV.has(t)) CONV.set(t, null);
@@ -112,6 +113,7 @@ async function convLoadNow() {
   try {
     const r = await api("/api/conversations"), items = r.items || [], pg = r.page;
     convApply(items);
+    for (const t of [...TASKS.keys()]) if (!items.some(it => it.target === t && it.task)) { TASKS.delete(t); CONV.delete(t); if (TS[t]) TS[t].unread = 0; }   // closed or saved: no longer listed (every task row is on the first page)
     if (r.counts) CVP.counts = r.counts;
     // Keep the cursor of the furthest page loaded; a refresh of the first page must not walk it back.
     if (!pg || !pg.more) { CVP.more = false; CVP.next = ""; }
@@ -330,10 +332,13 @@ setInterval(viewReport, 2000);
 // the projects by their newest message (silent ones after, in project order). A session out of 진행 중 keeps a row only while it is open or still
 // has something unread or asked; the ended ones fold into one group after that, and the mails and rooms that wait on the owner close the list. 모니터링 has its
 // own tab (30-monitoring.js) and uses this same row.
+const convMk = t => { const last = CONV.get(t) || null; return { t, last, name: targetName(t), hint: last ? convPreview(last.text) : "", unread: ts(t).unread, need: convNeeds(t) }; };
+// The task conversations, newest first. tk: the row belongs to the list's own 작업 section, which is hidden once the right column shows them (10-conversations.css).
+const taskRows = tk => [...TASKS.keys()].map(convMk).sort((a, b) => ((b.last || {}).ts || "").localeCompare((a.last || {}).ts || "")).map(r => ({ ...r, tk }));
 function convRows() {
   const at = t => (CONV.get(t) || {}).ts || "";
   const projects = projTargets().map((t, i) => ({ t, i })).sort((a, b) => at(b.t).localeCompare(at(a.t)) || a.i - b.i).map(x => x.t);
-  const mk = t => { const last = CONV.get(t) || null; return { t, last, name: targetName(t), hint: last ? convPreview(last.text) : "", unread: ts(t).unread, need: convNeeds(t) }; };
+  const mk = convMk;
   const all = (S && S.lanes) || [];
   const { wait, run } = sessionsNow(), now = [...wait, ...run];
   const sess = l => { const t = `lane:${l.name}`; const m = mk(t); return { ...m, badge: sessionState(l), hint: convPreview(l.lastText) || m.hint || homeRunLine(t) }; };
@@ -341,6 +346,7 @@ function convRows() {
   const projs = projects.map(mk), page = projs.filter((r, i) => i < CVF.more || r.t === target);
   const out = [MAIN, "worklog"].map(mk);
   if (now.length) out.push({ header: "진행 중", sec: true }, ...now.map(l => ({ ...sess(l), name: sessionHead(l) })), { split: true });
+  if (TASKS.size) out.push({ header: "작업", sec: true, tk: true }, ...taskRows(true));
   if (page.length) out.push({ header: "프로젝트", sec: true }, ...page);
   if (projs.length > page.length) out.push({ more: projs.length - page.length });
   const listed = new Set(now);
@@ -369,8 +375,8 @@ function convCards(rows) {
   for (const r of rows) {
     if (r.read) { const b = convReadBtn(); if (b) nodes.push(b); continue; }
     if (r.split) { box = null; continue; }
-    if (r.header) { nodes.push(el("div", { class: "cv-sec", role: "presentation", text: r.header })); box = null; continue; }
-    if (!box) nodes.push(box = el("div", { class: "cv-card" }));
+    if (r.header) { nodes.push(el("div", { class: `cv-sec${r.tk ? " cv-tk" : ""}`, role: "presentation", text: r.header })); box = null; continue; }
+    if (!box) nodes.push(box = el("div", { class: `cv-card${r.tk ? " cv-tk" : ""}` }));
     box.append(convRow(r));
     if (r.more) box = null; // 더 보기 is its card's last line: rows after it start their own card
   }
@@ -385,7 +391,7 @@ const CVF = { more: CVF_PAGE };
 // A conversation waits on the owner: an open decision asked there, a loose [ask] notice of it, or a session's question (same rules as 30-notices.js ntNeeds).
 // the same rule as the home 답변 필요 list: a gateway question it handles itself (nyHandled) is news there, not a need here
 const convNeeds = t => ntHasDecision(t) || NT.items.some(n => ntNeeds(n) && !nyHandled(n) && (n.src || n.open) === t) || !!(isLaneT(t) && targetInfo(t).ask);
-const convListed = () => [MAIN, "worklog", ...((S && S.lanes) || []).filter(laneAlive).map(l => `lane:${l.name}`), ...projTargets()];
+const convListed = () => [MAIN, "worklog", ...((S && S.lanes) || []).filter(laneAlive).map(l => `lane:${l.name}`), ...projTargets(), ...TASKS.keys()];
 // 읽음 처리, under the list: it takes only what needs no answer, so a conversation waiting on the owner keeps its unread.
 function convReadBtn() {
   const fyi = convListed().filter(t => ts(t).unread > 0 && !convNeeds(t) && CONV.get(t));
@@ -410,7 +416,7 @@ const convReadAll = (btn, list) => busy(btn, async () => {
 // feeds, the folder the 프로젝트 tab uses for a project, the session icon for a session.
 function convAvatar(t) {
   if (isFixedT(t)) return el("span", { class: "cv-av nt", "aria-hidden": "true" }, icon(t === "alert" ? "bell" : "list"));
-  return el("span", { class: "cv-av", "aria-hidden": "true" }, t === MAIN ? el("span", { class: "logo" }) : icon(isLaneT(t) ? "lanes" : isProjT(t) ? "projects" : "chat"));
+  return el("span", { class: "cv-av", "aria-hidden": "true" }, t === MAIN ? el("span", { class: "logo" }) : icon(isLaneT(t) ? "lanes" : isProjT(t) ? "projects" : isTaskT(t) ? "check" : "chat"));
 }
 // The one list row of 채팅, 프로젝트 and 모니터링. A chat target (r.t) opens its conversation; r.open / r.sel / r.av let another list say what a tap opens,
 // which row is open and which icon it wears. A row is { header } for a group label, { ended } for the folded ended sessions, or
@@ -432,6 +438,10 @@ const convSide = el("aside", { id: "chat-convo", class: "cv-side", "aria-label":
 // Wide screens: the name and state of the open conversation above its timeline (phones put the name in the app bar).
 const convHead = el("div", { id: "cv-head", class: "cv-head" });
 $("#v-chat").prepend(convSide, convHead);
+// Wide screens, when a task conversation exists: the tasks stand in their own column on the right, in the list's cards and rows.
+const taskSide = el("aside", { id: "task-side", class: "cv-side-right", "aria-label": "작업", hidden: true });
+convSide.after(taskSide);
+let taskSig = "";
 // Over a monitor's conversation (monChatTopNodes in 30-monitoring.js).
 const monChatTop = el("div", { id: "mon-chat-top", class: "mon-chat-top", hidden: true });
 convHead.after(monChatTop);
@@ -445,12 +455,50 @@ function convPaintHead() {
   // A conversation opened from a 모니터링 list (a mail of the 메일 list): ← goes back to that list inside the page, like the app bar's back on a phone.
   const up = monCtx && MON.sel && !isSettingsT(target) ? el("button", { class: "ib cv-up", type: "button", "aria-label": "목록으로", title: "목록으로", "data-k": "cv-up", onclick: () => go("monitoring", MON.sel) }, icon("back")) : null;
   // 시제품의 대화 머리 (proto .cv-hd): 제목 16/22 600 한 줄, 그 아래 상태 한 줄, 오른쪽에 그 대화의 동작.
-  const acts = [isLaneT(target) ? cvMenuBtn() : null, pjMenuOn() ? pmMenuButton(() => pmOfTarget(target), "cvmenu") : null, isSettingsT(target) ? asMoreBtn(settingsApp(target)) : null, ...asEntry(app)].filter(Boolean);
+  const acts = [...(isTaskT(target) ? taskActs() : []), isLaneT(target) ? cvMenuBtn() : null, pjMenuOn() ? pmMenuButton(() => pmOfTarget(target), "cvmenu") : null, isSettingsT(target) ? asMoreBtn(settingsApp(target)) : null, ...asEntry(app)].filter(Boolean);
   // 모니터링에서 연 대화(메일·설정)는 그 목록의 머리 그대로 아바타와 이름·상태 줄을 둬요.
   if (monCtx) clear(convHead).append(...[up, convAvatar(target), el("span", { class: "cv-b" }, el("span", { class: "cv-n" }, targetName(target), pqLabel({ pc: pqPc(target) })), el("span", { class: "cv-p", text: state })), ...acts].filter(Boolean));
   else clear(convHead).append(...[up,
     el("span", { class: "cv-hd-b" }, el("span", { class: "cv-hd-t", title: targetName(target) }, targetName(target)), el("span", { class: "cv-hd-s", text: state })),
     acts.length ? el("span", { class: "cv-hd-a" }, ...acts) : null].filter(Boolean));
+}
+// A task conversation's two actions (the head on wide screens, the app bar's ⋯ on a phone): 저장 makes it a project, 닫기 sends it back to main or deletes it.
+const taskActs = () => [el("button", { class: "btn tonal sm", type: "button", "data-k": "task-save", onclick: () => taskSave(target), text: "저장" }), el("button", { class: "btn text sm", type: "button", "data-k": "task-close", onclick: () => taskClose(target), text: "닫기" })];
+async function taskSave(t) {
+  if (!await ask("프로젝트로 저장할까요?", `'${targetName(t)}' 작업이 프로젝트가 돼요.`, "저장")) return;
+  try {
+    const r = await api(`/api/tasks/${taskOf(t)}/save`, "POST", {});
+    toast("프로젝트로 저장했어요");
+    await refreshState();
+    go("chat", r.project);
+  } catch (e) { toast(e.message, true); }
+}
+function taskClose(t) {
+  const name = targetName(t);
+  const post = async to => {
+    try {
+      await api(`/api/tasks/${taskOf(t)}/close`, "POST", { to });
+      toast(to === "main" ? "메인으로 돌려보냈어요" : "작업을 지웠어요");
+      if (target === t) go("chat", MAIN);
+    } catch (e) { toast(e.message, true); }   // 409: the server says it is still working
+  };
+  dialog({ confirm: true, title: name, body: el("p", { text: "이 작업의 메시지를 어떻게 할까요" }), actions: [
+    { label: "취소", onclick: c => c() },
+    { label: "메인으로 돌려보내기", kind: "pri", onclick: c => { c(); post("main"); } },
+    { label: "지우기", kind: "danger", onclick: async c => { c(); if (await ask("정말 지울까요", "지운 메시지는 다시 볼 수 없고, 되돌릴 수 없어요.", "지우기", true)) post("delete"); } }] });
+}
+// {kind:"tasks"} on every change: the lists and the open conversations are read again quietly (main lost or regained messages, a task may be gone).
+async function tasksLive() {
+  await convLoad();
+  for (const t of Object.keys(TS)) if (isTaskT(t) && !TASKS.has(t)) {
+    if (t === target) { if (current === "chat") go("chat", MAIN); else setTarget(MAIN); }
+    delete TS[t];
+  }
+  for (const t of [MAIN, ...Object.keys(TS).filter(isTaskT)]) {
+    const s = ts(t);
+    s.msgs = []; s.mk = new Set();   // what a moved message left behind goes; the history brings the rest
+    loadTarget(t, true).catch(e => console.warn("task reload failed", t, e));
+  }
 }
 // A project's conversation gets the project page's ⋯ menu (수정 / 삭제, built by pmMenuButton in 19-project-main.js) once the project is known.
 const pjMenuOn = () => isProjT(target) && !!pmOfTarget(target);
@@ -462,6 +510,10 @@ $("#vtog").before(cvAppMenu);
 const pjAppMenu = pmMenuButton(() => pmOfTarget(target), "cvmenu");
 pjAppMenu.id = "pjmenu"; pjAppMenu.hidden = true;
 cvAppMenu.before(pjAppMenu);
+// A task conversation on a phone: the head is hidden, so the same two actions sit in a ⋯ menu in the app bar.
+const tkAppMenu = el("button", { class: "ib cvmenu", id: "taskmenu", type: "button", "aria-label": "작업 메뉴", title: "작업 메뉴", "aria-haspopup": "listbox", "aria-expanded": "false", hidden: true,
+  onclick: ev => showMenu(ev.currentTarget, [{ value: "save", label: "저장" }, { value: "close", label: "닫기" }], { onPick: v => (v === "save" ? taskSave(target) : taskClose(target)) }) }, icon("more"));
+pjAppMenu.before(tkAppMenu);
 function convPaint() {
   convRaf = 0;
   if (current !== "chat") return;
@@ -471,6 +523,12 @@ function convPaint() {
   if (monCtx && isSettingsT(target)) MON.sel = monItemOf(target) || MON.sel;   // the monitor list may have loaded after this conversation opened
   const items = monCtx ? monItems() : null, rows = items ? monListRows(items, items.find(i => i.key === MON.sel) || null) : convRows(), sig = JSON.stringify([rows.map(r => [r.t, r.k, r.key, r.name, r.last, r.unread, r.badge, r.header, r.hint, r.sel, r.need, r.more, r.empty]), target, current, !!monCtx]);
   if (!monCtx && !KK.loaded && !KK.asked && typeof INTG !== "undefined" && INTG.items.some(i => i.key === "kakao")) { KK.asked = true; kkLoadRooms(); }
+  const tk = monCtx ? [] : taskRows(false), tkSig = JSON.stringify([tk.map(r => [r.t, r.name, r.last, r.unread, r.hint, r.need]), target, current]);
+  if (tkSig !== taskSig) {
+    taskSig = tkSig;
+    taskSide.hidden = !tk.length;
+    clear(taskSide).append(...(tk.length ? convCards([{ header: "작업", sec: true }, ...tk]) : []));
+  }
   if (sig !== convSig) {
     convSig = sig;
     convSide.setAttribute("aria-label", monCtx ? "모니터링 목록" : "채팅 목록");
@@ -506,6 +564,7 @@ function convTitle() {
   if (tag) $("#title").append(tag);
   cvAppMenu.hidden = !(convOnPhone() && isLaneT(target));
   pjAppMenu.hidden = !(convOnPhone() && pjMenuOn());
+  tkAppMenu.hidden = !(convOnPhone() && isTaskT(target));
   if (asBar) asBarSync(narrowChat() ? monDetailApp() : "");
   if (asMoreBar) asMoreSync(convOnPhone() && isSettingsT(target) ? settingsApp(target) : narrowChat() ? monDetailApp() : "");
 }

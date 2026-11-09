@@ -1,7 +1,7 @@
 // Which agent session answers a conversation (config `conversations.sessions`, hub/convsessions.ts). Pure: the registry passes
 // the flag, the enabled kinds and the thread-to-mail lookup. Everything that is not a conversation of its own is `main`, the
 // session that also takes every prompt the gateway starts itself (schedules, watches, mail wakes, lane reports).
-export const CONV_KINDS = ["mail", "ch", "th", "settings", "alert", "worklog"] as const;
+export const CONV_KINDS = ["mail", "ch", "th", "settings", "alert", "worklog", "task"] as const;
 export type ConvKind = (typeof CONV_KINDS)[number];
 export type KeyRules = { on: boolean; kinds?: readonly string[]; mailOf?: (thread: string) => string | undefined };
 
@@ -20,7 +20,7 @@ function keyOf(target: string, mailOf?: (thread: string) => string | undefined):
 		const mail = mailOf?.(id);
 		return mail ? { kind: "mail", key: `mail:${mail}` } : { kind: "th", key: target };
 	}
-	if (kind === "ch" || kind === "settings") return { kind, key: target };
+	if (kind === "ch" || kind === "settings" || kind === "task") return { kind, key: target };
 	return undefined;
 }
 

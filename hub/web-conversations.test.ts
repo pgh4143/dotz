@@ -16,7 +16,7 @@ function page() {
 	const TS: Record<string, any> = {};
 	const env: Record<string, unknown> = {
 		MAIN, TS,
-		isProjT: (t: string) => /^ch:\d+$/.test(t), isLaneT: (t: string) => t.startsWith("lane:"),
+		isProjT: (t: string) => /^ch:\d+$/.test(t), isTaskT: (t: string) => /^task:[a-z0-9]+$/.test(t), isLaneT: (t: string) => t.startsWith("lane:"),
 		ts: (t: string) => TS[t] || (TS[t] = { msgs: [], mk: new Set(), acts: [], ak: new Set(), cap: 600, hLoaded: false, aLoaded: false }),
 		msgKey: (e: any) => `${e.ts}|${e.kind}|${e.update_key ?? ""}|${e.text}`, actKey: (a: any) => `${a.ts}|${a.type}`,
 		targetOfSource: () => MAIN, isRestart: () => false, paintRestartBanner: () => {}, convNote: () => {},

@@ -42,7 +42,7 @@ test("a kind left out of conversations.kinds falls back to main", () => {
 	expect(sessionKeyOf("th:222", { ...rules, kinds: ["th"] })).toBe("th:222");
 	expect(sessionKeyOf("th:111", { ...rules, kinds: ["th"] })).toBe("main");
 	expect(sessionKeyOf("web:alert", rules)).toBe("main");
-	expect(CONV_KINDS).toEqual(["mail", "ch", "th", "settings", "alert", "worklog"]);
+	expect(CONV_KINDS).toEqual(["mail", "ch", "th", "settings", "alert", "worklog", "task"]);
 });
 
 test("primaryTarget and safeDir", () => {

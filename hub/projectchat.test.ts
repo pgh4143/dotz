@@ -76,8 +76,9 @@ describe("project orchestrator target", () => {
 		const html = bundle("js").text;
 		const fn = html.match(/\nfunction eventTarget\(e\) \{[\s\S]*?\n\}\n/)?.[0];
 		const proj = html.match(/\nconst isProjT = .*\n/)?.[0];
-		expect(fn && proj).toBeTruthy();
-		const webTarget = new Function("MAIN", `${proj}${fn}return eventTarget;`)("main") as (e: unknown) => string;
+		const task = html.match(/\nconst isTaskT = .*\n/)?.[0];
+		expect(fn && proj && task).toBeTruthy();
+		const webTarget = new Function("MAIN", `${proj}${task}${fn}return eventTarget;`)("main") as (e: unknown) => string;
 		for (const [, e, want] of EVENTS) expect(webTarget(e)).toBe(want);
 	});
 });

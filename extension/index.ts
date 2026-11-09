@@ -328,10 +328,17 @@ function orchestratorTools(pi: any): void {
 	pi.registerTool({
 		name: "dotz_conv",
 		label: "Dotz conversations",
-		description: `The other conversations ${NAME} runs: each mail thread, project channel, settings screen and the 알림/작업내역 windows answers in its own session, so its context is not mixed with yours. You (the main session) oversee them all: action=list shows each one and what it is doing; read {key} shows its recent exchange; send {key, text} hands work into it (its answer is posted in that conversation). A conversation session may send only to main. Do not pass work on in a loop: when you are handed another session's work, answer it yourself.`,
-		parameters: z.object({ action: z.enum(["list", "read", "send"]), key: z.string().optional(), text: z.string().optional(), limit: z.number().min(1).max(40).optional() }),
+		description: `The other conversations ${NAME} runs: each mail thread, project channel, settings screen and the 알림/작업내역 windows answers in its own session, so its context is not mixed with yours. You (the main session) oversee them all: action=list shows each one and what it is doing; read {key} shows its recent exchange; send {key, text} hands work into it (its answer is posted in that conversation). A conversation session may send only to main. Do not pass work on in a loop: when you are handed another session's work, answer it yourself. Only when conversations.task_split is true and only from main: task_open {title, refs} splits a task the owner gave you again out of the main chat into its own conversation (refs = that task's message ids, msg=<id> in the inbox header; every earlier message of it moves in); task_add {key (task:<id>), refs} moves more messages in later. Saving or closing a task conversation is the owner's button, not yours.`,
+		parameters: z.object({ action: z.enum(["list", "read", "send", "task_open", "task_add"]), key: z.string().optional(), text: z.string().optional(), limit: z.number().min(1).max(40).optional(), title: z.string().optional(), refs: z.array(z.string()).optional() }),
 		async execute(_id: string, p: any) {
 			const from = process.env.DOTZ_CONV ?? "main";
+			if (p.action === "task_open" || p.action === "task_add") {
+				if (process.env.DOTZ_CONV) return { content: [{ type: "text", text: "refused: only the main session splits a task out; hand it to main with dotz_conv send main" }] };
+				const open = p.action === "task_open";
+				if (!open && !String(p.key ?? "").startsWith("task:")) return { content: [{ type: "text", text: "key required: the task:<id> of the task conversation" }] };
+				const r = await call(open ? "/api/tasks" : `/api/tasks/${encodeURIComponent(String(p.key).slice(5))}/add`, { method: "POST", body: JSON.stringify(open ? { title: p.title, refs: p.refs } : { refs: p.refs }) }).catch(e => ({ error: e.message }));
+				return { content: [{ type: "text", text: JSON.stringify(r).slice(0, 2000) }] };
+			}
 			if (p.action === "list") {
 				const r = await call("/api/conv-sessions");
 				return { content: [{ type: "text", text: JSON.stringify(r).slice(0, 4000) }] };

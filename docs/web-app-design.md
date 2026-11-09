@@ -453,6 +453,15 @@ dotz 웹앱의 `views` 배열(`web/js/04-state.js:36`)은 23개예요. 설정 �
 - 근거: web/js/31-conversations.js:264(convRows), :288(convWaiting), :298(convCards), :348(convRow), :320(convReadBtn), :326(convReadAll), :341(convAvatar), :392(convPaint), :62(convLoad), :40(convNote), :91(convOnRead). 상태 선언 web/js/09-needs-you.js:369-371. 폰/데스크톱 판정 web/js/04-state.js:13,17.
 - css: web/css/10-conversations.css(`.cv-*`, 미디어쿼리 :13, :114 `max-width:1099px`, :128 `min-width:1100px`), 모니터링 공용 행은 web/css/20-monitoring.css, 17-kakao.css, 20-projects.css, 20-mail-thread.css도 `.cv-row`를 써요.
 
+### 작업 대화 (`task:<id>`, 채팅 오른쪽 열)
+- 목적: 메인 채팅에서 되풀이되는 일 하나를 따로 떼어 낸 대화예요. 프로젝트처럼 따로 보이고 이전 메시지도 함께 가요. 메인 채팅이 늘 들어오는 자리예요.
+- 구성: 1280px 이상이고 작업이 하나라도 있을 때만 `aside#task-side.cv-side-right`(`#v-chat`의 셋째 칸)가 목록과 같은 카드·행(`convCards`, `.cv-row`)으로 `작업` 구역을 보여 줘요. 1280px 아래(폰 포함)는 채팅 목록의 `작업` 구역(`.cv-sec.cv-tk`, `.cv-card.cv-tk`)이 `프로젝트` 위에 나와요. 넓은 화면에서는 이 구역을 CSS가 숨겨서 목록은 한 곳에만 보여요. 대화 머리 `.cv-hd-a`에 `저장`(tonal 작게)과 `닫기`(text 작게), 폰은 앱바 `#taskmenu`(⋯)가 같은 두 가지를 메뉴로 열어요.
+- 기능: `저장`은 `프로젝트로 저장할까요?`를 확인한 뒤 `POST /api/tasks/:id/save`, 토스트 후 만들어진 프로젝트로 가요. `닫기`는 작업 이름이 제목인 대화상자에서 `메인으로 돌려보내기` 또는 `지우기`를 고르고, `지우기`는 되돌릴 수 없다는 두 번째 확인을 거쳐 `POST /api/tasks/:id/close {to}`를 보내요. 서버가 아직 일하는 중이라고 409로 답하면 그 문구를 토스트로 보여 줘요. 메인에 남는 안내 줄(`task_ref`가 열린 작업)은 누르면 그 작업을 열고, 닫힌 작업이면 글자만 남아요. 보내기는 본문에 `task`를 실어요. 읽음 처리(`convListed`)도 작업을 포함해요.
+- 상태: 작업이 없으면 아무것도 새로 보이지 않아요(`conversations.task_split` 꺼짐). 닫힘·저장으로 목록에서 사라진 작업은 `TASKS`에서 빠지고, 열려 있던 중이면 메인으로 돌아가요. 행 아이콘은 `check`.
+- 데이터: `GET /api/conversations`의 `items[].task.title`(`TASKS`), `POST /api/message {task}`, `POST /api/tasks/:id/save`, `POST /api/tasks/:id/close`, 이벤트 스트림 `{kind:"tasks"}`(`tasksLive`: 목록과 메인·열린 작업의 기록을 조용히 다시 읽어요). 옮겨진 이벤트는 `conv`에 `task:<id>` 또는 `ch:<id>`를 달고 와서 `eventTarget`이 그 대화로 보내요(hub/events.ts와 같은 규칙).
+- 근거: web/js/08-home.js(`isTaskT`, `TASKS`), web/js/09-needs-you.js(`eventTarget`), web/js/31-conversations.js(`taskRows`, `taskActs`, `taskSave`, `taskClose`, `tasksLive`, `tkAppMenu`), web/js/11-todo-strip.js(안내 줄), web/js/99-boot.js(`tasks` 이벤트), hub/task-conversation-web.test.ts.
+- css: web/css/10-conversations.css(`#task-side`, `.cv-tk`, `min-width:1280px`).
+
 ### 대화 머리와 앱바 (대화 화면 상단)
 - 목적: 열린 대화의 이름, 상태, 그 대화의 동작(세션 메뉴, 프로젝트 메뉴, 설정 앱 더보기)을 보여 줘요.
 - 구성: 넓은 화면은 `#cv-head.cv-head`(`.cv-hd-b`의 `.cv-hd-t` 제목 + `.cv-hd-s` 상태, 오른쪽 `.cv-hd-a` 동작). 폰은 앱바 `#title`에 대화 이름, `#back` 뒤로, `#cvmenu`(세션 메뉴), `#pjmenu`(프로젝트 메뉴). 모니터링에서 연 대화(`monCtx`)는 아바타+이름+상태 줄 형태에 `← 목록으로`(`.cv-up`)가 앞에 붙어요.

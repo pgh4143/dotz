@@ -223,7 +223,7 @@ function renderAll0(keepScroll) {
       chatPush({ m }, true);
       if (s.gaps.has(m.ts) && M[j]?.ts !== m.ts) { tl.append(chatGapNode(m.ts)); CS.group = null; CS.who = ""; }
       if (LOG_VIEW && ownerish(m) && first && m.ts >= first) termPush(ownerAct(m), true);
-    } else { const a = A[i++]; if (!isProjT(target) && !isFixedT(target)) chatPush({ a }, true); if (LOG_VIEW) termPush(a, true); }
+    } else { const a = A[i++]; if (!isProjT(target) && !isTaskT(target) && !isFixedT(target)) chatPush({ a }, true); if (LOG_VIEW) termPush(a, true); }
   }
   if (isRelayT(target)) relayTail(s);   // a send still waiting for its line and the last error, before the "no conversation yet" line is considered
   if (tl.children.length <= 1) CS.empty = tl.appendChild(el("div", { class: s.herr ? "a-error" : "empty", text: s.herr ? "대화를 불러오지 못했어요" : "아직 대화가 없어요" }));   // only the top sentinel is there

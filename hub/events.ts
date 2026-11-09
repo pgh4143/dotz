@@ -19,6 +19,20 @@ const isAnswer = (e: HubEvent): boolean =>
 export const isPeerMessage = (e: HubEvent): boolean =>
 	!!e.via && (e.kind === "message" || e.kind === "lane_message") && !e.decision && !e.picks && !/^(?:mail|th|settings):/.test(String(e.conv || e.channel || ""));
 
+// Where an event shows when a task conversation took it out of main (hub/task-conversation.ts registers it; events.ts cannot import it, that would be a cycle).
+// Asked only for an event whose base target is "main". `to`: the conversation it shows in; undefined: it shows nowhere (a deleted task's messages).
+export type TargetOverlay = (e: HubEvent) => { to: string | undefined } | undefined;
+let overlay: TargetOverlay | undefined;
+export const setTargetOverlay = (fn: TargetOverlay | undefined): void => void (overlay = fn);
+
+/** The event as the owner reads it: a moved event carries `conv` = the conversation it shows in (so the web's own rule routes it); null: it shows nowhere. */
+export function placed(e: HubEvent): HubEvent | null {
+	const moved = overlay && baseTarget(e) === "main" ? overlay(e) : undefined;
+	if (!moved || moved.to === "main") return e;
+	if (moved.to === undefined) return null;
+	return e.conv === moved.to ? e : { ...e, conv: moved.to };
+}
+
 const recent: HubEvent[] = [];
 const subscribers = new Set<ReadableStreamDefaultController<string>>();
 
@@ -57,7 +71,9 @@ export function emit(box: "inbox" | "outbox", event: HubEvent): void {
 	if (typeof event.text === "string" && event.text.includes("[file]")) snapshotSent(event.text);
 	recent.push(event);
 	if (recent.length > 300) recent.shift();
-	broadcast(event);
+	// The log line stays as written; only the copy the pages get carries where the event shows (and nothing at all for a deleted task's).
+	const shown = placed(event);
+	if (shown) broadcast(shown);
 	for (const fn of emitListeners) {
 		try {
 			fn(event);
@@ -155,7 +171,7 @@ export function activityItems(source: string, limit = ACTIVITY_MAX): Activity[] 
 }
 
 export function recentEvents(limit = 150): HubEvent[] {
-	return limit > 0 ? recent.slice(-limit) : []; // slice(-0) is the whole list, and the page asks /api/state for limit=0 meaning none
+	return limit > 0 ? recent.slice(-limit).flatMap(e => placed(e) ?? []) : []; // slice(-0) is the whole list, and the page asks /api/state for limit=0 meaning none
 }
 
 // The text of the assistant message posted at `ts` (the message a decision answer replies to): the live ring first, then the outbox tail.
@@ -184,6 +200,11 @@ export function workAnswer(w: { target?: string; reply_to?: string; ended_at?: n
 // web/js/30-monitoring.js), never a message of 알림. The web app mirrors this rule for live events, so keep the two in step.
 const FIXED_CONV = /^(?:web:)?(alert|worklog)$/;
 export function eventTarget(e: HubEvent): string | undefined {
+	const base = baseTarget(e);
+	const moved = overlay && base === "main" ? overlay(e) : undefined;
+	return moved ? moved.to : base;
+}
+function baseTarget(e: HubEvent): string | undefined {
 	if (e.kind === "activity" || e.kind === "subagents" || e.kind === "notice" || e.kind === "notice_read" || e.kind === "notice_dismiss" || e.kind === "read") return undefined;
 	// A mail is its own conversation (hub/mail.ts): stamped `conv` on its thread's messages, or the web-only target itself.
 	const mail = [e.conv, e.channel, e.target].find((v): v is string => typeof v === "string" && v.startsWith("mail:"));
@@ -314,7 +335,7 @@ function conversationEvents(target: string, before?: string): HubEvent[] {
 }
 // `before` (an ISO ts) pages backwards: the newest `limit` events older than it.
 export function historyEvents(target: string, limit: number, before?: string): HubEvent[] {
-	return conversationEvents(target, before).slice(-limit).map(shownEvent);
+	return conversationEvents(target, before).slice(-limit).map(e => shownEvent(placed(e) ?? e));
 }
 // A page that need not touch what the page already has: `around` centres it on one message (its mid, message_id or ts), `after` starts it past a ts.
 // `at` is the ts of the `around` message (no `at`: the window of history does not hold it), `prev` and `next` the ts just outside the page, absent at
@@ -325,7 +346,7 @@ export function historyPage(target: string, limit: number, where: { around: stri
 	if ("around" in where && hit < 0) return { events: [] };
 	const after = "after" in where ? all.findIndex(e => e.ts > where.after) : -1;
 	const lo = "around" in where ? Math.max(0, hit - (limit >> 1)) : after < 0 ? all.length : after;
-	return { events: all.slice(lo, lo + limit).map(shownEvent), at: all[hit]?.ts, prev: all[lo - 1]?.ts, next: all[lo + limit]?.ts };
+	return { events: all.slice(lo, lo + limit).map(e => shownEvent(placed(e) ?? e)), at: all[hit]?.ts, prev: all[lo - 1]?.ts, next: all[lo + limit]?.ts };
 }
 
 export function sseResponse(lastId?: string | null): Response {

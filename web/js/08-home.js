@@ -580,10 +580,15 @@ const settingsApp = t => t.slice(9);
 // RELAY.back: the target to return to.
 const isRelayT = t => /^relay:[a-z0-9-]+:./.test(t);
 const RELAY = { name: {}, note: {}, back: MAIN, on: false };
+// A task conversation (hub/task-conversation.ts): a repeated task split out of the main chat, target task:<id>, answered by its own session.
+// TASKS: target -> title, from GET /api/conversations (convLoadNow in 31-conversations.js); a task that is no longer listed is dropped.
+const isTaskT = t => /^task:[a-z0-9]+$/.test(t);
+const taskOf = t => t.slice(5);
+const TASKS = new Map();
 const mailSender = f => String(f || "").replace(/<[^>]*>/g, "").replace(/["']/g, "").trim() || String(f || "");
-const validTarget = t => t === MAIN || isFixedT(t) || isProjT(t) || (isLaneT(t) && t.length > 5) || (isMailT(t) && t.length > 5) || (isSettingsT(t) && t.length > 9) || isRelayT(t);
+const validTarget = t => t === MAIN || isFixedT(t) || isProjT(t) || (isLaneT(t) && t.length > 5) || (isMailT(t) && t.length > 5) || (isSettingsT(t) && t.length > 9) || isTaskT(t) || isRelayT(t);
 // A conversation that can have an agent session of its own (hub/session-key.ts CONV_KINDS): its target is its session key.
-const isConvT = t => isProjT(t) || isFixedT(t) || isMailT(t) || isSettingsT(t);
+const isConvT = t => isProjT(t) || isFixedT(t) || isMailT(t) || isSettingsT(t) || isTaskT(t);
 const sourceOf = t => t === MAIN || isConvT(t) || isRelayT(t) ? "orchestrator" : t;
 const targetOfSource = s => s === "orchestrator" ? MAIN : s;
 // Owner-facing names: a project by its title (else its channel name), a session by its title (else its key).
@@ -595,6 +600,7 @@ const targetName = t => {
   if (isFixedT(t)) return FIXED_NAME[t];
   if (isMailT(t)) return (MAILS.get(t) || {}).subject || "메일";
   if (isSettingsT(t)) return monSettingsName(t);
+  if (isTaskT(t)) return TASKS.get(t) || "작업";
   if (isRelayT(t)) return RELAY.name[t] || t.split(":").slice(2).join(":");
   if (isProjT(t)) {
     let list = [];
@@ -617,6 +623,7 @@ function targetInfo(t) {
   if (isRelayT(t)) return { status: "", alive: true, known: true };
   if (isSettingsT(t)) { const o = (S && S.orchestrator) || {}, busy = o.status === "working" || o.status === "starting"; return { status: busy && (!TURN.has(t) || PQ.of.has(t)) ? "idle" : o.status || "", alive: true, known: true }; }
   if (t === MAIN || isFixedT(t) || isMailT(t)) { const o = (S && S.orchestrator) || {}; return { status: o.status || "", alive: true, known: true }; }
+  if (isTaskT(t)) { const o = (S && S.orchestrator) || {}; return { status: o.status || "", alive: true, known: TASKS.has(t) }; }
   if (isProjT(t)) { const o = (S && S.orchestrator) || {}, known = projTargets().includes(t); return { status: o.status || "", alive: known || !S, known }; }
   const l = S && S.lanes.find(x => x.name === laneOf(t));
   return l ? { status: l.status, alive: laneAlive(l), known: true, resumable: !!l.resumable, ask: l.pendingAsk && l.pendingAsk.text ? l.pendingAsk : null } : { status: "", alive: true, known: false };

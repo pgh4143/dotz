@@ -80,6 +80,7 @@ import { convs, maxLiveView } from "./convsessions.ts";
 import { repostRefusal } from "./lanewire.ts";
 import { MAIN, primaryTarget } from "./session-key.ts";
 import { authHeld, parseReply, replyLine, sendWeb } from "./intake.ts";
+import { isTaskTarget, openTaskOf, openTasks, taskRoute, withTask } from "./task-conversation.ts";
 import { json, body, terminals, BodyError } from "./routes-util.ts";
 import { ptyRoute } from "./pty.ts";
 import { desk } from "./remote-desktop.ts";
@@ -656,8 +657,8 @@ export function makeRoute({ tailnetName = ownTailnetName, busyNow, restartGatewa
 			// Ended sessions are listed too: 답변 필요 stays on their row (their unread is 0, conversations.ts unreadOf) in the folded 끝난 세션 group (web/js/04-state.js endedGroup).
 			// A mail conversation is listed only while its mail is: a deleted mail (mail-deleted.json) keeps its log but leaves every list and count here and on the other computer (hub/peer-monitor.ts).
 			const lv = liveLanes();   // the page is decided from the cheap fields of a mail; its full card is built only for the rows that go out (conversationPage `build`)
-			const items = conversationList([...[...lv.live, ...lv.ended].map(n => `lane:${n}`), ...Object.keys(discord.channels.work).map(id => `ch:${id}`), ...mailTargets()]).flatMap(c => {
-				if (!c.target.startsWith("mail:")) return [c];
+			const items = conversationList([...[...lv.live, ...lv.ended].map(n => `lane:${n}`), ...Object.keys(discord.channels.work).map(id => `ch:${id}`), ...mailTargets(), ...openTasks().map(t => `task:${t.id}`)]).flatMap(c => {
+				if (!c.target.startsWith("mail:")) return [withTask(c)];
 				const m = mailByKey(c.target.slice(5));
 				return m ? [{ ...c, mail: { ...mailStateOf(m, sent.has(m.key)), read: c.unread === 0, ...(m.archived ? { archived: true as const } : {}), source: m.source, ...(owed.has(m.key) ? { unreplied: true as const } : {}) } }] : [];
 			});
@@ -796,7 +797,7 @@ export function makeRoute({ tailnetName = ownTailnetName, busyNow, restartGatewa
 		if (url.pathname === "/api/events") return sseResponse(req.headers.get("last-event-id") ?? url.searchParams.get("last"));
 		if (req.method === "GET" && url.pathname === "/api/history") {
 			const target = url.searchParams.get("target") ?? "main";
-			if (target !== "main" && target !== "alert" && target !== "worklog" && !target.startsWith("lane:") && !isProjectTarget(target) && !isMailTarget(target) && !isSettingsTarget(target)) return json({ error: "target must be main, alert, worklog, lane:<name>, ch:<id>, mail:<key> or settings:<app>" }, 400);
+			if (target !== "main" && target !== "alert" && target !== "worklog" && !target.startsWith("lane:") && !isProjectTarget(target) && !isMailTarget(target) && !isSettingsTarget(target) && !isTaskTarget(target)) return json({ error: "target must be main, alert, worklog, lane:<name>, ch:<id>, mail:<key>, settings:<app> or task:<id>" }, 400);
 			const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") ?? 150) || 150, 500));
 			const around = url.searchParams.get("around"), after = url.searchParams.get("after");
 			// A quote's original outside what the page holds (web/js/39-reply.js rpJump), and the messages of the gap that leaves.
@@ -881,7 +882,8 @@ export function makeRoute({ tailnetName = ownTailnetName, busyNow, restartGatewa
 			const reply = parseReply(b.reply, login);
 			let project: { target: string; name: string } | undefined;
 			const settings = typeof b.settings === "string" && (fieldsOf(b.settings).length || watchOfSubject(b.settings)) ? b.settings : undefined;
-			if ([lane, b.project, b.mail, settings].filter(Boolean).length > 1) return json({ error: "lane, project and mail are exclusive" }, 400);
+			if ([lane, b.project, b.mail, settings, b.task].filter(Boolean).length > 1) return json({ error: "lane, project, mail and task are exclusive" }, 400);
+			if (b.task && !openTaskOf(String(b.task))) return json({ error: `no open task conversation ${String(b.task)}` }, 404);
 			const mail = b.mail ? mailByKey(String(b.mail)) : undefined;
 			if (b.mail && !mail) return json({ error: `no mail conversation ${String(b.mail)}` }, 404);
 			if (b.project) {
@@ -892,7 +894,7 @@ export function makeRoute({ tailnetName = ownTailnetName, busyNow, restartGatewa
 				}
 			}
 			// The queue sends to the main conversation when the turn ends; a project message goes in now (intake merges a burst).
-			if (mode === "queue" && !project && !mail && !conv && (lane ? lanes.has(lane) : !parseCommand(text) && !authHeld("web")) && (lane ? lanes.get(lane)?.status === "working" : orch.status === "working")) {
+			if (mode === "queue" && !project && !mail && !b.task && !conv && (lane ? lanes.has(lane) : !parseCommand(text) && !authHeld("web")) && (lane ? lanes.get(lane)?.status === "working" : orch.status === "working")) {
 				const item = enqueue(lane ? `lane:${lane}` : "main", [reply ? replyLine(reply) : "", text, files.length ? attachmentLines(files) : "", elements.length ? pickedLines(elements) : "", ...refs].filter(Boolean).join("\n"), login);
 				if (cid) rememberCid(cid, { ok: true, queued: item });
 				return json({ ok: true, queued: item });
@@ -901,7 +903,7 @@ export function makeRoute({ tailnetName = ownTailnetName, busyNow, restartGatewa
 			try {
 				// A decision answer from the chat card: the asking message (its ts) and the chosen option per block (intake.ts decisionLines).
 				const picks = Array.isArray(b.picks) ? b.picks.slice(0, 10).flatMap((p: any) => (p && Number.isFinite(Number(p.n)) ? [{ q: String(p.q ?? "").slice(0, 200), n: Number(p.n), label: String(p.label ?? "").slice(0, 120), ...(typeof p.note === "string" && p.note.trim() ? { note: p.note.replace(/\s+/g, " ").trim().slice(0, 500) } : {}) }] : [])) : [];
-				await sendWeb({ lane, project, mail, settings, conv: lane || project || mail || settings ? undefined : conv, channel, text, mode: mode === "queue" ? "default" : mode, login, files, ...(elements.length ? { elements } : {}), ...(refs.length ? { refs } : {}), ...(typeof b.reply_to === "string" && b.reply_to ? { replyTo: b.reply_to.slice(0, 40) } : {}), ...(reply ? { reply } : {}), ...(picks.length ? { picks } : {}), via: viaOf(b.via) });
+				await sendWeb({ lane, project, mail, settings, task: b.task ? String(b.task) : undefined, conv: lane || project || mail || settings || b.task ? undefined : conv, channel, text, mode: mode === "queue" ? "default" : mode, login, files, ...(elements.length ? { elements } : {}), ...(refs.length ? { refs } : {}), ...(typeof b.reply_to === "string" && b.reply_to ? { replyTo: b.reply_to.slice(0, 40) } : {}), ...(reply ? { reply } : {}), ...(picks.length ? { picks } : {}), via: viaOf(b.via) });
 			} catch (error) {
 				sentCids.delete(cid);
 				return json({ error: (error as Error).message }, 409);
@@ -1005,16 +1007,11 @@ export function makeRoute({ tailnetName = ownTailnetName, busyNow, restartGatewa
 				return json({ delivered: false, reason: (error as Error).message }, 502);
 			}
 		}
-		const commentsResponse = await commentsRoute(req, url, parts);
-		if (commentsResponse) return commentsResponse;
-		const igDmResponse = await igDmRoute(req, url, parts);
-		if (igDmResponse) return igDmResponse;
-		const kakaoResponse = await kakaoRoute(req, url, parts);
-		if (kakaoResponse) return kakaoResponse;
-		const settingsResponse = await routeSettings(req, url, parts);
-		if (settingsResponse) return settingsResponse;
-		const laneResponse = await routeLanes(req, url, parts);
-		if (laneResponse) return laneResponse;
+		// The routers of their own files, in this order: the first that answers wins.
+		for (const sub of [() => commentsRoute(req, url, parts), () => igDmRoute(req, url, parts), () => kakaoRoute(req, url, parts), () => routeSettings(req, url, parts), () => routeLanes(req, url, parts), () => taskRoute(req, url)]) {
+			const res = await sub();
+			if (res) return res;
+		}
 		return new Response("not found", { status: 404 });
 	};
 	// A body that is not JSON is refused here, whichever route read it (hub/routes-util.ts body).

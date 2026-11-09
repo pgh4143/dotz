@@ -178,7 +178,7 @@ export function deliverNow(text: string, reply?: Reply): boolean {
 
 // "web:alert" / "web:worklog": the answer to a question the owner asked in that web conversation (hub/intake.ts sendWeb).
 // "mail:<key>": a mail with no Discord thread (hub/mail.ts) lives in the web only.
-const isLocal = (target: string) => target === "web" || target === "terminal" || target === "web:alert" || target === "web:worklog" || target.startsWith("mail:") || target.startsWith("settings:") || (target.startsWith("ch:") && discord.isLocalChannel(target.slice(3)));
+const isLocal = (target: string) => target === "web" || target === "terminal" || target === "web:alert" || target === "web:worklog" || target.startsWith("mail:") || target.startsWith("settings:") || target.startsWith("task:") || (target.startsWith("ch:") && discord.isLocalChannel(target.slice(3)));
 // The work channel a Discord thread hangs from: its sends show in that project's web chat (projectchat.ts outEvent).
 const threadHome = (thread: string): string | undefined => {
 	const parent = discord.channels.threads[thread]?.parent;
