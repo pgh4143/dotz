@@ -12,6 +12,7 @@
 import { peerFetch } from "./tailnet-fetch.ts";
 import { cfg, log } from "./config.ts";
 import { friendlyName, label, peerInfoName, resolveName } from "./machine-name.ts";
+import { PEER_HEADER, peerTokenFor } from "./peer-auth.ts";
 import { bindPeer, boundPeer, boundPeers, unbindPeer, type Bound } from "./peer-pair.ts";
 import { webBase } from "./weblink.ts";
 
@@ -107,9 +108,9 @@ export async function pool<T, R>(items: T[], limit: number, fn: (item: T) => Pro
 	return out;
 }
 
-type Fetcher = (url: string) => Promise<unknown>;
-const getJson: Fetcher = async url => {
-	const r = await peerFetch(url, { signal: AbortSignal.timeout(PROBE_MS), redirect: "manual" });
+type Fetcher = (url: string, headers?: Record<string, string>) => Promise<unknown>;
+const getJson: Fetcher = async (url, headers) => {
+	const r = await peerFetch(url, { headers, signal: AbortSignal.timeout(PROBE_MS), redirect: "manual" });
 	if (!r.ok) throw new Error(`HTTP ${r.status}`);
 	return r.json();
 };
@@ -134,9 +135,12 @@ export async function peerName(url: string, get: Fetcher = getJson): Promise<str
 	}
 }
 
-async function counts(url: string, get: Fetcher = getJson): Promise<{ unread: number; need: number } | undefined> {
+// /api/notices is not public: a gateway in cloudflare mode no longer trusts the tailnet identity alone, so the read carries the peer token when there is one.
+// Only tailnet computers get here: listPeers answers a public row by its manifest, and hub/peer-stream.ts follows knownComputers.
+async function counts(url: string, get: Fetcher = getJson, token: (url: string) => string | undefined = peerTokenFor): Promise<{ unread: number; need: number } | undefined> {
 	try {
-		return countsFrom(await get(`${url}/api/notices?limit=100`));
+		const t = token(url);
+		return countsFrom(await get(`${url}/api/notices?limit=100`, t ? { [PEER_HEADER]: t } : undefined));
 	} catch {
 		return undefined;
 	}
@@ -231,8 +235,8 @@ const STALE_COUNTS_MS = 45_000;
 const recounting = new Set<string>();
 
 // Reads one computer's counts now and keeps them for listPeers. hub/peer-stream.ts calls it when that computer's notices change.
-export async function refreshCounts(url: string, get: Fetcher = getJson): Promise<{ unread: number; need: number } | undefined> {
-	const v = await counts(url, get);
+export async function refreshCounts(url: string, get: Fetcher = getJson, token?: (url: string) => string | undefined): Promise<{ unread: number; need: number } | undefined> {
+	const v = await counts(url, get, token);
 	countsCache.set(url, { at: Date.now(), v });
 	return v;
 }

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bindPeer, boundPeer } from "./peer-pair.ts";
 import { cfg } from "./config.ts";
-import { baseUrl, cached, forgetPeer, forgetRoute, candidatePorts, countsFrom, discover, extraUrls, friendlyName, isDotz, isPublicHost, knownComputers, listPeers, pool, publicPeer, resolveNode, sameUserNodes, selfFound, uniqueNames } from "./peers.ts";
+import { baseUrl, cached, forgetPeer, forgetRoute, candidatePorts, countsFrom, discover, extraUrls, friendlyName, isDotz, isPublicHost, knownComputers, listPeers, peerName, pool, publicPeer, refreshCounts, resolveNode, sameUserNodes, selfFound, uniqueNames } from "./peers.ts";
 import { setWebBase } from "./weblink.ts";
 
 const roots: string[] = [];
@@ -124,6 +124,43 @@ test("countsFrom counts unread and open decisions", () => {
 	expect(countsFrom({ unread: 0 })).toEqual({ unread: 0, need: 0 });
 	expect(countsFrom({ error: "x" })).toBeUndefined();
 	expect(countsFrom(null)).toBeUndefined();
+});
+
+test("the counts read carries the computer's peer token when there is one and no peer header without one", async () => {
+	const url = "https://mini.ts.net:8445";
+	const calls: Array<[string, Record<string, string> | undefined]> = [];
+	const get = async (u: string, h?: Record<string, string>): Promise<unknown> => (calls.push([u, h]), { unread: 2, items: [] });
+	const asked: string[] = [];
+	expect(await refreshCounts(url, get, u => (asked.push(u), "token-for-mini"))).toEqual({ unread: 2, need: 0 });
+	expect(asked).toEqual([url]);
+	expect(await refreshCounts(url, get, () => undefined)).toEqual({ unread: 2, need: 0 });
+	expect(calls).toEqual([[`${url}/api/notices?limit=100`, { "x-dotz-peer": "token-for-mini" }], [`${url}/api/notices?limit=100`, undefined]]);
+});
+
+test("the token in the counts read reaches the computer over the real fetch, and a gateway that refuses it reads as not connected", async () => {
+	const seen: Array<string | null> = [];
+	const other = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: req => {
+		const sent = req.headers.get("x-dotz-peer");
+		seen.push(sent);
+		return sent === "token-for-other" ? Response.json({ unread: 1, items: [] }) : new Response("forbidden", { status: 403, headers: { "X-Dotz-Pair": "1" } });
+	} });
+	const url = "http://127.0.0.1:" + other.port;
+	try {
+		expect(await refreshCounts(url, undefined, () => "token-for-other")).toEqual({ unread: 1, need: 0 });
+		expect(await refreshCounts(url, undefined, () => undefined)).toBeUndefined();
+		expect(seen).toEqual(["token-for-other", null]);
+	} finally {
+		other.stop(true);
+	}
+});
+
+test("the public probes never carry a peer header", async () => {
+	const headers: unknown[] = [];
+	const get = async (_u: string, h?: Record<string, string>): Promise<unknown> => (headers.push(h), { name: "dotz" });
+	expect(await isDotz("https://mini.ts.net:8445", get)).toBe(true);
+	await peerName("https://mini.ts.net:8445", get);
+	await publicPeer({ name: "p", host: "probe.example.com", url: "https://probe.example.com", self: false, public: true }, get);
+	expect(headers).toEqual([undefined, undefined, undefined]);
 });
 
 test("cached reuses a value inside the ttl, reloads after it, and shares one load in flight", async () => {
