@@ -33,13 +33,21 @@ export async function openSession(f: typeof fetch, refreshToken: string): Promis
 	return { get, refresh: got.refresh ?? refreshToken };
 }
 
-export async function memberships(get: Get): Promise<Membership[]> {
-	return list(obj(await get("start-api/v4/account", 4)).memberships).flatMap(m => {
+const parseMemberships = (v: unknown): Membership[] =>
+	list(obj(v).memberships).flatMap(m => {
 		const o = obj(m);
 		const teamId = int(o.teamId);
 		const memberId = int(o.memberId);
-		return teamId && memberId ? [{ teamId, memberId, teamName: typeof o.teamName === "string" && o.teamName ? o.teamName : String(teamId) }] : [];
+		const name = [o.name, o.teamName].find(x => typeof x === "string" && x) as string | undefined;
+		return teamId && memberId ? [{ teamId, memberId, teamName: name ?? String(teamId) }] : [];
 	});
+
+/** The account's teams: what the web client reads (account-api/v1/me, where `name` is the team's name), the older v4 account record when that gives none. */
+export async function memberships(get: Get): Promise<Membership[]> {
+	const now = await get("account-api/v1/me", 1).then(parseMemberships, () => {
+		return []; // not an answer: the v4 record below answers instead, and its own failure is thrown
+	});
+	return now.length ? now : parseMemberships(await get("start-api/v4/account", 4));
 }
 
 /** The owner's member id in the team: the team's own answer, the membership's when that gives nothing usable. */
@@ -47,13 +55,17 @@ export async function memberIdOf(get: Get, team: number, fallback: number): Prom
 	return int(obj(obj(await get(`start-api/v4/teams/${team}/me`, 4)).member).id) || fallback;
 }
 
-/** The JANDI bot ("MrJ") and the room of the owner's chat with it: from the team record's bot member, else from the room and bot lists (a connector is never the JANDI bot). */
+/** The JANDI bot ("MrJ") and the room of the owner's chat with it: from the team record's bot member (its entityId when it has one, else its chat in
+ * the room list), else from the room and bot lists (a connector is never the JANDI bot). The room list is `{ chats: [...] }` (a bare list is also read). */
 export async function findRoom(get: Get, team: number, member: number): Promise<FoundRoom> {
 	const base = `start-api/v4/teams/${team}`;
-	const bot = list(obj(await get(base, 4)).members).map(obj).find(m => m.type === "bot" && int(m.id) && int(m.entityId));
-	if (bot) return { member_id: member, bot_id: int(bot.id), room_id: int(bot.entityId) };
-	const bots = new Set(list(await get(`${base}/bots`, 4)).map(obj).filter(b => b.botType !== "connect_bot").map(b => int(b.id)).filter(Boolean));
-	for (const r of list(await get(`${base}/rooms`, 4)).map(obj)) {
+	const bot = list(obj(await get(base, 4)).members).map(obj).find(m => m.type === "bot" && int(m.id));
+	if (bot && int(bot.entityId)) return { member_id: member, bot_id: int(bot.id), room_id: int(bot.entityId) };
+	const listed = list(await get(`${base}/bots`, 4)).map(obj);
+	const bots = new Set(listed.filter(b => b.botType !== "connect_bot").map(b => int(b.id)).filter(Boolean));
+	if (bot && !listed.some(b => b.botType === "connect_bot" && int(b.id) === int(bot.id))) bots.add(int(bot.id));
+	const rooms = await get(`${base}/rooms`, 4);
+	for (const r of (Array.isArray(rooms) ? rooms : list(obj(rooms).chats)).map(obj)) {
 		if (r.type === "chat" && bots.has(int(r.companionId)) && int(r.id) && list(r.members).includes(member)) return { member_id: member, bot_id: int(r.companionId), room_id: int(r.id) };
 	}
 	throw new Error(msg().connect.jandi.noRoom);

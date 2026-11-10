@@ -16,6 +16,26 @@ describe("reading the owner's session", () => {
 		expect(got).toEqual([{ teamId: 1, memberId: 2, teamName: "A" }, { teamId: 4, memberId: 5, teamName: "4" }]);
 	});
 
+	test("memberships come from account-api/v1/me, where name is the team's name", async () => {
+		const got = await memberships(getOf({ "account-api/v1/me": { memberships: [{ teamId: 1, memberId: 2, name: "Team", domain: "team" }] }, "start-api/v4/account": { memberships: [{ teamId: 9, memberId: 9 }] } }));
+		expect(got).toEqual([{ teamId: 1, memberId: 2, teamName: "Team" }]);
+	});
+
+	test("the v4 account record answers when account-api/v1/me fails or has no memberships", async () => {
+		const v4 = { "start-api/v4/account": { memberships: [{ teamId: 4, memberId: 5, teamName: "B" }] } };
+		expect(await memberships(getOf(v4))).toEqual([{ teamId: 4, memberId: 5, teamName: "B" }]);
+		expect(await memberships(getOf({ ...v4, "account-api/v1/me": { invitations: [] } }))).toEqual([{ teamId: 4, memberId: 5, teamName: "B" }]);
+	});
+
+	test("the team's bot member without an entityId is found by its chat in the { chats } room list", async () => {
+		const get = getOf({
+			"start-api/v4/teams/9": { members: [{ id: 2, type: "human" }, { id: 7, type: "bot" }] },
+			"start-api/v4/teams/9/bots": [{ id: 6, botType: "connect_bot" }],
+			"start-api/v4/teams/9/rooms": { topics: [], chats: [{ id: 80, type: "chat", companionId: 6, members: [2, 6] }, { id: 70, type: "chat", companionId: 7, members: [2, 7] }] },
+		});
+		expect(await findRoom(get, 9, 2)).toEqual({ member_id: 2, bot_id: 7, room_id: 70 });
+	});
+
 	test("the team's bot member gives the bot id and the room id", async () => {
 		const get = getOf({ "start-api/v4/teams/9": { members: [{ id: 2, type: "user" }, { id: 7, type: "bot", entityId: 70 }] } });
 		expect(await findRoom(get, 9, 2)).toEqual({ member_id: 2, bot_id: 7, room_id: 70 });
