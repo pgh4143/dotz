@@ -43,15 +43,23 @@ export type LoginProviderRow = { id: string; name: string; configured: boolean }
 type Item = { name: string; access?: string; source?: string; blockedUntil?: number; blockReason?: string };
 
 const windowText = (minutes: number): string => (minutes >= 1440 ? `${Math.round(minutes / 1440)}일` : minutes >= 60 ? `${Math.round(minutes / 60)}시간` : `${minutes}분`);
+// OmO writes `resetsAt` as an ISO string (Claude) or epoch ms (older readings); either is ms here.
+const resetMs = (v: unknown): number | null => {
+	const ms = typeof v === "number" ? v : typeof v === "string" ? Date.parse(v) : Number.NaN;
+	return Number.isFinite(ms) ? ms : null;
+};
+// "7d fable" -> "fable": a model-scoped window keeps its name next to the duration, so it is not a second "7일".
+const scopeOf = (label: unknown): string => (typeof label === "string" ? label.replace(/^\s*\d+\s*[mhdw]\b/i, "").trim() : "");
 // One provider's usage windows from subscription-usage.json (`<provider>/<account>` key), newest read only.
-function windowsOf(usage: Json | undefined, omoId: string, account: string): GenericWindow[] {
+export function windowsOf(usage: Json | undefined, omoId: string, account: string): GenericWindow[] {
 	const w = usage?.accounts?.[`${omoId}/${account}`]?.windows;
 	if (!Array.isArray(w)) return [];
 	return w.flatMap((x: Json): GenericWindow[] => {
 		const used = typeof x?.usedPercent === "number" && Number.isFinite(x.usedPercent) ? x.usedPercent : undefined;
 		const minutes = typeof x?.windowMinutes === "number" ? x.windowMinutes : 0;
 		if (used === undefined) return [];
-		return [{ id: String(x.id ?? x.label ?? ""), label: windowText(minutes), left: Math.round((100 - Math.min(100, Math.max(0, used))) * 10) / 10, resets_at: typeof x.resetsAt === "number" ? x.resetsAt : null }];
+		const scope = scopeOf(x.label);
+		return [{ id: String(x.id ?? x.label ?? ""), label: scope ? `${windowText(minutes)} ${scope}` : windowText(minutes), left: Math.round((100 - Math.min(100, Math.max(0, used))) * 10) / 10, resets_at: resetMs(x.resetsAt) }];
 	});
 }
 

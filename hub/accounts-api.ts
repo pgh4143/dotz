@@ -5,7 +5,7 @@
 import { aliasesFile, label, readAliases, resolveAccount, setAlias } from "./account-alias.ts";
 import { blockedKind, checkNow, DEFAULT_EVERY_MINUTES, DEFAULT_SCRIPT_TIMEOUT_MS, decisionsFile, describeRule, type Decision, getScriptOpinion, getUsage, josa, lastDecision, type Manual, readRules, rulesFile, type ScriptErrorKind, setManual, setOnLimit, setOrder, validateRules, writeRules } from "./account-rules.ts";
 import { type AccountSwitch, accountView, clearSwitches, deleteSwitch, hardPinned, inOrder, MAX_LOG_LINES, onUsedChange, type Pool, quietly, readPool, stickyAccount, type SwitchKind, type UsedChange } from "./account-sticky.ts";
-import { deletePoolAccount, providerGroups, readProviderStore, writeProviderPin } from "./accounts-providers.ts";
+import { deletePoolAccount, providerGroups, readProviderStore, windowsOf, writeProviderPin } from "./accounts-providers.ts";
 import { issueBlock } from "./choices.ts";
 import { TZ } from "./config.ts";
 import { msg } from "./i18n.ts";
@@ -166,6 +166,11 @@ export function accountsBody(now = Date.now(), catalog: { id: string; name: stri
 	const current = pool ? (hardPinned(now) ? sticky : usedAccount(sticky, names, n => Boolean(pool.blocked[n]), n => pool.lastSuccess[n] ?? 0)) : sticky;
 	const aliases = readAliases();
 	const usage = getUsage();
+	// every logged-in account's windows as OmO's poller last wrote them, not only the one requests use (getUsage is filled
+	// only while rules or a script read it)
+	const store = readProviderStore();
+	const claudeWindows = (name: string) => windowsOf(store.usage, "anthropic-subscription", name);
+	const fileLeft = (name: string, id: string) => claudeWindows(name).find(w => w.id === id)?.left ?? null;
 	const rules = readRules();
 	const lab = (n: string) => label(n, undefined, aliases);
 	const manual = rules.manual && (!rules.manual.until || Date.parse(rules.manual.until) > now) ? rules.manual : undefined;
@@ -192,8 +197,8 @@ export function accountsBody(now = Date.now(), catalog: { id: string; name: stri
 			blocked: b ? blockedKind(b.reason) : null,
 			blocked_until: b?.until ? new Date(b.until).toISOString() : null,
 			blocked_tag: b ? blockedTag(blockedKind(b.reason), b.until, now) : null,
-			five_hour_left: usage[name]?.five_hour_left ?? null,
-			seven_day_left: usage[name]?.seven_day_left ?? null,
+			five_hour_left: usage[name]?.five_hour_left ?? fileLeft(name, "claude:5h"),
+			seven_day_left: usage[name]?.seven_day_left ?? fileLeft(name, "claude:7d"),
 		};
 	});
 	// The Claude subscription group: the same accounts as `accounts` (dotz's own order and labels), shaped like every other
@@ -215,10 +220,10 @@ export function accountsBody(now = Date.now(), catalog: { id: string; name: stri
 			blocked: a.blocked,
 			blocked_until: a.blocked_until,
 			blocked_tag: a.blocked_tag,
-			windows: [...(a.five_hour_left !== null ? [{ id: "anthropic:5h", label: "5시간", left: a.five_hour_left, resets_at: null }] : []), ...(a.seven_day_left !== null ? [{ id: "anthropic:7d", label: "7일", left: a.seven_day_left, resets_at: null }] : [])],
+			windows: claudeWindows(a.name).length ? claudeWindows(a.name) : [...(a.five_hour_left !== null ? [{ id: "anthropic:5h", label: "5시간", left: a.five_hour_left, resets_at: null }] : []), ...(a.seven_day_left !== null ? [{ id: "anthropic:7d", label: "7일", left: a.seven_day_left, resets_at: null }] : [])],
 		})),
 	};
-	const generic = providerGroups({ ...readProviderStore(), aliases, catalog, now });
+	const generic = providerGroups({ ...store, aliases, catalog, now });
 	for (const g of generic.providers) for (const a of g.accounts) if (a.blocked) a.blocked_tag = blockedTag(blockedKind(a.blocked), a.blocked_until ? Date.parse(a.blocked_until) : undefined, now);
 	return {
 		providers: [...(names.length ? [claude] : []), ...generic.providers],

@@ -532,3 +532,21 @@ test("without a subscription login, OmO's anthropic API key is its own group and
 	expect(b.providers.map(g => [g.id, g.name, g.auth])).toEqual([["anthropic", "Claude API 키", "api_key"]]);
 	expect(b.providers[0]!.accounts.map(a => a.label)).toEqual(["API 키"]);
 });
+
+test("the Claude group shows every logged-in account's windows from OmO's usage file, with ISO reset times, not only the one in use", () => {
+	writeMixedAuth();
+	writeSlots({});
+	const at = (h: number) => new Date(WED_10 + h * 3_600_000).toISOString();
+	writeFileSync(usageFile(), JSON.stringify({ accounts: {
+		"anthropic-subscription/default": { windows: [{ id: "claude:5h", label: "5h", windowMinutes: 300, usedPercent: 40, resetsAt: at(2) }, { id: "claude:7d", label: "7d", windowMinutes: 10080, usedPercent: 10, resetsAt: at(48) }, { id: "claude:7d_fable", label: "7d fable", windowMinutes: 10080, usedPercent: 5, resetsAt: at(48) }] },
+		"anthropic-subscription/work": { windows: [{ id: "claude:5h", label: "5h", windowMinutes: 300, usedPercent: 1, resetsAt: at(4) }] },
+	} }));
+	const b = accountsBody(WED_10, CATALOG);
+	const claude = b.providers[0]!;
+	expect(claude.accounts.map(a => [a.name, a.windows.map(w => [w.label, w.left, w.resets_at])])).toEqual([
+		["default", [["5시간", 60, WED_10 + 7_200_000], ["7일", 90, WED_10 + 172_800_000], ["7일 fable", 95, WED_10 + 172_800_000]]],
+		["work", [["5시간", 99, WED_10 + 14_400_000]]],
+	]);
+	// without rules or a script the legacy numbers come from the same file too
+	expect(b.accounts.map(a => [a.name, a.five_hour_left, a.seven_day_left])).toEqual([["default", 60, 90], ["work", 99, null]]);
+});

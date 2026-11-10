@@ -12,11 +12,12 @@ if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 const claudeAccounts = [
 	{ name: "default", order: 1, alias: null, label: "개인 계정", current: true, blocked: null, blocked_until: null, blocked_tag: null, five_hour_left: 62, seven_day_left: 80 },
 	{ name: "work", order: 2, alias: null, label: "회사 계정", current: false, blocked: null, blocked_until: null, blocked_tag: null, five_hour_left: null, seven_day_left: null },
+	{ name: "spare", order: 3, alias: null, label: "예비 계정", current: false, blocked: null, blocked_until: null, blocked_tag: null, five_hour_left: null, seven_day_left: null },
 ];
 const providers = () => [
 	{
 		id: "anthropic", name: "Claude 구독", auth: "oauth", multi: true, can_add: true, can_pin: true, can_delete: true,
-		accounts: claudeAccounts.map(a => ({ ...a, pinned: a.name === "default", windows: [...(a.five_hour_left !== null ? [{ id: "5h", label: "5시간", left: 62, resets_at: null }] : []), ...(a.seven_day_left !== null ? [{ id: "7d", label: "7일", left: 80, resets_at: null }] : [])] })),
+		accounts: claudeAccounts.map(a => ({ ...a, pinned: a.name === "default", windows: [...(a.five_hour_left !== null ? [{ id: "5h", label: "5시간", left: 62, resets_at: null }] : []), ...(a.seven_day_left !== null ? [{ id: "7d", label: "7일", left: 80, resets_at: null }] : []), ...(a.name === "work" ? [{ id: "claude:5h", label: "5시간", left: 99, resets_at: Date.parse("2026-10-21T14:00:00+09:00") }] : [])] })),
 	},
 	{
 		id: "chatgpt-subscription", name: "ChatGPT 구독", auth: "oauth", multi: true, can_add: true, can_pin: true, can_delete: true,
@@ -150,12 +151,15 @@ for (const [label, w, h] of [["phone", 390, 844], ["desktop", 1280, 900]] as con
 		await boot(v);
 		// each login provider is a section with its 계정 추가; the rest share one list
 		expect(await sectionText(v)).toEqual(["Claude 구독계정 추가", "ChatGPT 구독계정 추가", "Cursor계정 추가", "다른 공급자"]);
-		expect(await q(v, `return document.querySelectorAll("#accounts .li.acc:not(.gen)").length`)).toBe(2);
+		expect(await q(v, `return document.querySelectorAll("#accounts .li.acc:not(.gen)").length`)).toBe(3);
 		expect(await q(v, `return document.querySelectorAll("#accounts .li.acc.gen").length`)).toBe(2);
 		await shot(v, `accounts-providers-${w}.png`);
 		const gpt = await q<{ text: string; numbers: string[] }>(v, `const r = ${groupList("ChatGPT 구독")}; return { text: r.textContent, numbers: [...r.querySelectorAll(".acc-no")].map(n => n.textContent) }`);
 		expect(gpt.numbers).toEqual(["1", "2"]);
 		for (const part of ["한도 걸림 · 내일 01:20까지", "5시간 62% 남음", "7일 74% 남음", "회사용 GPT", "사용 중", "고정"]) expect(gpt.text).toContain(part);
+		// an account not in use still shows its own windows, with when each resets
+		const claude = await q<string>(v, `return ${groupList("Claude 구독")}.textContent`);
+		for (const part of ["5시간 62% 남음", "5시간 99% 남음 (", "초기화)", "spare · 사용량 아직 확인 안 됨"]) expect(claude).toContain(part);
 		expect(await q(v, `return ${groupList("다른 공급자")}.textContent.includes("Gemini")`)).toBe(true);
 		expect(await q(v, `return ${groupList("Cursor")}.textContent.includes("Cursor 계정이 없어요")`)).toBe(true);
 		const o = await q<{ doc: number; vw: number; wide: string[] }>(v, `const rows = [...document.querySelectorAll(".li.acc.gen")]; return { doc: document.documentElement.scrollWidth, vw: innerWidth, wide: rows.filter(r => r.scrollWidth > r.clientWidth + 1 || r.getBoundingClientRect().right > innerWidth).map(r => r.textContent) }`);
