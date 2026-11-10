@@ -3,6 +3,7 @@
 // requests the gateway answers itself ("계정 바꿔줘", main.ts). Every account is shown by its alias (hub/account-alias.ts label);
 // the raw id appears only in API fields named `name`/`key` and on "-# " detail lines.
 import { aliasesFile, label, readAliases, resolveAccount, setAlias } from "./account-alias.ts";
+import { isStrategy, readStrategy, STRATEGIES, writeStrategy } from "./account-strategy.ts";
 import { blockedKind, checkNow, DEFAULT_EVERY_MINUTES, DEFAULT_SCRIPT_TIMEOUT_MS, decisionsFile, describeRule, type Decision, getScriptOpinion, getUsage, josa, lastDecision, type Manual, readRules, rulesFile, type ScriptErrorKind, setManual, setOnLimit, setOrder, validateRules, writeRules } from "./account-rules.ts";
 import { type AccountSwitch, accountView, clearSwitches, deleteSwitch, hardPinned, inOrder, MAX_LOG_LINES, onUsedChange, type Pool, quietly, readPool, stickyAccount, type SwitchKind, type UsedChange } from "./account-sticky.ts";
 import { deletePoolAccount, providerGroups, readProviderStore, writeProviderPin } from "./accounts-providers.ts";
@@ -225,6 +226,8 @@ export function accountsBody(now = Date.now(), catalog: { id: string; name: stri
 		login_providers: generic.login_providers,
 		// "pinned" (고정: manual pick, never moves) or "auto" (자동 전환: rules, and a switch when the account is blocked)
 		mode: manualId ? ("pinned" as const) : ("auto" as const),
+		// how a new session gets its account in 자동 전환 (hub/account-strategy.ts); "cache-affine" is OmO's default
+		strategy: readStrategy(),
 		// `current` is the account requests really use; `chosen` the one picked (they differ while the pick is blocked)
 		chosen: chosenId
 			? { name: chosenId, label: lab(chosenId), source: chosenSource, blocked: chosenBlock ? blockedKind(chosenBlock.reason) : null, blocked_until: chosenBlock?.until ? new Date(chosenBlock.until).toISOString() : null, used_instead: current && current !== chosenId ? { name: current, label: lab(current) } : null, text: chosenText(chosenId, current, chosenSource, d.rule, manualId ? manual?.until : undefined, pool, now, aliases) }
@@ -361,7 +364,7 @@ const readBody = async (req: Request): Promise<Record<string, any>> => {
 // The /api/accounts routes (the caller has already checked the token). Undefined: not one of them.
 export async function accountsRoute(req: Request, url: URL): Promise<Response | undefined> {
 	const p = url.pathname;
-	if (p !== "/api/accounts" && !["/api/accounts/alias", "/api/accounts/rules", "/api/accounts/use", "/api/accounts/mode", "/api/accounts/on-limit", "/api/accounts/order", "/api/accounts/pin", "/api/accounts/switches"].includes(p)) return undefined;
+	if (p !== "/api/accounts" && !["/api/accounts/alias", "/api/accounts/rules", "/api/accounts/use", "/api/accounts/mode", "/api/accounts/on-limit", "/api/accounts/strategy", "/api/accounts/order", "/api/accounts/pin", "/api/accounts/switches"].includes(p)) return undefined;
 	// the login providers this install offers, for the 계정 추가 picker (one OmO/omp process, then cached by providers.ts)
 	const catalog = async () => (await import("./providers.ts")).loginProviders().catch(() => []);
 	try {
@@ -432,6 +435,17 @@ export async function accountsRoute(req: Request, url: URL): Promise<Response | 
 			const v = (await readBody(req)).on_limit;
 			if (v !== "switch" && v !== "wait") throw new AccountsError('on_limit은 "switch" 또는 "wait"여야 해요', 400);
 			setOnLimit(v);
+			return Response.json(accountsBody(Date.now(), await catalog()));
+		}
+		// {strategy}: how a new session gets its account. OmO's three values go to its settings.json, "usage-balanced" stays in dotz.
+		if (req.method === "PUT" && p === "/api/accounts/strategy") {
+			const v = (await readBody(req)).strategy;
+			if (!isStrategy(v)) throw new AccountsError(`strategy는 ${STRATEGIES.join(", ")} 중 하나여야 해요`, 400);
+			try {
+				writeStrategy(v);
+			} catch (e) {
+				throw new AccountsError((e as Error).message, 409);
+			}
 			return Response.json(accountsBody(Date.now(), await catalog()));
 		}
 		// {order:[id, ...]}: the account order (the fallback order of 자동 전환); every id must be an account in OmO's pool

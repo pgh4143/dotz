@@ -19,6 +19,7 @@ import { readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { blockedKind, evaluate, getScriptOpinion, getUsage, readRules, record, resetRulesForTest, stateStamp } from "./account-rules.ts";
 import { readAliases } from "./account-alias.ts";
+import { balancedPick } from "./account-strategy.ts";
 import { authFile } from "./apikey-policy.ts";
 import { ownPin } from "./omo-pin.ts";
 import { accountHistoryDays, DATA_DIR, log, writeAtomic } from "./config.ts";
@@ -242,10 +243,20 @@ export function stickyAccount(now = Date.now()): string | undefined {
 	return account;
 }
 
+// The "usage-balanced" strategy (hub/account-strategy.ts): the usable account with the most room left, for a session that
+// starts now. Undefined under any other strategy and in 고정 mode, where the pinned account holds.
+export function balancedStart(now = Date.now()): string | undefined {
+	if (hardPinned(now)) return undefined;
+	const pool = readPool(undefined, now);
+	return pool ? balancedPick(inOrder(pool.names, readRules().order), pool.blocked, now) : undefined;
+}
+
 // What a spawned OmO process gets: its pin to the sticky account (soft, or hard with fallback off in 고정 mode); nothing when
 // OmO has no subscription accounts.
 export function stickyEnv(now = Date.now()): Record<string, string> {
 	const a = stickyAccount(now);
+	const start = a ? balancedStart(now) : undefined;
+	if (start) return { [PIN_ENV]: start };
 	return a ? { [PIN_ENV]: a, ...(saved?.hard ? { [FALLBACK_ENV]: "0" } : {}) } : {};
 }
 

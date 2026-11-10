@@ -5,6 +5,7 @@ import { subagentDetail, subagentLists, transcriptPage } from "./activity.ts";
 import { activityItems } from "./events.ts";
 import { lanes } from "./lanes.ts";
 import { checkNow as checkAccountNow } from "./account-rules.ts";
+import { balancedStart } from "./account-sticky.ts";
 import { accountsRoute } from "./accounts-api.ts";
 import { cancelByOwner, orch, restart as restartOrchestrator, resumeNow } from "./orchestrator.ts";
 import { convs } from "./convsessions.ts";
@@ -132,7 +133,10 @@ export async function routeSettings(req: Request, url: URL, parts: string[]): Pr
 	if (accountsResponse) return accountsResponse;
 	if (req.method === "POST" && url.pathname === "/api/accounts/check") {
 		try {
-			return json({ ok: true, ...(await checkAccountNow()) });
+			const decision = await checkAccountNow();
+			// "usage-balanced": the account a session that starts now should take; a running one keeps its own (extension/index.ts followAccount)
+			const balanced = balancedStart();
+			return json({ ok: true, ...decision, ...(balanced ? { balanced } : {}) });
 		} catch (error) {
 			return fail(error);
 		}

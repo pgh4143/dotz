@@ -594,7 +594,7 @@ const FALLBACK_ENV = "SENPI_CLAUDE_SDK_OAUTH_ACCOUNT_FALLBACK";
 
 // The account to run the next turn on: the hub's decision (owner's rules and script, hub/account-rules.ts), waiting at most the
 // script's timeout + 1 s; <DATA>/account.json, the account the hub last settled on, when the hub does not answer.
-async function accountNow(): Promise<{ account?: string; hard: boolean }> {
+async function accountNow(): Promise<{ account?: string; hard: boolean; balanced?: string }> {
 	const script = (() => {
 		try {
 			return JSON.parse(readFileSync(join(DATA, "accounts", "rules.json"), "utf8")).script;
@@ -605,7 +605,7 @@ async function accountNow(): Promise<{ account?: string; hard: boolean }> {
 	const wait = (script ? (typeof script.timeout_ms === "number" && script.timeout_ms > 0 ? script.timeout_ms : 5000) : 0) + 1000;
 	try {
 		const r = await call("/api/accounts/check", { method: "POST", body: "{}", signal: AbortSignal.timeout(wait) });
-		if (typeof r?.account === "string" && r.account) return { account: r.account, hard: r.hard === true };
+		if (typeof r?.account === "string" && r.account) return { account: r.account, hard: r.hard === true, ...(typeof r.balanced === "string" && r.balanced ? { balanced: r.balanced } : {}) };
 	} catch {}
 	try {
 		const s = JSON.parse(readFileSync(join(DATA, "account.json"), "utf8"));
@@ -620,9 +620,16 @@ async function accountNow(): Promise<{ account?: string; hard: boolean }> {
 // the variable on every request. turn_start is awaited before the request is built, in the worker's own session too.
 function followAccount(pi: any): void {
 	if (process.env.DOTZ_RUNTIME !== "omo") return;
+	// "usage-balanced" (hub/account-strategy.ts): a new session takes the account with the most room, and keeps it from then
+	// on so its prompt cache stays; OmO still moves a request away while that account is blocked (the pin is soft).
+	let fresh = false;
+	pi.on("session_start", () => void (fresh = true));
 	pi.on("turn_start", async () => {
-		const { account, hard } = await accountNow();
-		if (account) process.env[PIN_ENV] = account;
+		const { account, hard, balanced } = await accountNow();
+		if (balanced && !hard) {
+			if (fresh || !process.env[PIN_ENV]) process.env[PIN_ENV] = balanced;
+		} else if (account) process.env[PIN_ENV] = account;
+		fresh = false;
 		// 고정 mode: OmO may not move a request to another account while the pinned one is blocked
 		if (hard) process.env[FALLBACK_ENV] = "0";
 		else if (process.env[FALLBACK_ENV] === "0") delete process.env[FALLBACK_ENV];

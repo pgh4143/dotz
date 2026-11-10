@@ -66,6 +66,13 @@ function accDrag(ev, row, longPress, onDrop) {
   if (longPress) timer = setTimeout(begin, 450);
   else ev.preventDefault();
 }
+const ACC_STRATEGY = [{ value: "cache-affine", label: "기본" }, { value: "fill-first", label: "순서대로" }, { value: "round-robin", label: "번갈아" }, { value: "usage-balanced", label: "덜 쓴 계정" }];
+const ACC_STRATEGY_SUB = {
+  "cache-affine": "대화마다 한 계정을 이어서 써요.",
+  "fill-first": "순서가 앞선 계정부터 써요.",
+  "round-robin": "새 대화마다 계정을 번갈아 써요.",
+  "usage-balanced": "새 대화는 5시간 사용량이 가장 적은 계정에서 시작해요. 하던 대화는 쓰던 계정을 그대로 써요.",
+};
 function accountSection(p, g, conn) {
   const head = accHead(p, g, p.can_add_account);
   if (!ACC) return [head, el("div", { class: "list" }, conn)];
@@ -107,6 +114,12 @@ function accountSection(p, g, conn) {
   const setOnLimit = (btn, value) => accMut(btn, () => api("/api/accounts/on-limit", "PUT", { on_limit: value }), value === "wait" ? "한도에 걸렸을 때 기다리기로 정했어요" : "한도에 걸렸을 때 자동 전환으로 넘어가기로 정했어요");
   rows.splice(1, 0, el("div", { class: "li" }, tx("한도에 걸렸을 때", onLimitSub),
     liEnd(rowToggle({ label: "한도에 걸렸을 때", opts: [["wait", "기다리기"], ["switch", "자동 전환"]], value: onLimit, onPick: (v, btn) => setOnLimit(btn, v) }))));
+  // How a new chat or lane gets its account while several are logged in; a running one keeps the account it started on.
+  if (!pinned && ACC.accounts.length > 1) {
+    const strategy = ACC.strategy || "cache-affine";
+    rows.push(el("div", { class: "li" }, tx("새 대화의 계정", ACC_STRATEGY_SUB[strategy] || ""),
+      liEnd(selectButton({ label: "새 대화의 계정", items: ACC_STRATEGY, value: strategy, onPick: v => accMut(null, () => api("/api/accounts/strategy", "PUT", { strategy: v }), "새 대화부터 이렇게 골라요") }))));
+  }
   if (!pinned) {
     rows.push(el("div", { class: "li" }, tx("전환 규칙", lines.length ? "" : "규칙이 없어요. 계정이 막힐 때만 자동으로 바꿔요."), liEnd(el("button", { class: "btn tonal inrow", type: "button", onclick: () => rulesDialog() }, "편집"))));
     for (const [i, r] of lines.entries()) rows.push(el("div", { class: "li" }, el("span", { class: "lead", text: String(i + 1) }), tx(r.text)));

@@ -100,7 +100,7 @@ test("accountsBody carries labels, states, decision, rules as text, manual pick,
 	expect(Object.keys(b.files).sort()).toEqual(["aliases", "decisions", "rules"]);
 	for (const f of Object.values(b.files)) expect(f.startsWith("/")).toBe(true);
 	expect(Array.isArray(b.switches)).toBe(true);
-	expect(Object.keys(b).sort()).toEqual(["accounts", "chosen", "decision", "files", "login_providers", "manual_text", "mode", "providers", "rules", "rules_text", "script", "switches", "used"]);
+	expect(Object.keys(b).sort()).toEqual(["accounts", "chosen", "decision", "files", "login_providers", "manual_text", "mode", "providers", "rules", "rules_text", "script", "strategy", "switches", "used"]);
 	// the Claude group mirrors the same accounts, shaped like the other providers' groups
 	expect(b.providers[0]).toMatchObject({ id: "anthropic", name: "Claude 구독", multi: true, can_pin: true, can_delete: true });
 	expect(b.providers[0]!.accounts.map(a => [a.name, a.current, a.pinned, a.label, a.windows.map(w => w.label)])).toEqual([["default", false, false, "개인 계정", ["5시간", "7일"]], ["work", true, false, "회사 계정", []]]);

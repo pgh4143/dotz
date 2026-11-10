@@ -50,7 +50,7 @@ Paths only; each file's header comment says what it does. Tests sit next to thei
 
 ## Accounts, providers, runtimes
 
-- accounts: `hub/account-sticky.ts`, `hub/account-rules.ts`, `hub/account-alias.ts`, `hub/accounts-api.ts`, `hub/usage-account.ts`, `hub/codex-usage.ts`
+- accounts: `hub/account-sticky.ts`, `hub/account-rules.ts`, `hub/account-strategy.ts`, `hub/account-alias.ts`, `hub/accounts-api.ts`, `hub/usage-account.ts`, `hub/codex-usage.ts`
 - keys and providers: `hub/providers.ts`, `hub/apikey-store.ts`, `hub/apikey-policy.ts`, `hub/auth.ts`, `hub/auth-wait.ts` (the gateway's own replies while a session waits on dotz_auth, "취소" closes it), `hub/control.ts`
 - runtimes: `hub/runtime/index.ts`, `hub/runtime/types.ts`, adapters `hub/runtime/omo.ts`, `hub/runtime/omp.ts`, `hub/runtime/claude.ts`, support `hub/runtime/detect.ts`, `hub/runtime/verify.ts`, `hub/runtime/omo-hosts.ts`, `hub/runtime/senpi-bin.ts`, `hub/runtime/claude-deny-hook.ts`, probes and test fixtures `hub/runtime/*-probes.ts`, `hub/runtime/scenario.ts`
 
