@@ -170,8 +170,9 @@ function closeChatList() {
 const CHAT_TAB_KEY = "dotz-chat-tab";
 const chatTabMode = () => { try { return localStorage.getItem(CHAT_TAB_KEY) === "main" ? "main" : "last"; } catch { return "last"; } };
 const chatTabModeSet = v => { try { localStorage.setItem(CHAT_TAB_KEY, v); } catch {} };
-const chatTabEnter = () => { if (chatTabMode() === "main" || monOwned(target)) setTarget(MAIN); go(lastChatView()); };
-const chatTabTap = () => (monCtx ? chatTabEnter() : convListing() ? closeChatList() : narrowChat() && (current === "chat" || current === "activity") ? openChatList() : current === "chat" || current === "activity" ? go(lastChatView()) : chatTabEnter());
+// A relayed computer (42-relay-chat.js) has one conversation and none of this computer's: while it is picked, 채팅 stays on it (no switch to the main chat, no phone list of this computer's chats).
+const chatTabEnter = () => { if ((chatTabMode() === "main" && !isRelayT(target)) || monOwned(target)) setTarget(MAIN); go(lastChatView()); };
+const chatTabTap = () => (monCtx ? chatTabEnter() : convListing() ? closeChatList() : narrowChat() && !isRelayT(target) && (current === "chat" || current === "activity") ? openChatList() : current === "chat" || current === "activity" ? go(lastChatView()) : chatTabEnter());
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
 // ⌘/Ctrl+1..6 open the shown tabs in NAV order (a hidden tab has no number); the browser may keep ⌘1..9 for its own tabs in a normal tab (it reaches the page in an installed app window).
 const navTabs = () => NAV.filter(n => !navOff(n[0]));

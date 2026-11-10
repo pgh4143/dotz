@@ -357,11 +357,11 @@ function orchestratorTools(pi: any): void {
 			const originOf = (u: string): string | undefined => { try { return new URL(u).origin; } catch { return undefined; } };
 			try {
 				const all = await call("/api/peers");
-				const others: Array<{ name: string; url: string; online?: boolean }> = (Array.isArray(all) ? all : []).filter((c: any) => !c.self);
+				const others: Array<{ name: string; url: string; online?: boolean; via?: string; key?: string }> = (Array.isArray(all) ? all : []).filter((c: any) => !c.self);
 				if (p.action === "list") return reply(JSON.stringify(others.map(({ name, url, online }) => ({ name, url, online }))).slice(0, 4000));
 				const want = String(p.computer ?? "").trim();
 				const wantOrigin = originOf(want);
-				const peer = others.find(c => c.name === want) ?? others.find(c => c.name.toLowerCase() === want.toLowerCase()) ?? (wantOrigin ? others.find(c => originOf(c.url) === wantOrigin) : undefined);
+				const peer = others.find(c => c.name === want) ?? others.find(c => c.name.toLowerCase() === want.toLowerCase()) ?? others.find(c => c.via && c.key === want) ?? (wantOrigin ? others.find(c => originOf(c.url) === wantOrigin) : undefined);
 				if (!peer) return reply(`unknown computer "${want}"; other computers: ${others.map(c => c.name).join(", ") || "none"}`);
 				const handoff = p.action === "handoff";
 				const parts: string[] = handoff ? [p.owner_words, p.note] : [p.text];
@@ -369,6 +369,12 @@ function orchestratorTools(pi: any): void {
 				const known = ["hub-token", "peer-token"].map(f => { try { return readFileSync(join(DATA, "secrets", f), "utf8").trim(); } catch { return undefined; } });
 				const secret = secretIn(parts.join("\n"), known);
 				if (secret) return reply(`not sent: the text ${secret}. Leave secrets out; the other computer has its own.`);
+				// A computer reached only through a messenger (hub/relay-route.ts) has no gateway here to proxy to: a message goes through its relay, a handoff cannot.
+				if (peer.via && peer.key) {
+					if (handoff) return reply(`not sent: ${peer.name} is reached through ${peer.via} and takes plain messages only (action=send)`);
+					const out = await call(`/api/relay/${encodeURIComponent(peer.via)}/${encodeURIComponent(peer.key)}/send`, { method: "POST", body: JSON.stringify({ text: p.text }) });
+					return reply(`sent to ${peer.name} via ${peer.via}: ${JSON.stringify(out).slice(0, 1000)}`);
+				}
 				const body = handoff ? { action: "handoff", args: { owner_words: p.owner_words, note: p.note } } : { action: "message", args: { target: p.target ?? "chat", text: p.text } };
 				const out = await call(`/api/peer/proxy?pc=${encodeURIComponent(originOf(peer.url) ?? peer.url)}&p=${encodeURIComponent("/api/peer/act")}`, { method: "POST", body: JSON.stringify(body) });
 				return reply(`sent to ${peer.name}: ${JSON.stringify(out).slice(0, 1000)}`);

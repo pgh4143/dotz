@@ -147,6 +147,20 @@ describe("sending and failing", () => {
 	});
 });
 
+describe("the 채팅 tab", () => {
+	test("keeps the relayed computer's chat: a tap in it opens no list of this computer's chats, and 홈 then 채팅 comes back to it even when the tab opens the main chat", async () => {
+		await relayOpen();
+		const tab = `document.querySelector('#nav .ni[data-view="chat"]').click()`;
+		await run(tab);
+		expect(await ev(`[chatList, target, location.hash]`)).toEqual([false, "relay:jandi:work", "#chat/relay:jandi:work"]);
+		await run(`localStorage.setItem("dotz-chat-tab", "main"); go("home")`);
+		await waitFor(`current === "home"`);
+		await run(tab);
+		await waitFor(`current === "chat"`);
+		expect(await ev(`[target, document.querySelector("#brand-name").textContent]`)).toEqual(["relay:jandi:work", "work"]);
+	});
+});
+
 describe("leaving", () => {
 	test("picking this computer returns to the target the owner came from", async () => {
 		await open();
