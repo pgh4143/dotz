@@ -294,7 +294,7 @@ function laneCacheWarning(name: string): ForceRequired {
 
 // OmO sends an effort change as a per-message effort marker on these models (senpi anthropic-messages, compat
 // supportsMidConvoEffort; Anthropic docs "Change effort mid-conversation"), so the prompt cache survives it.
-const MID_CONVO_EFFORT = /claude-(opus-5|opus-5-5|sonnet-5-5|haiku-5-5|fable-5-1|mythos-5-1)$/;
+const MID_CONVO_EFFORT = /claude-(opus-5|opus-5-5|sonnet-5-5|haiku-5-5|fable-5-1|fable-5-2|mythos-5-1)$/;
 const keepsCacheOnEffort = (runtime: string, model: string) => runtime === "omo" && MID_CONVO_EFFORT.test(model);
 
 // `modelInput` may carry the thinking level as "<model>:<level>"; an explicit `thinkingInput` wins.
