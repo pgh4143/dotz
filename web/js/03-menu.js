@@ -11,7 +11,7 @@ function closeMenu(restore = true) {
 }
 // items: [{value, label, sub?}] or [{header}]. onPick(value) runs after the menu closes.
 // sheet: a bottom sheet across the screen above the anchor (the phone tab bar), instead of a dropdown at the anchor.
-function showMenu(anchor, items, { value, onPick, sheet }) {
+function showMenu(anchor, items, { value, onPick, sheet, end }) {
   if (openMenu && openMenu.anchor === anchor) { closeMenu(); return; }
   closeMenu(false);
   const node = el("div", { class: sheet ? "menu msheet" : "menu", role: "listbox", tabindex: "-1" });
@@ -19,6 +19,7 @@ function showMenu(anchor, items, { value, onPick, sheet }) {
   // An item with `fold` (a list of items) is a "더 보기" row that expands in place.
   const mk = it => {
     if (it.header != null) return [el("div", { class: "mh", role: "presentation", text: it.header }), null];
+    if (it.sep) return [el("div", { class: "msep", role: "separator" }), null];
     if (it.fold) {
       const b = el("button", { type: "button", class: "mi more", tabindex: "-1", onclick: ev => {
         ev.stopPropagation();
@@ -61,7 +62,7 @@ function showMenu(anchor, items, { value, onPick, sheet }) {
     const up = below < 220 && above > below;
     node.style.maxHeight = `${Math.min(400, up ? above : below)}px`;
     const w = node.offsetWidth, h = node.offsetHeight;
-    let left = Math.max(8, r.left);
+    let left = Math.max(8, end ? r.right - w : r.left);   // end: the menu ends where its anchor ends (a ⋯ at the right edge)
     if (left + w > vw - 8) left = Math.max(8, r.right - w);
     node.style.left = `${left}px`;
     node.style.top = `${Math.max(8, up ? r.top - h - 4 : r.bottom + 4)}px`;

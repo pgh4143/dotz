@@ -31,13 +31,13 @@ function homeMenu(anchor, id, inChat) {
     add("카드로 나누기", () => setHomeGroup(kind, false));
     add(`${HOME_KINDS[kind][0]} 열기`, () => go(HOME_KINDS[kind][1]));
     homeMoveActs(id, inChat, add);
-    return showMenu(anchor, acts, { onPick: i => acts[i].run() });
+    return showMenu(anchor, acts, { onPick: i => acts[i].run(), end: true });
   }
   if (id.startsWith("notices:")) {
     const [label, to] = { alert: ["알림", nscGo], worklog: ["작업내역", () => openTarget("worklog", "chat")], watch: ["모니터링", () => go("monitoring")] }[id.slice(8)];
     add(`${label} 열기`, to);
     homeMoveActs(id, inChat, add);
-    return showMenu(anchor, acts, { onPick: i => acts[i].run() });
+    return showMenu(anchor, acts, { onPick: i => acts[i].run(), end: true });
   }
   if (id === MAIN || isLaneT(id)) {
     const key = id === MAIN ? "orchestrator" : id, name = targetName(id), restartNote = id === MAIN ? "어시스턴트가 다시 시작돼요." : "";
@@ -49,10 +49,12 @@ function homeMenu(anchor, id, inChat) {
     }
     if (id === MAIN) {
       if (S && S.orchestrator && S.orchestrator.status === "working") add("중단", () => abortOrch(null));
+      if (acts.length) acts.push({ sep: true });   // a restart stops what is running: set apart from the rest
       add("재시작", () => restartOrch(null));
     } else {
       const n = laneOf(id);
       add("중단", () => busy(null, async () => { await api(`/api/lanes/${enc(n)}/abort`, "POST", {}); toast("작업을 중단했어요"); refreshState(); }));
+      if (acts.length) acts.push({ sep: true });
       add("재시작", () => busy(null, async () => { if (!await ask(`${n} 재시작`, "작업 중인 내용이 있으면 멈추고 세션을 다시 시작해요.", "재시작")) return; await api(`/api/lanes/${enc(n)}/restart`, "POST", {}); toast("재시작했어요"); refreshState(); }));
     }
   } else if (id.startsWith("prov:")) {
@@ -77,7 +79,7 @@ function homeMenu(anchor, id, inChat) {
   const kind = homeKind(id);
   if (kind && !inChat && !homeGroups.has(kind)) add(`${HOME_KINDS[kind][0]} 한 카드로 묶기`, () => setHomeGroup(kind, true));
   homeMoveActs(id, inChat, add);
-  showMenu(anchor, acts, { onPick: i => acts[i].run() });
+  showMenu(anchor, acts, { onPick: i => acts[i].run(), end: true });
 }
 // 앞으로 / 뒤로 옮기기: the drag (a long press on a phone) said as a menu item, one place in the reading order per pick.
 function homeMoveActs(id, inChat, add) {

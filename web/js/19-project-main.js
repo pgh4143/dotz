@@ -38,6 +38,7 @@ async function pmDo(note, fn) {
   await pmReload();
   return true;
 }
+const pmNames = {};   // project key -> the name last shown for it
 function pmProject() {
   const found = ((PRJ && PRJ.projects) || []).find(x => x.key === PM.key || x.recordKey === PM.key);
   if (found) return found;
@@ -64,9 +65,11 @@ function pmSessionRank(r) {
 function pmPaint() {
   if (current !== "project" || PM.open > 0) return;
   const root = $("#v-project"), D = PM.D, p = pmProject();
-  if (!p) { delete root.dataset.sig; clear(root).append(emptyNode(PM.fail || PRJ_FAIL ? "프로젝트를 불러오지 못했어요" : "불러오는 중…", PM.fail || PRJ_FAIL ? () => Promise.all([pmLoad(), prjLoad()]) : null)); return; }
+  // The name stays in the app bar when the project cannot be read now: the last one seen, or the chat channel's own name.
+  if (!p) { if (!ppWide()) $("#title").textContent = pmNames[PM.key] || (isProjT(PM.key) ? targetName(PM.key) : "프로젝트"); delete root.dataset.sig; clear(root).append(emptyNode(PM.fail || PRJ_FAIL ? "프로젝트를 불러오지 못했어요" : "불러오는 중…", PM.fail || PRJ_FAIL ? () => Promise.all([pmLoad(), prjLoad()]) : null)); return; }
   if (p.builtin) { cmPaint(root, p, D); return; }
   const q = { ...p, record: (D && D.record) || p.record }, rows = pmSessionRows(p, D);
+  pmNames[PM.key] = prjTitle(q);
   // A phone shows one screen at a time, so its app bar carries the project's name (the prototype's detail); wide keeps the list beside it under "프로젝트".
   $("#title").textContent = ppWide() ? "프로젝트" : prjTitle(q);
   const sig = JSON.stringify([q, D, rows, botName, PM.fail]);
@@ -150,7 +153,7 @@ function pmSection({ kind, label, count, action, head, nodes }) {
 // (or the browser's back) returns to the overview. Every function of the old one-page layout lives here, unchanged.
 const PM_PAGE = { info: ["지금 상황", "대화에서 정리된 내용이에요"], rules: ["내 규칙", "최근에 정한 순서예요"], sessions: ["세션 기록", "이 프로젝트의 세션과 백그라운드 작업"], results: ["결과 전체", "보고, 확인, 커밋"], routines: ["루틴과 모니터링", "주기적으로 도는 일"] };
 function pmSheet(kind) {
-  const [title, ey] = PM_PAGE[kind] || [kind, ""];
+  const [title, ey] = PM_PAGE[kind] || ["프로젝트", ""];
   let entry;
   const h = fsOpen({ cls: "pdv", labelledby: "pdv-t", onClose: () => PM.sheets.delete(entry) });
   entry = { h, paint: () => {
@@ -261,7 +264,7 @@ async function pmDeleteAsk(q) {
     try {
       const r = await pmDeleteCall(q, "delete", { archive: !st.drop });
       h.close(false);
-      toast(r.discord && !r.discord.ok ? `프로젝트는 지웠지만 Discord 채널은 남아 있어요 · ${r.discord.error}` : `${r.name} 프로젝트를 지웠어요`, !!(r.discord && !r.discord.ok));
+      toast(r && r.discord && !r.discord.ok ? `프로젝트는 지웠지만 Discord 채널은 남아 있어요 · ${r.discord.error}` : `${(r && r.name) || p.name} 프로젝트를 지웠어요`, !!(r && r.discord && !r.discord.ok));
       PM = pmReset();
       if (fromChat) pickTarget(MAIN); else go("projects");
       prjLoad();
@@ -272,8 +275,8 @@ async function pmDeleteAsk(q) {
     el("div", { class: "fs-body pmd" },
       p.running.length ? el("div", { class: "note err", text: `실행 중인 세션이 있어서 지울 수 없어요: ${p.running.join(", ")}` }) : null,
       el("ul", { class: "as-rml" }, ...pmDeleteLines(p).map(t => el("li", { text: t }))),
-      el("div", { class: "list" }, drop), err),
-    el("div", { class: "fs-ft row pmd-ft" }, el("button", { class: "btn text", type: "button", onclick: () => h.close() }, "취소"), go1));
+      el("div", { class: "list" }, drop)),
+    el("div", { class: "fs-ft row pmd-ft" }, err, el("button", { class: "btn text", type: "button", onclick: () => h.close() }, "취소"), go1));
 }
 
 // 세션 기록 page: what runs now, then the ended sessions and finished background work, newest first.
@@ -315,7 +318,7 @@ function pmRoutine(x) {
   const url = x.kind === "monitor" ? `/api/watches/${enc(x.id)}` : x.kind === "schedule" ? `/api/schedules/${enc(x.id)}` : "";
   const name = pmRoutineName(x);
   const note = el("div", { class: "note" }), box = el("div", { class: "pmv-rt" });
-  const meta = [PM_KIND[x.kind], mins ? pmEvery(mins) : once ? "한 번" : "", x.script ? String(x.script).split("/").pop() : "", x.lastRun ? `마지막 ${kstStamp(x.lastRun)}` : x.kind === "monitor" ? "아직 안 돌았어요" : "", !x.paused && next ? `다음 ${kstStamp(next)}` : ""].filter(Boolean);
+  const meta = [PM_KIND[x.kind], mins ? pmEvery(mins) : once ? "한 번" : "", x.kind === "monitor" ? (x.on === "match" ? "패턴이 나오면 알려요" : "확인해서 알려요") : "", x.lastRun ? `마지막 ${kstStamp(x.lastRun)}` : x.kind === "monitor" ? "아직 안 돌았어요" : "", !x.paused && next ? `다음 ${kstStamp(next)}` : ""].filter(Boolean);
   const patch = body => pmDo(note, () => api(url, "PATCH", body));
   const view = () => {
     PM.open = Math.max(0, PM.open - (box.dataset.editing ? 1 : 0)); delete box.dataset.editing;
@@ -355,12 +358,13 @@ function pmRoutine(x) {
   };
   const form = () => {
     PM.open++; box.dataset.editing = "1";
-    const iv = mins ? input({ type: "number", min: "1", step: "1", inputmode: "numeric", value: String(mins), "aria-label": "간격(분)" }) : null;
+    const hrs = mins > 0 && mins % 60 === 0, mul = hrs ? 60 : 1;   // the form counts in the unit the card says (매 12시간 -> 12 시간마다)
+    const iv = mins ? input({ type: "number", min: "1", step: "1", inputmode: "numeric", value: String(mins / mul), "aria-label": hrs ? "간격(시간)" : "간격(분)" }) : null;
     const pt = x.kind === "monitor" && x.on === "match" ? input({ value: x.pattern || "", placeholder: "패턴", "aria-label": "패턴" }) : null;
     const err = el("div", { class: "note err" }), ok = el("button", { class: "btn sm", type: "button", text: "저장" });
     ok.onclick = async () => {
       const body = {};
-      if (iv) { const n = Number(iv.value); if (!Number.isInteger(n) || n < 1) { err.textContent = "간격은 1분 이상의 정수로 적어 주세요"; return; } if (n !== mins) body.every_minutes = n; }
+      if (iv) { const r = Number(iv.value), n = r * mul; if (!Number.isInteger(r) || r < 1) { err.textContent = `간격은 1${hrs ? "시간" : "분"} 이상의 정수로 적어 주세요`; return; } if (n !== mins) body.every_minutes = n; }
       if (pt && pt.value.trim() !== (x.pattern || "")) body.pattern = pt.value.trim();
       if (!Object.keys(body).length) return view();
       ok.disabled = true; err.textContent = "";
@@ -369,7 +373,7 @@ function pmRoutine(x) {
     };
     const field = (label, node, unit) => [el("span", { class: "sup", text: label }), el("span", { class: "pmv-fld" }, node, unit ? el("span", { class: "sup", text: unit }) : null)];
     clear(box).append(el("div", { class: "pmv-rt-top" }, el("span", { class: "pmv-rt-name", text: name })),
-      el("div", { class: "pmv-rt-form" }, ...(iv ? field("간격", iv, "분마다") : []), ...(pt ? field("패턴", pt) : [])),
+      el("div", { class: "pmv-rt-form" }, ...(iv ? field("간격", iv, hrs ? "시간마다" : "분마다") : []), ...(pt ? field("패턴", pt) : [])),
       err, el("div", { class: "pmv-acts" }, el("button", { class: "btn text sm", type: "button", text: "취소", onclick: view }), ok));
     (iv || pt).focus();
   };

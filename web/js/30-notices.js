@@ -612,8 +612,7 @@ function ntSheetGo(id) {
   NS.h.box.dataset.sig = "";
   ntSheetPaint();
   const b = $(".fs-body", NS.h.box); if (b) b.scrollTop = 0;
-  const first = NS.edit ? null : NS.node.querySelector(".ds-opt, .ds-direct");
-  if (first) first.focus({ preventScroll: true });
+  NS.h.box.focus({ preventScroll: true });   // the sheet holds the focus, not an option: a ring on the first one would read as a pick
 }
 // After an answer: a question of a several-question message moves the sheet to the next one that waits, the last one closes it. False for a lone question (its sheet shows the answer).
 function ntAfterAnswer(n) {
@@ -738,9 +737,7 @@ function ntSheetShow(id, det, pn = null) {
   NS.id = id; NS.det = det; NS.pn = pn; NS.busy = false;
   const h = fsOpen({ labelledby: "ds-t", onClose: () => { if (NS.h === h) { NS.h = NS.node = null; NS.id = ""; NS.det = null; NS.edit = null; NS.pn = null; NS.stash.clear(); } } });
   NS.h = h; NS.node = h.node;
-  ntSheetPaint();
-  const first = NS.edit ? null : NS.node.querySelector(".ds-opt, .ds-direct");
-  if (first) first.focus({ preventScroll: true });
+  ntSheetPaint();   // fsOpen already put the focus on the sheet itself: no option shows a ring until the keyboard moves to it
 }
 
 // A tapped notification (or an option button on it) asks an open window to show the decision; a cold start carries it as ?n=<id>.
