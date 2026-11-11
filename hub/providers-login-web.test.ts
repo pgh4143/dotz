@@ -157,6 +157,7 @@ for (const [label, w, h] of [["phone", 390, 844], ["desktop", 1280, 860]] as con
 		await waitFor(v, `[...document.querySelectorAll(".sup")].some(s => s.textContent.includes("authorization code"))`);
 		expect(await q(v, `const t = document.querySelector("dialog[open] .dtitle")?.textContent ?? ""; return t.endsWith("계정 추가")`)).toBe(true);
 		expect(await q(v, `return [...document.querySelectorAll("a.btn")].find(a => a.textContent.includes("로그인 페이지 열기"))?.getAttribute("href")`)).toBe("https://claude.ai/oauth/authorize?state=stub");
+		expect(await q(v, `return [...document.querySelectorAll("a.btn")].find(a => a.textContent.includes("로그인 페이지 열기")).classList.contains("tonal")`)).toBe(false);
 		await shot(v, `providers-login-${w}.png`);
 		const refetched = new Promise<void>((res, rej) => { const t = setTimeout(() => rej(new Error("설정 → 계정 was not read again")), 4000); onAccounts = () => { clearTimeout(t); res(); }; });
 		await run(v, `const i = [...document.querySelectorAll("input")].find(x => x.type === "text" && x.offsetParent); i.value = "code-abc"; ${button("document.querySelector('dialog[open]')", "완료")}.click()`);

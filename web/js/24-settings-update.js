@@ -88,7 +88,8 @@ function paintUpdBar() {
   b.className = `upd-bar ${s.phase}`;
   const tap = s.phase === "new" || s.phase === "failed";
   const run = UPD.info && UPD.info.running && UPD.info.running.commit;
-  const text = s.phase === "failed" ? `업데이트하지 못했어요: ${s.text}${tap ? " · 눌러서 다시 시도" : ""}` : s.phase === "done" && run ? `${s.text} · 지금 버전 ${run.short}` : s.text;
+  const failHead = "업데이트하지 못했어요";
+  const text = s.phase === "failed" ? `${!s.text || s.text.startsWith(failHead) ? s.text || failHead : `${failHead}: ${s.text}`}${tap ? " · 눌러서 다시 시도" : ""}` : s.phase === "done" && run ? `${s.text} · 지금 버전 ${run.short}` : s.text;
   b.replaceChildren(
     el(tap ? "button" : "span", { class: "ub-tx", ...(tap ? { type: "button", onclick: updNow } : {}), text }),
     ...(UB_ACTIVE.includes(s.phase) || s.phase === "done" ? [] : [el("button", { type: "button", class: "x", "aria-label": "닫기", text: "×", onclick: () => ubSee(s.id) })]));
@@ -249,8 +250,7 @@ function hvSection() {
   });
   if (pending) list.push(hvJobLine(pending));
   else for (const h of hs) if (h.job && h.job.status !== "current") list.push(hvJobLine(h.job));
-  const notes = [hvNote("6시간마다 새 버전을 확인해요. 업데이트는 하던 일이 끝난 뒤에 설치하고, 새 버전으로 다시 시작해요. 설치가 실패하면 지금 버전을 그대로 써요.")];
-  if (running.length) notes.push(hvNote("바꾼 뒤에는 어시스턴트와 세션을 다시 시작해야 적용돼요. 바꾸기 전에 작동을 검사해요."));
+  const notes = [hvNote("설치가 실패하면 지금 버전을 그대로 써요.")];
   return [el("div", { class: "sec sec-act" }, el("span", { text: "작업 프로그램 버전" }), hvNew() ? el("span", { class: "tag warn upd-new", text: "새 버전" }) : null,
     el("button", { class: "btn tonal sm", type: "button", disabled: !!(HV.info && HV.info.checking), onclick: ev => hvCheck(ev.currentTarget) }, "확인")), el("div", { class: "list" }, ...list), ...notes];
 }
@@ -263,7 +263,7 @@ function updateSection() {
   const jobRunning = job && job.status === "running";
   const { pending, c } = updState(i);
   const off = jobRunning || UPD.wait || UPD.checking ? { disabled: true } : {};
-  const rows = [li("앱 버전", UPD.checking ? "확인하는 중…" : `실행 중 ${updVer(run)}`, el("button", { class: "btn tonal inrow", type: "button", ...off, onclick: ev => updCheck(ev.currentTarget) }, "확인"))];
+  const rows = [li("앱 버전", UPD.checking ? "확인하는 중…" : `실행 중 ${updVer(run)}`, el("button", { class: "btn tonal inrow", type: "button", ...off, onclick: ev => updCheck(ev.currentTarget) }, "새 버전 확인"))];
   if (c && !c.ok) rows.push(el("div", { class: "upd-box err" }, el("div", { class: "hd", text: c.error.reason }), el("div", { class: "sup" }, ...updCode(c.error.fix)), c.error.detail ? el("div", { class: "upd-detail", text: c.error.detail }) : null));
   else if (c && !updAvailable()) rows.push(li("최신 버전이에요", `${c.version && c.version.release ? `v${c.version.release} · ` : ""}${c.upstream} · 확인 ${updWhen(c.at)}${c.ahead.length ? ` · ${c.upstream}에 없는 로컬 커밋 ${c.ahead.length}개 (아직 올리지 않음)` : ""}${c.dirty.length ? ` · 커밋 안 한 변경 ${c.dirty.length}개` : ""}`));
   else if (c) {

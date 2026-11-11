@@ -100,6 +100,7 @@ describe("웹 접속 화면", () => {
 		expect(await ev<{ on: string; fields: string[]; open: boolean; summary: string; help: string }>(v, `({ on: document.querySelector("#webaccess [role=radiogroup] [aria-checked=true]").dataset.v, fields: [...document.querySelectorAll("#webaccess input")].map(i => i.name), open: document.querySelector("#webaccess details[data-wa-advanced]").open, summary: document.querySelector("#webaccess details[data-wa-advanced] summary").textContent, help: document.querySelector("[data-wa-help]").textContent })`)).toMatchObject({ on: "tailscale", fields: [], open: false });
 		expect(await ev<string>(v, `document.querySelector("#webaccess details[data-wa-advanced] summary").textContent`)).toContain("직접 입력");
 		expect(await text(v, "[data-wa-help]")).toContain("기본값");
+		expect(await ev<number>(v, `document.querySelectorAll("#webaccess [role=radiogroup] .dot").length`)).toBe(0);
 		expect(puts).toEqual([]);
 		expect(onboards).toEqual([]);
 		await click(v, "#webaccess details[data-wa-advanced] summary");

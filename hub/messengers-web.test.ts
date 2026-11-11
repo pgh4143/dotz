@@ -156,12 +156,12 @@ describe("메신저 설정", () => {
 		expect(sum).toContain("1");
 		await click(v, "#settings [data-ms-hub]");
 		await waitFor(v, `current === "messengers" && document.querySelectorAll("#messengers [data-ms-row]").length === 4`);
-		const rows = await ev<{ id: string; name: string; tag: string }[]>(v, `[...document.querySelectorAll("#messengers [data-ms-row]")].map(r => ({ id: r.dataset.msRow, name: r.querySelector(".hd").textContent, tag: r.querySelector(".dot")?.title }))`);
+		const rows = await ev<{ id: string; name: string; tag: string; sup: boolean }[]>(v, `[...document.querySelectorAll("#messengers [data-ms-row]")].map(r => ({ id: r.dataset.msRow, name: r.querySelector(".hd").textContent, tag: r.querySelector(".tag")?.textContent, sup: !!r.querySelector(".sup") }))`);
 		expect(rows).toEqual([
-			{ id: "discord", name: "Discord", tag: "연결됨" },
-			{ id: "jandi", name: "JANDI", tag: "연결됨" },
-			{ id: "slack", name: "Slack", tag: "설정 안 됨" },
-			{ id: "telegram", name: "Telegram", tag: "연결 안 됨" },
+			{ id: "discord", name: "Discord", tag: "연결됨", sup: false },
+			{ id: "jandi", name: "JANDI", tag: "연결됨", sup: false },
+			{ id: "slack", name: "Slack", tag: "설정 안 됨", sup: false },
+			{ id: "telegram", name: "Telegram", tag: "연결 안 됨", sup: true },
 		]);
 		for (const id of ["discord", "jandi", "slack", "telegram"]) {
 			await run(v, `go("messengers")`);

@@ -113,7 +113,7 @@ describe.each([[390, 844], [1280, 900]] as const)("at %ipx", (width, height) => 
 	test("connected: the row opens the screen, switches stay, and manual fields wait in 직접 입력", async () => {
 		const v = await settings(width, height);
 		expect(await q<number>(v, `document.querySelectorAll("#settings [data-dc], #settings [data-dc-hint]").length`)).toBe(0);
-				expect(await q<string>(v, `document.querySelector('#messengers [data-ms-row="discord"] .dot').title`)).toBe("연결됨");
+				expect(await q<string>(v, `document.querySelector('#messengers [data-ms-row="discord"] .tag').textContent`)).toBe("연결됨");
 		if (width === 390) {
 			await run(v, `document.querySelector('#messengers [data-ms-row="discord"]').scrollIntoView({ block: "center" })`);
 			await shot(v, "settings-390.png");
@@ -178,7 +178,7 @@ describe.each([[390, 844], [1280, 900]] as const)("at %ipx", (width, height) => 
 	test("not configured: the row and screen say 설정 안 됨, and 연결 starts onboarding", async () => {
 		reset(false);
 		const v = await settings(width, height);
-		expect(await q<string>(v, `document.querySelector('#messengers [data-ms-row="discord"] .dot').title`)).toBe("설정 안 됨");
+		expect(await q<string>(v, `document.querySelector('#messengers [data-ms-row="discord"] .tag').textContent`)).toBe("설정 안 됨");
 		await openScreen(v);
 		expect(await q<string>(v, `document.querySelector("#discord .li .tag").textContent`)).toBe("설정 안 됨");
 		expect(await q<string>(v, `document.querySelector("#discord [data-ms-connect]").textContent`)).toBe("연결");

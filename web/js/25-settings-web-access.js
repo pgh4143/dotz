@@ -5,7 +5,7 @@ const WA_MODES = [["tailscale", "Tailscale"], ["cloudflare", "Cloudflare"], ["lo
 const WA_HELP = {
   tailscale: "Tailscale로 연결한 내 기기에서 열어요. 기본값이에요.",
   cloudflare: "Cloudflare 터널로 고정 주소를 열어요. 연결은 자동으로 진행하고, 필요한 한 가지 동작만 알려드려요.",
-  local: "이 컴퓨터에서만 열어요. 다른 기기에서는 열리지 않아요."
+  local: "이 컴퓨터에서만 열어요."
 };
 const WA = { data: null, draft: null, fail: "", asked: false, advOpen: false };
 const waLabel = m => (WA_MODES.find(x => x[0] === m) || [m, m])[1];
@@ -81,7 +81,6 @@ function renderWebAccess() {
   const d = WA.data, f = WA.draft, cf = f.mode === "cloudflare";
   const modes = el("div", { class: "list", role: "radiogroup", "aria-label": "접속 방식" },
     ...WA_MODES.map(([v, t]) => el("button", { type: "button", role: "radio", "aria-checked": String(v === f.mode), class: "li tap", "data-v": v, onclick: ev => v === "tailscale" ? waPickTailscale(ev.currentTarget) : waOnboard(v) },
-      el("span", { class: "lead" }, el("span", { class: `dot ${v === f.mode ? "pri" : ""}`, "aria-hidden": "true" })),
       el("span", { class: "tx" }, el("div", { class: "hd", text: t }), el("div", { class: "sup", "data-wa-help": v, text: WA_HELP[v] })),
       el("span", { class: "li-end" }, v === f.mode ? icon("check") : null))));
   const nodes = [el("div", { class: "sec", text: "접속 방식" }), modes,

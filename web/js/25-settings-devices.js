@@ -2,7 +2,13 @@
 // POST /api/devices/code). The settings entry shows only when that list answers, which it does only in cloudflare mode; other installs never see it.
 // A row opens a dialog to rename or unpair the device; "새 기기 연결" explains the /pair flow and can make a code right here.
 const DEV = { items: null, fail: "", asked: false };
-const dvDate = iso => { const t = Date.parse(iso || ""); return isNaN(t) ? "" : new Date(t).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" }); };
+// This year's date drops the year ("9월 30일") so the line under the name stays on one line on a phone; an older one keeps it.
+const dvDate = iso => {
+  const t = Date.parse(iso || "");
+  if (isNaN(t)) return "";
+  const yr = x => new Date(x).toLocaleDateString("ko-KR", { ...KST, year: "numeric" });
+  return new Date(t).toLocaleDateString("ko-KR", { ...KST, ...(yr(t) === yr(Date.now()) ? {} : { year: "numeric" }), month: "long", day: "numeric" });
+};
 const dvUsed = d => d.last_used ? `마지막 사용 ${msAgo(Date.parse(d.last_used))}` : "아직 쓰지 않음";
 
 async function loadDevices() {

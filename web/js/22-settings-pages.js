@@ -110,7 +110,7 @@ function settingsList(go) {
 /* ---------- 표시 ---------- */
 function displayPage() {
   return [stList(
-    stToggle(themeIc(), "화면 모드", "밝게 또는 어둡게", "화면 모드", [["light", "라이트"], ["dark", "다크"]], themeIs(), v => { if (v !== themeIs()) toggleTheme(); renderSettings(); }),
+    stToggle(themeIc(), "화면 모드", "", "화면 모드", [["light", "라이트"], ["dark", "다크"]], themeIs(), v => { if (v !== themeIs()) toggleTheme(); renderSettings(); }),
     stToggle("chat", "대화 탭", chatTabMode() === "main" ? "채팅을 열면 메인 대화부터 시작해요" : "채팅을 열면 마지막으로 보던 대화부터 시작해요", "대화 탭", [["main", "메인"], ["last", "마지막"]], chatTabMode(), v => { chatTabModeSet(v); renderSettings(); }),
     ...kbdRows())];
 }

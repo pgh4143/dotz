@@ -274,7 +274,7 @@ function pushSection() {
   const li = (ic, title, ...trail) => el("div", { class: "li" }, el("span", { class: "lead" }, icon(ic)), el("span", { class: "tx" }, el("div", { class: "hd", text: title })), trail.length ? liEnd(...trail) : null);
   const ios = isIOS(), standalone = isStandalone();
   const rows = [];
-  if (!standalone) rows.push(li("home", "앱 설치", el("button", { class: "btn tonal inrow", type: "button", onclick: () => installApp() }, "앱 설치")));
+  if (!standalone) rows.push(li("home", "홈 화면에 추가", el("button", { class: "btn tonal inrow", type: "button", onclick: () => installApp() }, "앱 설치")));
   const subscribed = PWA.sub && PWA.info && PWA.info.subscribed;
   if (PWA.gw && PWA.gw.app) {
     // The device has the app: one row per gateway, whichever gateway's page this is. A gateway that does not answer cannot be switched.

@@ -111,7 +111,7 @@ function pendingLoginAsk(p, pending) {
   const same = pending.provider === p.id;
   const go = mode => c => { c(); startLogin(p, mode); };
   dialog({ confirm: true, title: "끝나지 않은 로그인이 있어요",
-    body: el("p", { text: same ? "전에 시작한 로그인을 이어서 하거나, 취소하고 처음부터 다시 할 수 있어요." : `${providerName(pending.provider)} 로그인을 취소하고 ${p.name || p.id} 로그인을 새로 시작할까요?` }),
+    body: same ? null : el("p", { text: `지금 ${providerName(pending.provider)} 로그인이 열려 있어요.` }),
     actions: [{ label: "닫기", onclick: c => c() }, ...(same
       ? [{ label: "새로 시작", onclick: go("restart") }, { label: "이어서 하기", kind: "pri", onclick: go("resume") }]
       : [{ label: "새로 시작", kind: "pri", onclick: go("restart") }])] });
@@ -136,11 +136,15 @@ async function startLogin(p, pending) {
   const intro = el("p", { hidden: true });
   const picks = el("div", { class: "list", hidden: true });
   const ask = el("div", { class: "sup", hidden: true });
-  const open = el("a", { class: "btn tonal", target: "_blank", rel: "noopener noreferrer" }, icon("open"), "로그인 페이지 열기");
+  // One filled button at a time: the page link leads until it was opened, then 완료 does.
+  const open = el("a", { class: "btn", target: "_blank", rel: "noopener noreferrer" }, icon("open"), "로그인 페이지 열기");
   const openBox = el("div", {}, open);
-  let lastUrl = "";
+  let lastUrl = "", opened = false, choosing = false;
+  const paintActs = () => dlg.setActions([{ label: "취소", kind: "tonal", onclick: c => c() },
+    ...(choosing ? [] : [{ label: "완료", kind: openBox.hidden || opened ? "pri" : "tonal", onclick: (c, btn) => submit(btn) }])]);
+  open.addEventListener("click", () => { opened = true; open.className = "btn tonal"; paintActs(); });
   const paintStep = v => {
-    if (/^https?:\/\//.test(v.url || "")) lastUrl = v.url;
+    if (/^https?:\/\//.test(v.url || "")) { if (v.url !== lastUrl) opened = false; lastUrl = v.url; }
     const choose = !!(v.options && v.options.length), url = !choose && !!lastUrl, question = !choose && !url && !!v.prompt;
     intro.textContent = choose ? v.prompt || "" : ""; intro.hidden = !choose || !v.prompt;
     clear(picks); picks.hidden = !choose;
@@ -153,7 +157,9 @@ async function startLogin(p, pending) {
     ask.textContent = url ? v.prompt || "" : ""; ask.hidden = !url || !v.prompt;
     if (url) open.href = lastUrl; else open.removeAttribute("href");
     openBox.hidden = !url;
-    dlg.setActions([{ label: "취소", kind: "tonal", onclick: c => c() }, ...(choose ? [] : [{ label: "완료", kind: "pri", onclick: (c, btn) => submit(btn) }])]);
+    open.className = opened ? "btn tonal" : "btn";
+    choosing = choose;
+    paintActs();
   };
   const stop = () => { clearTimeout(timer); };
   // the hub says what the login did to the pool: a new account, or one it already held and refreshed (hub/providers.ts loginResult)
