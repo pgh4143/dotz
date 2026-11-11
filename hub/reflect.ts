@@ -10,6 +10,7 @@ import { isPeerMessage } from "./events.ts";
 import { msg, withReplyLine } from "./i18n.ts";
 import { LESSONS_MAX_BYTES } from "./prompt-budget.ts";
 import { trackTimer } from "./shutdown.ts";
+import { listSchedules, type Schedule } from "./schedule.ts";
 import { auditSummaryLine } from "./token-audit.ts";
 
 const DAY = 24 * 3600_000;
@@ -77,6 +78,13 @@ export function correctionBlock(entries: readonly Correction[]): string[] {
 	return [`possible corrections or repeats (${entries.length}), by topic; whole text, attachments and the answer before each: ${paths.corrections}`, ...topics.flatMap(t => [`- ${t.topic}: ${t.list.length}`, ...t.shown])];
 }
 
+/** The live schedules for the nightly tidy (merge overlapping ones, drop finished ones); nothing when fewer than two exist. */
+export function scheduleBlock(items: Schedule[], now: number): string[] {
+	if (items.length < 2) return [];
+	const line = (s: Schedule) => `- ${s.id} ${s.kind ?? "owner"} next ${s.at.slice(0, 16).replace("T", " ")}Z ${s.every_minutes ? `every ${s.every_minutes}m` : "once"} age ${Math.max(0, Math.floor((now - Date.parse(s.created)) / DAY))}d: ${s.text.replace(/\s+/g, " ").slice(0, 80)}`;
+	return [`schedules (${items.length}):`, ...items.map(line)];
+}
+
 export function digest(sessionFile: string, now = Date.now()): string | undefined {
 	const since = now - DAY;
 	const inbox = jsonl(paths.inbox, since);
@@ -99,6 +107,7 @@ export function digest(sessionFile: string, now = Date.now()): string | undefine
 		`gateway: watchdog restarts ${count(/did not start a turn/)}, memory restarts ${count(/memory guard: .*restarting it/)}, orchestrator exits ${count(/orchestrator exited/)}, rotations ${count(/rotating to a fresh/)}, keepalives ${count(/keepalive \d/)}, send failures ${count(/send failed/)}, watch failures ${count(/^\S+ watch \S+ failed/)}`,
 		// With the nightly token audit on, one summary line replaces the raw usage counters so each fact is counted once.
 		...(audit ? [audit] : [`orchestrator tokens: ${usage(sessionFile, since)}`, ...laneUsage(since)]),
+		...scheduleBlock(listSchedules(), now),
 	].join("\n");
 }
 

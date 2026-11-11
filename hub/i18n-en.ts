@@ -330,7 +330,8 @@ Do this, briefly:
 2. For each real lesson add or update one dated line in ${lessons} (keep the file under ${LESSONS_MAX_BYTES} bytes; the gateway refuses lines past that; delete lessons that no longer apply or that a rule already covers). For each owner correction or reaction above, add one sourced line to ${paths.observations}; move a durable owner preference or context (stated plainly, or seen twice there) to ${paths.owner}, and a "don't" in the owner's own words to ${paths.boundaries}, verbatim with its source. Only what the owner said or did; never write about other people there.
 3. If there is an issue (a failure, an anomaly, a repeated mistake, a token leak, something that recurred although RULES.md or LESSONS.md already covers it), once, ${enIssue}
 4. Never edit RULES.md here; offer a rule change as an option and wait for the owner's answer.
-5. Finish with one dotz_send worklog line in the identity's language and Notices style, starting "Nightly review: ...". If nothing was wrong, that one line is all you send: nothing to alert.`,
+5. If the schedules above overlap, merge them (dotz_schedule remove + add), and remove those whose task is over.
+6. Finish with one dotz_send worklog line in the identity's language and Notices style, starting "Nightly review: ...". If nothing was wrong, that one line is all you send: nothing to alert.`,
 
 	// Gateway-written: the lessons gate and the repeat card (hub/reflect.ts admitLessons, sendRepeatAlerts).
 	lessonGate: (topics: string[]) => `\n\nThese lesson topics hold prose and nothing enforced, so the gateway removes any further prose line in them: ${topics.join(", ")}. A new line there needs "(enforced: <guard, test or check>)". Name a line's topic with "(topic: <name>)" when its words do not show it.`,

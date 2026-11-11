@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { paths } from "./config.ts";
 import type { Correction } from "./corrections.ts";
-import { admitLessons, correctionBlock, CORRECTIONS_MAX_CHARS, digest, dueAlerts, gateLessons, lessonCandidates, lessonChecks, lessonScore, proseClosedTopics, reflectPrompt, repeatedLessons, sendRepeatAlerts } from "./reflect.ts";
+import type { Schedule } from "./schedule.ts";
+import { admitLessons, correctionBlock, CORRECTIONS_MAX_CHARS, digest, dueAlerts, gateLessons, lessonCandidates, lessonChecks, lessonScore, proseClosedTopics, scheduleBlock, reflectPrompt, repeatedLessons, sendRepeatAlerts } from "./reflect.ts";
 
 const DAY = 24 * 3600_000;
 const now = Date.UTC(2026, 9, 19);
@@ -263,4 +264,16 @@ test("the digest counts the owner's messages, not a peer gateway's", () => {
 		if (had === undefined) rmSync(paths.inbox);
 		else writeFileSync(paths.inbox, had);
 	}
+});
+
+test("the nightly data lists schedules only when two or more are live, each in one short line", () => {
+	const now = Date.parse("2026-11-11T00:00:00Z");
+	const mk = (id: string, extra: Partial<Schedule> = {}): Schedule => ({ id, text: "점검".repeat(60), at: "2026-11-11T03:30:00.000Z", created: "2026-11-08T00:00:00.000Z", ...extra });
+	expect(scheduleBlock([], now)).toEqual([]);
+	expect(scheduleBlock([mk("a")], now)).toEqual([]);
+	const block = scheduleBlock([mk("a", { kind: "check" }), mk("b", { every_minutes: 60 })], now);
+	expect(block[0]).toBe("schedules (2):");
+	expect(block[1]).toBe(`- a check next 2026-11-11 03:30Z once age 3d: ${"점검".repeat(40)}`);
+	expect(block[2]).toContain("- b owner next");
+	expect(block[2]).toContain("every 60m");
 });

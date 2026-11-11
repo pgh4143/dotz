@@ -119,7 +119,7 @@ test("a one-shot check is rounded up to the next :00 or :30, never earlier; an o
 
 test("checks of one conversation due in the same slot fire as one turn; another conversation and an owner item keep their own", async () => {
 	const a = addSchedule({ text: "하나", in_minutes: 7, kind: "check" });
-	const b = addSchedule({ text: "둘", in_minutes: 12, kind: "check" });
+	const b = addSchedule({ text: "둘", at: new Date(Date.parse(a.at) - 60_000).toISOString(), kind: "check" }); // a minute before a's slot: rounds up to it
 	const other = addSchedule({ text: "다른 대화", in_minutes: 7, kind: "check", session: "ch:1" });
 	const owner = addSchedule({ text: "알림", in_minutes: 7, kind: "owner" });
 	expect(a.at).toBe(b.at);
