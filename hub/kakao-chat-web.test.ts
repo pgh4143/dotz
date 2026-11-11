@@ -423,6 +423,10 @@ describe("카카오톡 at desktop width (1280x800)", async () => {
 		await waitFor(v, `!document.querySelector(".kk-draft")`);
 	});
 
+	test("an empty request field has the switched-off send arrow, the same look as the chat composer", async () => {
+		expect(await q(v, `const t = document.querySelector("#kk-text"); t.value = ""; t.dispatchEvent(new Event("input", { bubbles: true })); const b = document.querySelector("#kk-send-btn"), look = () => { const c = getComputedStyle(b); return [c.opacity, c.pointerEvents]; }, e = look(); t.value = "가"; t.dispatchEvent(new Event("input", { bubbles: true })); const f = look(); t.value = ""; return [...e, ...f]`)).toEqual(["0.4", "none", "1", "auto"]);
+	});
+
 	test("a request with no draft waiting makes a new draft ({intent}); 보내기 on its card shows a 보내는 중 bubble on the right; sent clears it once read back; failed shows the reason and retries", async () => {
 		const ask = async (text: string) => run(v, `const t = document.querySelector("#kk-text"); t.value = ${JSON.stringify(text)}; t.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }))`);
 		await ask("가나다 답장");
@@ -431,6 +435,8 @@ describe("카카오톡 at desktop width (1280x800)", async () => {
 		await run(v, `document.querySelector('.kk-draft[data-code="di"] [data-k="send"]').click()`);
 		expect((await expectReq(isReq("POST", "/api/kakao/drafts/di/send"))).body).toEqual({});
 		await waitFor(v, `document.querySelector(".kk-m.me.pend .kk-state")`);
+		// the view stays at the newest message: the card leaving does not throw the timeline to the top of the room
+		expect(await q(v, `const t = document.querySelector("#kk-tl"); return t.scrollTop > 0 && t.scrollHeight - t.scrollTop - t.clientHeight <= 1`)).toBe(true);
 		expect(await q(v, `return !!document.querySelector(".kk-m.pend .kk-rd")`)).toBe(false);
 		const pend = await q<{ state: string; right: number; tr: number }>(v, `const b = document.querySelector(".kk-m.me.pend .kk-bub").getBoundingClientRect(); return { state: document.querySelector(".kk-m.me.pend .kk-state").textContent, right: b.right, tr: (tl => tl.getBoundingClientRect().left + tl.clientLeft + tl.clientWidth)(document.querySelector("#kk-tl")) }`);
 		expect(pend.state).toBe("보내는 중");

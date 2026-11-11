@@ -242,8 +242,12 @@ describe("이 기기에서 쓰기, 제거 and 앱 추가 at phone width (390x844
 		await waitFor(v, `!document.querySelector("#app-sw .as-rm")`);
 		await run(v, `document.querySelector('#app-sw [data-as-rm="ask"]').click()`);
 		await waitFor(v, `document.querySelector('#app-sw [data-as-rm="go"]')`);
-		await run(v, `document.querySelector('#app-sw [data-as-rm="go"]').click()`);
+		expect(await q(v, `return document.querySelector('#app-sw [data-as-rm="go"]').className.split(" ").filter(c => c === "danger" || c === "fill")`)).toEqual(["danger", "fill"]);
+		await run(v, `document.querySelector('#app-sw [data-as-rm="go"]').click(); document.querySelector('#app-sw [data-as-rm="go"]')?.click()`);
 		await waitFor(v, `INTG.available.some(a => a.key === "kakao" && a.off)`);
+		// the sheet closes and a toast with 되돌리기 says what happened; the second press went nowhere
+		await waitFor(v, `document.querySelector(".snack .sa")`);
+		expect(await q(v, `return [document.querySelector(".snack .sa").textContent, !document.querySelector("#app-sw")]`)).toEqual(["되돌리기", true]);
 		expect(removes).toEqual([{ app: "kakao", deleteData: false }]);
 		expect(readAppOff(data).has("kakao")).toBe(true);
 		expect(existsSync(cfgFile("custom/kakao/config.json"))).toBe(true);

@@ -185,6 +185,12 @@ describe("monitor settings at desktop width", async () => {
 		expect(patches.length).toBe(before + 1);
 		expect(patches.at(-1)).toEqual({ app: "w:t-web", values: PROPOSAL.changes });
 		expect(stored()).toMatchObject({ every_minutes: 15, to: "chat" });
+		// after 적용 the card keeps the field's words, never the internal keys, and offers 되돌리기
+		expect(await q(v, `const c = document.querySelector("#tl .as-card"); return [[...c.querySelectorAll(".as-cn")].map(n => n.textContent).includes("감시 주기(분)"), /every_minutes|auto_draft/.test(c.textContent), !!c.querySelector('[data-as="undo"]')]`)).toEqual([true, false, true]);
+		await run(v, `document.querySelector('#tl .as-card [data-as="undo"]').click()`);
+		await waitFor(v, `document.querySelector('#tl .as-card [data-as="apply"]')`);
+		expect(patches.at(-1)).toMatchObject({ app: "w:t-web", values: { every_minutes: 30 } });
+		expect(stored().every_minutes).toBe(30);
 	});
 
 	test("a card the owner cancels writes nothing; the composer sends settings:w:<name> to the orchestrator", async () => {
@@ -194,6 +200,8 @@ describe("monitor settings at desktop width", async () => {
 		await run(v, `document.querySelector('#tl .as-card [data-as="cancel"]').click()`);
 		await waitFor(v, `document.querySelector("#tl .as-done.cancelled")`);
 		expect(patches.length).toBe(before);
+		// an empty request field has a switched-off send arrow (the chat composer's look)
+		expect(await q(v, `ta.value = ""; ta.dispatchEvent(new Event("input", { bubbles: true })); const s = getComputedStyle(document.querySelector("#send-btn")); return [s.opacity, s.pointerEvents]`)).toEqual(["0.4", "none"]);
 		await run(v, `ta.value = "밤에는 확인하지 마"; sendChat()`);
 		await sent.until(() => !(!sent.length));
 		expect(sent[0]).toMatchObject({ text: "밤에는 확인하지 마", settings: "w:t-web" });

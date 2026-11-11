@@ -3,8 +3,9 @@
 // conversation the common settings are switches that PATCH /api/integrations/<app>/settings straight away (no model call). The owner's words
 // go to the orchestrator, which answers with a ```dotz-settings block; it is drawn as a change card (before -> after) and only 적용 sends the same PATCH.
 const AS_KEY = "dotz.settings.cards";
-const AS = { by: {}, none: {}, load: {}, busy: {}, rm: {}, feat: {}, done: (() => { try { return JSON.parse(localStorage.getItem(AS_KEY)) || {}; } catch { return {}; } })() };
-const asSave = () => { try { localStorage.setItem(AS_KEY, JSON.stringify(AS.done)); } catch { /* storage full or blocked: the card state lasts until reload */ } };
+const AS = { by: {}, none: {}, load: {}, busy: {}, rm: {}, feat: {}, done: (() => { try { return JSON.parse(localStorage.getItem(AS_KEY)) || {}; } catch { return {}; } })(),
+  lines: (() => { try { return JSON.parse(localStorage.getItem(`${AS_KEY}.lines`)) || {}; } catch { return {}; } })() };   // lines[card id][key] = {label, text, old}: an applied card keeps the words it showed and the values to put back
+const asSave = () => { try { localStorage.setItem(AS_KEY, JSON.stringify(AS.done)); localStorage.setItem(`${AS_KEY}.lines`, JSON.stringify(AS.lines)); } catch { /* storage full or blocked: the card state lasts until reload */ } };
 
 // An app is "mail", "kakao"...; a monitor is "w:<watch name>" (hub/watch-settings.ts), a schedule "s:<id>" (hub/schedule-settings.ts): same schema,
 // same screen, a different URL. asOwn: the settings of one monitor or schedule (its own status row and 삭제, no app features).
@@ -149,17 +150,20 @@ async function asRemoveAsk(app) {
   try { AS.rm[app] = { plan: app.includes("~") ? null : await api(`/api/integrations/${enc(app)}/remove`), del: false }; } catch (e) { return toast(e.message || "제거할 내용을 읽지 못했어요", true); }
   asPaint();
 }
-async function asRemoveGo(app) {
+async function asRemoveGo(app, btn) {
   const rm = AS.rm[app];
   if (!rm || AS.busy[app]) return;
   AS.busy[app] = true;
-  try { await api(`/api/integrations/${enc(app)}/remove`, "POST", { deleteData: rm.del }); toast(`${rm.plan ? rm.plan.label : monSettingsName(`settings:${app}`)}을(를) ${rm.plan ? "이 기기에서" : "그 컴퓨터에서"} 제거했어요`); AS.rm[app] = null; AS.load[app] = null; if (app.includes("~")) await pqLoad(); else await loadIntegrations(); if (ASC.h) ASC.h.close(false); go("monitoring"); }
+  if (btn) btn.disabled = true;
+  // 제거 can be taken back: the toast's 되돌리기 switches the app on again (asAdd), on the computer it was removed from.
+  const pc = app.includes("~") ? pqPc(`settings:${app}`) : null, back = app.includes("~") && !pc ? null : { label: "되돌리기", onclick: () => asAdd(app.split("~")[0], pc) };
+  try { await api(`/api/integrations/${enc(app)}/remove`, "POST", { deleteData: rm.del }); toast(`${rm.plan ? rm.plan.label : monSettingsName(`settings:${app}`)}을(를) ${rm.plan ? "이 기기에서" : "그 컴퓨터에서"} 제거했어요`, false, back, back ? 6000 : undefined); AS.rm[app] = null; AS.load[app] = null; if (app.includes("~")) await pqLoad(); else await loadIntegrations(); if (ASC.h) ASC.h.close(false); go("monitoring"); }
   catch (e) { toast(e.message || "제거하지 못했어요", true); }
   AS.busy[app] = false; asPaint();
 }
 function asRemoveNode(app) {
   const rm = AS.rm[app];
-  if (!rm) return el("div", { class: "as-row" }, el("span", { class: "as-b" }, el("span", { class: "as-n", text: "앱 제거" }), el("span", { class: "as-h", text: "이 기기에서만 지워요. 다른 컴퓨터는 그대로예요" })), el("button", { class: "btn tonal inrow", type: "button", "data-as-rm": "ask", onclick: () => asRemoveAsk(app) }, "제거"));
+  if (!rm) return el("div", { class: "as-row" }, el("span", { class: "as-b" }, el("span", { class: "as-n", text: "앱 제거" }), el("span", { class: "as-h", text: "이 기기에서만 지워요. 다른 컴퓨터는 그대로예요" })), el("button", { class: "btn danger inrow", type: "button", "data-as-rm": "ask", onclick: () => asRemoveAsk(app) }, "제거"));
   const p = rm.plan, cb = el("input", { type: "checkbox", "data-k": "delete-data", onchange: () => { rm.del = cb.checked; } });
   const lines = p ? ["이 기기의 앱 목록에서 빼고, 알림과 푸시를 멈춰요", p.watches.length ? `감시 ${p.watches.length}개를 지워요: ${p.watches.join(", ")}` : "지울 감시는 없어요", p.features.length ? `기능을 이 기기에서 꺼요: ${p.features.join(", ")}` : "끌 기능은 없어요", "다른 컴퓨터의 같은 앱은 그대로예요"]
     : ["그 컴퓨터의 앱 목록에서 빼고, 알림과 푸시를 멈춰요", "이 앱의 감시도 함께 꺼요", "이 컴퓨터와 다른 컴퓨터의 같은 앱은 그대로예요"];
@@ -167,7 +171,7 @@ function asRemoveNode(app) {
     el("div", { class: "as-n", text: p ? `${p.label}을(를) 이 기기에서 제거할까요?` : "이 앱을 그 컴퓨터에서 제거할까요?" }),
     el("ul", { class: "as-rml" }, ...lines.map(t => el("li", { text: t }))),
     !p || p.data.length ? el("label", { class: "as-del" }, cb, el("span", { text: p ? `저장된 데이터(${p.data.join(", ")})도 지우기. 체크하지 않으면 남겨요` : "저장된 데이터도 지우기. 체크하지 않으면 남겨요" })) : null,
-    el("div", { class: "as-act" }, el("button", { class: "btn sm", type: "button", "data-as-rm": "go", onclick: () => asRemoveGo(app) }, "제거 확인"), el("button", { class: "btn tonal sm", type: "button", "data-as-rm": "cancel", onclick: () => { AS.rm[app] = null; asPaint(); } }, "취소")));
+    el("div", { class: "as-act" }, el("button", { class: "btn danger fill", type: "button", "data-as-rm": "go", disabled: !!AS.busy[app], onclick: ev => asRemoveGo(app, ev.currentTarget) }, "제거 확인"), el("button", { class: "btn tonal", type: "button", "data-as-rm": "cancel", onclick: () => { AS.rm[app] = null; asPaint(); } }, "취소")));
 }
 // 앱 추가: the last row of the 앱 group opens a sheet. It lists only the apps this computer (and each other computer, labeled with its name) had and
 // the owner switched off or removed, each with 다시 켜기, under one box on top: what he types there is sent to the main orchestrator at once and
@@ -490,7 +494,12 @@ function asPaint() {
       const rows = secs.get(k).map((r, i) => ({ ...r, i })).sort((a, b) => a.rank - b.rank || a.i - b.i).map(r => r.node);
       return rows.length ? [el("div", { class: "as-sec", "data-sec": k, text: title }), ...rows] : [];
     })];
+  // A repaint after a switch keeps the place: the scroll position and the focused control (found again by its data-k) stay.
+  const sc = box.closest(".fs-body"), top = sc ? sc.scrollTop : 0, fk = box.contains(document.activeElement) ? document.activeElement.dataset.k : "";
   paintKeep(box, kids, asPaint, app);
+  if (sc) sc.scrollTop = top;
+  const again = fk && [...box.querySelectorAll("[data-k]")].find(x => x.dataset.k === fk);
+  if (again && document.activeElement !== again) again.focus({ preventScroll: true });
 }
 // The settings screen: a view pushed over the conversation (back button on a phone and on a wide screen) with the status card and every option row.
 // The conversation keeps only the chat; its header's ⋯ button opens this.
@@ -593,16 +602,18 @@ function settingsCardHtml(src) {
   if (!AS.load[app]) asLoad(app).then(() => typeof renderAll === "function" && renderAll());
   const fields = AS.by[app] || [], id = asId(String(src).trim()), state = AS.done[id];
   const rows = Object.entries(ch).map(([k, v]) => {
-    const f = fields.find(x => x.key === k);
+    const f = fields.find(x => x.key === k), kept = state === "applied" && (AS.lines[id] || {})[k];
+    if (kept) return `<div class="as-cr" data-k="${esc(k)}"><span class="as-cn">${esc(kept.label)}</span><span class="as-cv">${esc(kept.text)}</span></div>`;
     const text = !f ? JSON.stringify(v) : state === "applied" ? asFmt(f, v) : asChange(f, f.value, v);
     // a value that changes (not a list): the old one grey and struck through, the new one the only bold thing (docs/ui-principles.md 2)
     const shown = f && state !== "applied" && f.type !== "list" ? `<s class="as-old">${esc(asFmt(f, f.value))}</s> → <span class="as-now">${esc(asFmt(f, v))}</span>` : esc(text);
-    return `<div class="as-cr"><span class="as-cn">${esc(f ? f.label : k)}</span><span class="as-cv">${shown}</span></div>`;
+    return `<div class="as-cr" data-k="${esc(k)}"><span class="as-cn">${esc(f ? f.label : k)}</span><span class="as-cv">${shown}</span></div>`;
   }).join("");
   // only memory keys: the gateway kept them already (hub/app-settings.ts applyMemory), so there is nothing to apply
   const memOnly = fields.length && Object.keys(ch).every(k => (fields.find(x => x.key === k) || {}).memory);
   if (memOnly) return `<div class="as-card applied"><div class="as-ct">기억해 뒀어요</div>${Object.entries(ch).map(([k, v]) => { const f = fields.find(x => x.key === k); return `<div class="as-cr"><span class="as-cn">${esc(f.label)}</span><span class="as-cv">${esc(asFmt(f, v))}</span></div>`; }).join("")}</div>`;
-  const foot = state ? `<div class="as-done ${state}">${state === "applied" ? "적용했어요" : "취소했어요"}</div>`
+  const undo = state === "applied" && Object.keys(ch).every(k => (AS.lines[id] || {})[k] && "old" in AS.lines[id][k]) ? `<div class="as-act"><button class="btn text sm" type="button" data-as="undo">되돌리기</button></div>` : "";
+  const foot = state ? `<div class="as-done ${state}">${state === "applied" ? "적용했어요" : "취소했어요"}</div>${undo}`
     : `<div class="as-act"><button class="btn sm" type="button" data-as="apply">적용</button><button class="btn text sm" type="button" data-as="cancel">취소</button></div>`;
   return `<div class="as-card${state ? ` ${state}` : ""}" data-as-id="${id}" data-as-app="${esc(app)}" data-as-src="${esc(String(src).trim())}"><div class="as-ct">설정 바꾸기 제안</div>${rows}${foot}</div>`;
 }
@@ -615,6 +626,17 @@ document.addEventListener("click", async ev => {
   const redraw = () => { card.insertAdjacentHTML("afterend", settingsCardHtml(src)); const next = card.nextElementSibling; card.remove(); motionSwap(next, () => {}); };
   if (btn.dataset.as === "cancel") { AS.done[id] = "cancelled"; asSave(); redraw(); return; }
   btn.disabled = true;
-  try { await asPatch(app, JSON.parse(src).changes); AS.done[id] = "applied"; asSave(); redraw(); }
+  const undo = btn.dataset.as === "undo";   // 되돌리기: the old values go back and the card is the proposal again
+  // the words the card shows now (label, new value) and the values to put back are kept before the PATCH redraws the settings behind it
+  const lines = {}, fields = AS.by[app] || [];
+  for (const row of card.querySelectorAll(".as-cr[data-k]")) {
+    const k = row.dataset.k, f = fields.find(x => x.key === k), now = row.querySelector(".as-now") || row.querySelector(".as-cv");
+    lines[k] = { label: row.querySelector(".as-cn").textContent, text: now.textContent, ...(f && "value" in f ? { old: f.value } : {}) };
+  }
+  try {
+    if (undo) { await asPatch(app, Object.fromEntries(Object.entries(AS.lines[id] || {}).map(([k, l]) => [k, l.old]))); delete AS.done[id]; delete AS.lines[id]; }
+    else { await asPatch(app, JSON.parse(src).changes); AS.done[id] = "applied"; AS.lines[id] = lines; }
+    asSave(); redraw();
+  }
   catch (e) { btn.disabled = false; toast(e.message || "설정을 바꾸지 못했어요"); }
 });
