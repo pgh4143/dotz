@@ -550,11 +550,11 @@ startStallSweep((conversation, r) => {
 });
 startOrphanReaper();
 startHostSweep();
-startSchedules(s => {
+startSchedules((s, group) => {
 	const channel = scheduleTarget(s, discord.status.enabled ? "chat" : "web");
-	// A check is the assistant's own: its turn is quiet (hub/prompts.ts quiet).
+	// A check is the assistant's own: its turn is quiet (hub/prompts.ts quiet). Checks due together arrive as one numbered turn.
 	if (s.kind === "check") {
-		const all = [s];
+		const all = group ?? [s];
 		const text = all.length > 1 ? all.map((x, i) => `${i + 1}) [${x.id}] ${x.text}`).join("\n") : s.text;
 		const event = { ts: now(), kind: "schedule", source: "schedule", channel, id: all.map(x => x.id).join(","), ids: all.map(x => x.id), quiet: true, text };
 		emit("inbox", event);

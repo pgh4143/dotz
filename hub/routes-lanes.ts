@@ -15,7 +15,7 @@ import { MAIN } from "./session-key.ts";
 import { doneProblem } from "./donesignals.ts";
 import { stripHandoff } from "./tone.ts";
 import { answerMovesToLane, lanePlace, startedIn } from "./threads.ts";
-import { addSchedule, listSchedules, patchSchedule, removeSchedule } from "./schedule.ts";
+import { addSchedule, checksSharingSlot, listSchedules, patchSchedule, removeSchedule } from "./schedule.ts";
 import { clearChannel, endStanding, listSetups, setupChannel, standingLabelKo } from "./workchannels.ts";
 import { readWatchSettings, writeWatchSettings } from "./watch-settings.ts";
 import { readScheduleSettings, writeScheduleSettings } from "./schedule-settings.ts";
@@ -137,7 +137,11 @@ export async function routeLanes(req: Request, url: URL, parts: string[]): Promi
 				return json({ key: `s:${parts[2]}`, fields: req.method === "GET" ? readScheduleSettings(parts[2]) : writeScheduleSettings(parts[2], (await body(req)).values) });
 			}
 			if (req.method === "GET") return json(listSchedules());
-			if (req.method === "POST") return json({ ok: true, schedule: addSchedule(await body(req)) });
+			if (req.method === "POST") {
+				const schedule = addSchedule(await body(req));
+				// A check fires on the :00 / :30 grid: the answer names its slot and the checks it shares the turn with.
+				return json({ ok: true, schedule, ...(schedule.kind === "check" ? { slot: schedule.at, shares_turn_with: checksSharingSlot(schedule) } : {}) });
+			}
 			if (req.method === "PATCH" && parts[2]) return json(patchSchedule(parts[2], await body(req)));
 			if (req.method === "DELETE" && parts[2]) return json({ ok: removeSchedule(parts[2]) });
 		} catch (error) {

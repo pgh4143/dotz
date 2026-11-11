@@ -4,13 +4,16 @@ import { readFileSync } from "node:fs";
 import { paths } from "./config.ts";
 import { advance, clock } from "./runtime/test-clock.ts";
 import { sessionKeyOf } from "./session-key.ts";
-import { addSchedule, listSchedules, patchSchedule, removeSchedule, scheduleTarget, startSchedules } from "./schedule.ts";
+import { addSchedule, checksSharingSlot, listSchedules, patchSchedule, removeSchedule, scheduleTarget, startSchedules } from "./schedule.ts";
 
 const fired: string[] = [];
-beforeAll(() => startSchedules(s => fired.push(s.id)));
+// One entry per handler call: the ids of the schedules that call carries.
+const turns: string[][] = [];
+beforeAll(() => startSchedules((s, group) => (fired.push(s.id), turns.push((group ?? [s]).map(x => x.id)))));
 afterEach(() => {
 	for (const s of listSchedules()) removeSchedule(s.id);
 	fired.length = 0;
+	turns.length = 0;
 });
 const stored = (id: string) => JSON.parse(readFileSync(paths.schedules, "utf8")).find((s: { id: string }) => s.id === id);
 
@@ -89,14 +92,52 @@ test("a schedule with an unknown conversation kind is rejected", () => {
 	expect(listSchedules()).toEqual([]);
 });
 
-test("an item added without a kind is exactly as before: its own time", async () => {
+test("an item added without a kind is exactly as before: its own time, its own turn", async () => {
 	const a = addSchedule({ text: "그냥", in_minutes: 7 });
 	const b = addSchedule({ text: "그냥 둘", in_minutes: 7 });
 	expect(a.kind).toBeUndefined();
 	expect(stored(a.id).kind).toBeUndefined();
 	expect(Date.parse(a.at)).toBe(clock.now + 7 * 60_000);
 	await advance(8 * 60_000);
+	expect(turns.map(t => t.length)).toEqual([1, 1]);
 	expect(fired.sort()).toEqual([a.id, b.id].sort());
+});
+
+test("a one-shot check is rounded up to the next :00 or :30, never earlier; an owner item keeps its time", () => {
+	const asked = clock.now + 7 * 60_000;
+	const check = addSchedule({ text: "점검", in_minutes: 7, kind: "check" });
+	const at = new Date(check.at);
+	expect(at.getTime()).toBeGreaterThanOrEqual(asked);
+	expect(at.getTime() - asked).toBeLessThan(30 * 60_000);
+	expect(at.getMinutes() % 30).toBe(0);
+	expect(at.getSeconds() + at.getMilliseconds()).toBe(0);
+	const onGrid = addSchedule({ text: "정각", at: check.at, kind: "check" });
+	expect(onGrid.at).toBe(check.at);
+	expect(addSchedule({ text: "알림", in_minutes: 7, kind: "owner" }).at).toBe(new Date(asked).toISOString());
+	expect(() => addSchedule({ text: "x", in_minutes: 7, kind: "loud" })).toThrow("kind must be");
+});
+
+test("checks of one conversation due in the same slot fire as one turn; another conversation and an owner item keep their own", async () => {
+	const a = addSchedule({ text: "하나", in_minutes: 7, kind: "check" });
+	const b = addSchedule({ text: "둘", in_minutes: 12, kind: "check" });
+	const other = addSchedule({ text: "다른 대화", in_minutes: 7, kind: "check", session: "ch:1" });
+	const owner = addSchedule({ text: "알림", in_minutes: 7, kind: "owner" });
+	expect(a.at).toBe(b.at);
+	expect(checksSharingSlot(b)).toEqual([a.id]);
+	await advance(40 * 60_000);
+	expect(turns.map(t => [...t].sort())).toEqual(expect.arrayContaining([[a.id, b.id].sort(), [other.id], [owner.id]]));
+	expect(turns).toHaveLength(3);
+	expect(listSchedules()).toEqual([]);
+});
+
+test("a recurring check in a merged turn steps to its next slot and the others leave", async () => {
+	const once = addSchedule({ text: "한 번", in_minutes: 7, kind: "check" });
+	const every = addSchedule({ text: "반복", at: once.at, every_minutes: 60, kind: "check" });
+	await advance(40 * 60_000);
+	expect(turns).toHaveLength(1);
+	expect(turns[0]!.sort()).toEqual([once.id, every.id].sort());
+	expect(listSchedules().map(s => s.id)).toEqual([every.id]);
+	expect(Date.parse(listSchedules()[0]!.at)).toBe(Date.parse(once.at) + 60 * 60_000);
 });
 
 test("PATCH changes the kind and refuses an unknown one", () => {

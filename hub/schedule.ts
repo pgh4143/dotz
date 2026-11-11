@@ -10,15 +10,22 @@ export type ScheduleKind = "owner" | "check";
 export const SCHEDULE_KINDS: readonly ScheduleKind[] = ["owner", "check"];
 export type Schedule = { id: string; text: string; at: string; every_minutes?: number; created: string; paused?: boolean; last?: string; /** The conversation (ch:/th:/mail:/settings: target) whose session it fires into; none = main, as for items stored before this field. */ conv?: string; kind?: ScheduleKind };
 
+export const GRID_MS = 30 * 60_000; // check items fire on a :00 / :30 grid, so those of one conversation due together become one turn
+const SLOT_TOL_MS = 1000; // a timer can fire a few ms before its slot
 const kindOf = (value: unknown): ScheduleKind => {
 	if (!SCHEDULE_KINDS.includes(value as ScheduleKind)) throw new Error(`kind must be ${SCHEDULE_KINDS.join(" or ")}`);
 	return value as ScheduleKind;
 };
+/** The next :00 or :30 of the hub's clock at or after `ms` (a time already on the grid stays). */
+export function roundUpToGrid(ms: number): number {
+	const off = new Date(ms).getTimezoneOffset() * 60_000;
+	return Math.ceil((ms - off) / GRID_MS) * GRID_MS + off;
+}
 
 const items: Schedule[] = readJsonOrQuarantine(paths.schedules, () => []);
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const save = () => writeAtomic(paths.schedules, `${JSON.stringify(items, null, 2)}\n`);
-let onFire: (s: Schedule) => void = () => {};
+let onFire: (s: Schedule, group?: Schedule[]) => void = () => {};
 const MAX_DELAY = 2 ** 31 - 1;
 
 function arm(s: Schedule): void {
@@ -28,7 +35,8 @@ function arm(s: Schedule): void {
 	timers.set(s.id, setTimeout(() => (delay > MAX_DELAY ? arm(s) : fire(s)), Math.min(delay, MAX_DELAY)));
 }
 
-function fire(s: Schedule): void {
+function settle(s: Schedule): void {
+	clearTimeout(timers.get(s.id));
 	timers.delete(s.id);
 	s.last = new Date().toISOString();
 	if (s.every_minutes) {
@@ -38,12 +46,24 @@ function fire(s: Schedule): void {
 		s.at = new Date(next).toISOString();
 		arm(s);
 	} else items.splice(items.indexOf(s), 1);
-	save();
-	log(`schedule ${s.id} fired`);
-	onFire(s);
 }
 
-export function startSchedules(handler: (s: Schedule) => void): void {
+/** The other check items of the same conversation due in the same slot as `s`. */
+const slotMates = (s: Schedule): Schedule[] =>
+	s.kind === "check" ? items.filter(x => x !== s && x.kind === "check" && !x.paused && (x.conv ?? "") === (s.conv ?? "") && Math.abs(Date.parse(x.at) - Date.parse(s.at)) < SLOT_TOL_MS) : [];
+/** Ids of the other checks of `s`'s conversation due in its slot (the add result names them). */
+export const checksSharingSlot = (s: Schedule): string[] => slotMates(s).map(x => x.id);
+
+function fire(s: Schedule): void {
+	// A check fires together with the checks of its conversation due in the same slot: one turn, one handler call with all of them.
+	const group = s.kind === "check" ? [s, ...slotMates(s)] : undefined;
+	for (const x of group ?? [s]) settle(x);
+	save();
+	for (const x of group ?? [s]) log(`schedule ${x.id} fired`);
+	onFire(s, group);
+}
+
+export function startSchedules(handler: (s: Schedule, group?: Schedule[]) => void): void {
 	onFire = handler;
 	for (const s of items) arm(s);
 }
@@ -66,7 +86,9 @@ export function addSchedule(input: { text?: string; at?: string; in_minutes?: nu
 	if (input.every_minutes !== undefined && !(Number(input.every_minutes) >= MIN_EVERY_MINUTES)) throw new Error(`every_minutes must be at least ${MIN_EVERY_MINUTES}`);
 	const conv = convTargetOf(input);
 	const kind = input.kind === undefined ? undefined : kindOf(input.kind);
-	const s: Schedule = { id: randomBytes(3).toString("hex"), text, at: new Date(at).toISOString(), ...(input.every_minutes ? { every_minutes: Number(input.every_minutes) } : {}), ...(conv ? { conv } : {}), ...(kind ? { kind } : {}), created: new Date().toISOString() };
+	// A one-shot check is never earlier than asked: it waits for the next :00 or :30 so checks of one conversation share a turn.
+	const when = kind === "check" && !input.every_minutes ? roundUpToGrid(at) : at;
+	const s: Schedule = { id: randomBytes(3).toString("hex"), text, at: new Date(when).toISOString(), ...(input.every_minutes ? { every_minutes: Number(input.every_minutes) } : {}), ...(conv ? { conv } : {}), ...(kind ? { kind } : {}), created: new Date().toISOString() };
 	items.push(s);
 	save();
 	arm(s);
