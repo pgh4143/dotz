@@ -5,7 +5,15 @@ import { everyMinutes } from "./watch.ts";
 
 export const MIN_EVERY_MINUTES = 5; // shortest repeat a schedule takes
 
-export type Schedule = { id: string; text: string; at: string; every_minutes?: number; created: string; paused?: boolean; last?: string; /** The conversation (ch:/th:/mail:/settings: target) whose session it fires into; none = main, as for items stored before this field. */ conv?: string };
+/** "owner": the owner asked to be told or sent this (delivered and notified); "check": the assistant's own system check or follow-up (quiet). No kind = "owner". */
+export type ScheduleKind = "owner" | "check";
+export const SCHEDULE_KINDS: readonly ScheduleKind[] = ["owner", "check"];
+export type Schedule = { id: string; text: string; at: string; every_minutes?: number; created: string; paused?: boolean; last?: string; /** The conversation (ch:/th:/mail:/settings: target) whose session it fires into; none = main, as for items stored before this field. */ conv?: string; kind?: ScheduleKind };
+
+const kindOf = (value: unknown): ScheduleKind => {
+	if (!SCHEDULE_KINDS.includes(value as ScheduleKind)) throw new Error(`kind must be ${SCHEDULE_KINDS.join(" or ")}`);
+	return value as ScheduleKind;
+};
 
 const items: Schedule[] = readJsonOrQuarantine(paths.schedules, () => []);
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -50,14 +58,15 @@ export function stopSchedules(): void {
 export const scheduleTarget = (s: Schedule, fallback: string): string => s.conv ?? fallback;
 
 // `conv` / `project`: the conversation it belongs to; `session`: the key of the session that creates it (a conversation session's schedule belongs to that conversation).
-export function addSchedule(input: { text?: string; at?: string; in_minutes?: number; every_minutes?: number; conv?: string; project?: string; session?: string }): Schedule {
+export function addSchedule(input: { text?: string; at?: string; in_minutes?: number; every_minutes?: number; conv?: string; project?: string; session?: string; kind?: unknown }): Schedule {
 	const text = String(input.text ?? "").trim();
 	if (!text) throw new Error("text required");
 	const at = input.at ? Date.parse(input.at) : Date.now() + Number(input.in_minutes ?? Number.NaN) * 60_000;
 	if (!Number.isFinite(at)) throw new Error("give at (ISO time with offset, e.g. 2026-10-17T09:00:00+09:00) or in_minutes");
 	if (input.every_minutes !== undefined && !(Number(input.every_minutes) >= MIN_EVERY_MINUTES)) throw new Error(`every_minutes must be at least ${MIN_EVERY_MINUTES}`);
 	const conv = convTargetOf(input);
-	const s: Schedule = { id: randomBytes(3).toString("hex"), text, at: new Date(at).toISOString(), ...(input.every_minutes ? { every_minutes: Number(input.every_minutes) } : {}), ...(conv ? { conv } : {}), created: new Date().toISOString() };
+	const kind = input.kind === undefined ? undefined : kindOf(input.kind);
+	const s: Schedule = { id: randomBytes(3).toString("hex"), text, at: new Date(at).toISOString(), ...(input.every_minutes ? { every_minutes: Number(input.every_minutes) } : {}), ...(conv ? { conv } : {}), ...(kind ? { kind } : {}), created: new Date().toISOString() };
 	items.push(s);
 	save();
 	arm(s);
@@ -66,7 +75,7 @@ export function addSchedule(input: { text?: string; at?: string; in_minutes?: nu
 
 // The owner's edit from the project page (PATCH /api/schedules/<id>): persisted and re-armed. `paused` keeps the entry but
 // nothing fires; a recurring one resumes at its next slot after now, a one-shot whose time passed fires at once. `every_minutes: null` makes it one-shot.
-export function patchSchedule(id: string, input: { every_minutes?: unknown; at?: unknown; text?: unknown; paused?: unknown }): Schedule {
+export function patchSchedule(id: string, input: { every_minutes?: unknown; at?: unknown; text?: unknown; paused?: unknown; kind?: unknown }): Schedule {
 	const s = items.find(x => x.id === id);
 	if (!s) throw new Error(`no schedule ${id}`);
 	const every = input.every_minutes === undefined ? s.every_minutes : input.every_minutes === null ? undefined : everyMinutes(input.every_minutes);
@@ -75,8 +84,10 @@ export function patchSchedule(id: string, input: { every_minutes?: unknown; at?:
 	const at = input.at === undefined ? Date.parse(s.at) : typeof input.at === "string" ? Date.parse(input.at) : Number.NaN;
 	if (!Number.isFinite(at)) throw new Error("at must be an ISO time with offset, e.g. 2026-10-17T09:00:00+09:00");
 	if (input.paused !== undefined && typeof input.paused !== "boolean") throw new Error("paused must be true or false");
+	const kind = input.kind === undefined ? s.kind : kindOf(input.kind);
 	s.text = text;
 	s.at = new Date(at).toISOString();
+	if (kind) s.kind = kind;
 	if (every) s.every_minutes = every;
 	else delete s.every_minutes;
 	if (input.paused !== undefined) {

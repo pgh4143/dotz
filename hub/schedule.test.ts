@@ -88,3 +88,21 @@ test("a schedule with an unknown conversation kind is rejected", () => {
 	expect(() => addSchedule({ text: "x", in_minutes: 10, conv: "nope" })).toThrow("conv must be a conversation target");
 	expect(listSchedules()).toEqual([]);
 });
+
+test("an item added without a kind is exactly as before: its own time", async () => {
+	const a = addSchedule({ text: "그냥", in_minutes: 7 });
+	const b = addSchedule({ text: "그냥 둘", in_minutes: 7 });
+	expect(a.kind).toBeUndefined();
+	expect(stored(a.id).kind).toBeUndefined();
+	expect(Date.parse(a.at)).toBe(clock.now + 7 * 60_000);
+	await advance(8 * 60_000);
+	expect(fired.sort()).toEqual([a.id, b.id].sort());
+});
+
+test("PATCH changes the kind and refuses an unknown one", () => {
+	const s = addSchedule({ text: "알림", in_minutes: 7 });
+	expect(patchSchedule(s.id, { kind: "check" }).kind).toBe("check");
+	expect(stored(s.id).kind).toBe("check");
+	expect(() => patchSchedule(s.id, { kind: "quiet" })).toThrow("kind must be");
+	expect(patchSchedule(s.id, { text: "고침" }).kind).toBe("check");
+});

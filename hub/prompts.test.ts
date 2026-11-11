@@ -1453,3 +1453,35 @@ test("a worker's result and its restatement in the same wake go to the worker's 
 	expect(t.state.posts.filter(p => p.replyTo === "R").length).toBe(1);
 	expect(t.state.posts.filter(p => p.target !== "web")).toEqual([]);
 });
+
+test("a quiet check's plain answer is kept as a note and not posted; [ask], [fail] and an item with no quiet mark are delivered as today", () => {
+	const notes: { target: string; text: string }[] = [];
+	const { q, state } = setup([], [], { quietNote: (target, text) => void notes.push({ target, text }) });
+	const run = (reply: { target: string; quiet?: true }, answer: string) => {
+		q.deliver("check", reply);
+		state.working = true;
+		q.onPrompt("check");
+		q.onAnswer(answer);
+		state.working = false;
+	};
+	run({ target: "chat", quiet: true }, "모두 정상이에요");
+	expect(notes).toEqual([{ target: "chat", text: "모두 정상이에요" }]);
+	expect(state.posts).toEqual([]);
+	run({ target: "chat", quiet: true }, "-");
+	expect(notes).toHaveLength(1);
+	expect(state.posts).toEqual([]);
+	run({ target: "chat", quiet: true }, "[ask] 계속할까요?");
+	run({ target: "chat", quiet: true }, "[fail] 서버가 멈췄어요");
+	expect(state.posts.map(p => p.text)).toEqual(["[ask] 계속할까요?", "[fail] 서버가 멈췄어요"]);
+	run({ target: "chat" }, "모두 정상이에요");
+	expect(state.posts.at(-1)).toMatchObject({ target: "chat", text: "모두 정상이에요" });
+	expect(notes).toHaveLength(1);
+});
+
+test("a quiet check is not steered into the running turn of its conversation and keeps its mark through the saved queue", () => {
+	const { q, state, open, startTurn } = setup();
+	startTurn("first", { target: "chat", replyTo: "m1" });
+	q.deliver("check", { target: "chat", quiet: true } as never);
+	expect(state.steered).toEqual([]);
+	expect(open().find(p => p.text === "check")?.quiet).toBe(true);
+});

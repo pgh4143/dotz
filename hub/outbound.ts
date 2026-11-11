@@ -102,6 +102,8 @@ function makeQueue(key: string, o: Orchestrator, pendingFile: string, bg: () => 
 		isNote: text => isNote(text, "newMessageLead") || isNote(text, "waitedLead") || isNote(text, "laneReportLead"),
 		regenerated: isOpenNudge,
 		post: (target, text, replyTo) => out(target, text, replyTo, { auto: true, session: key }),
+		// A quiet check's plain answer: one gateway line in the worklog. Its text opens the line, so no tone marker in the answer can make it a result that pushes.
+		quietNote: (_target, text) => void out("worklog", msg().scheduleCheckLine(text.replace(/\s+/g, " ").slice(0, 300)), undefined, { source: "gateway" }).catch(e => log(`quiet check line failed: ${e}`)),
 		// An answer no label explains lands in the session's own conversation; work another session handed over goes back to it, as that session's next prompt.
 		home: primaryTarget(key),
 		handBack: (from, text, replyTo) => void convs.deliverTo(from, `${msg().handbackLead} ${text}`, { target: convs.get(from)?.primary ?? primaryTarget(from), replyTo, handback: true }),

@@ -98,6 +98,7 @@ function inboxBody(e: Record<string, any>): string {
 		const home = typeof e.parent === "string" && e.parent.startsWith("ch:") ? channelContext(e.parent.slice(3)) : "";
 		return [MAIL_TURN_MARK, m.inboxMail(e.thread ? `th:${e.thread}` : e.channel), e.text, home].filter(Boolean).join("\n");
 	}
+	if (e.kind === "schedule" && e.quiet) return `${m.inboxCheck(e.ids, e.channel)}\n${e.text}`;
 	if (e.kind === "schedule") return `${m.inboxSchedule(e.id, e.every, e.channel)}\n${e.text}`;
 	const where = e.thread_name ? m.inboxThread(e.thread_name, e.parent_name) : e.channel_name ? ` #${e.channel_name}` : "";
 	const lines = [`[dotz inbox] ${e.channel}${where}${e.message_id ?? e.mid ? ` msg=${e.message_id ?? e.mid}` : ""} from ${e.author ?? "owner"}`];

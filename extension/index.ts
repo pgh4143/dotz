@@ -42,6 +42,7 @@ import { installBgGuard } from "./bg-guard.ts";
 import { jsonZod, params } from "./schema.ts";
 import { secretIn } from "./peer-secrets.ts";
 import { recallTool } from "./recall-tool.ts";
+import { scheduleKindRefusal } from "./schedule-tool.ts";
 
 // The claude.ai connectors (Gmail, Calendar, Drive, Docs) reach a fresh Claude Code process only after its first request, so
 // its second request adds their 48 tools mid-conversation, and every such request lost the whole message cache: 126 of 126
@@ -430,9 +431,11 @@ function orchestratorTools(pi: any): void {
 	pi.registerTool({
 		name: "dotz_schedule",
 		label: "Dotz schedule",
-		description: "Reminders and recurring jobs: at the time, the text comes back to you as an inbox turn to act on. action=add {text, at (ISO with offset, e.g. 2026-10-17T09:00:00+09:00) or in_minutes, every_minutes? (>=5), project? (a ch:/th:/mail:/settings: conversation target)}; list; remove {id}. A schedule made in a conversation session belongs to that conversation and comes back to its session; project names another conversation. Use it when the owner says remind me / tell me when / every day.",
-		parameters: z.object({ action: z.enum(["add", "list", "remove"]), text: z.string().optional(), at: z.string().optional(), in_minutes: z.number().optional(), every_minutes: z.number().optional(), project: z.string().optional(), id: z.string().optional() }),
+		description: "Reminders and recurring jobs: at the time, the text comes back to you as an inbox turn to act on. action=add {kind (required), text, at (ISO with offset, e.g. 2026-10-17T09:00:00+09:00) or in_minutes, every_minutes? (>=5), project? (a ch:/th:/mail:/settings: conversation target)}; list; remove {id}. kind owner: the owner explicitly asked to be told, reminded or sent this report (delivered and notified). kind check: your own system check or follow-up (quiet: the owner hears only an answer starting with [ask] or [fail]); one-shot checks round up to the next :00/:30 and those of one conversation due together are one turn. A schedule made in a conversation session belongs to that conversation and comes back to its session; project names another conversation. Use it when the owner says remind me / tell me when / every day.",
+		parameters: z.object({ action: z.enum(["add", "list", "remove"]), kind: z.enum(["owner", "check"]).optional(), text: z.string().optional(), at: z.string().optional(), in_minutes: z.number().optional(), every_minutes: z.number().optional(), project: z.string().optional(), id: z.string().optional() }),
 		async execute(_id: string, p: any) {
+			const refusal = scheduleKindRefusal(p);
+			if (refusal) return { content: [{ type: "text", text: refusal }] };
 			const out =
 				p.action === "add" ? await call("/api/schedules", { method: "POST", body: JSON.stringify({ ...p, session: process.env.DOTZ_CONV ?? "main" }) })
 				: p.action === "list" ? await call("/api/schedules")

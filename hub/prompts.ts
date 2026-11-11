@@ -42,7 +42,9 @@ import { NEAR_CHARS, NEAR_MIN, head, MAX_PROMPTS, MAX_ANSWERED, REPLAY_MAX_AGE_M
 export type { Prompt, OwnerMessage, Pending, WorkLink, OpenRequest, WorkRow, Reply, PromptDeps } from "./prompts-model.ts";
 
 /** The hand-over labels a prompt carries through pending.json. */
-const labels = (p: { from?: string; handback?: true }) => ({ ...(p.from ? { from: p.from } : {}), ...(p.handback ? { handback: true as const } : {}) });
+const labels = (p: { from?: string; handback?: true; quiet?: true }) => ({ ...(p.from ? { from: p.from } : {}), ...(p.handback ? { handback: true as const } : {}), ...(p.quiet ? { quiet: true as const } : {}) });
+/** An answer the owner must see even from a quiet check. */
+const LOUD = /^\s*\[(?:ask|fail)\]/i;
 
 export function createPrompts(deps: PromptDeps) {
 	const prompts: Prompt[] = [];
@@ -122,7 +124,7 @@ export function createPrompts(deps: PromptDeps) {
 	 * prompt that has not started yet it gathers (hub/promptburst.ts).
 	 */
 	function deliver(text: string, reply?: Reply): boolean {
-		const running = Boolean(!reply?.from && !reply?.handback && current?.target && reply && sameConv(current.target, reply.target) && (!current.done || (reply.owner && !current.cancelled)));
+		const running = Boolean(!reply?.from && !reply?.handback && !reply?.quiet && current?.target && reply && sameConv(current.target, reply.target) && (!current.done || (reply.owner && !current.cancelled)));
 		const steered = deps.working() && running;
 		const gather = !steered && reply?.owner === true && burst.gathers(reply.target);
 		// A new owner turn for a conversation whose background worker is still running starts with a note naming that worker, so the
@@ -628,6 +630,12 @@ export function createPrompts(deps: PromptDeps) {
 		if (later) return flushHeld(p, t);
 		p.done = true;
 		const silent = isSilent(t);
+		// A quiet check that found nothing to decide or report: one worklog line, no post, no push. Text it sent early with dotz_send stays a normal answer.
+		if (p.quiet && !silent && t && !LOUD.test(t) && !p.held?.length && deps.quietNote) {
+			save();
+			deps.log(`a quiet check answer for ${p.target ?? "-"} was kept in the worklog`);
+			return p.target ? deps.quietNote(p.target, t) : undefined;
+		}
 		if (silent && t !== "-") deps.log(`a no-op answer for ${p.target ?? "-"} was not posted: ${t.slice(0, 160)}`);
 		if (p.target && !silent) receipted.delete(receiptKey(p.target));
 		if (!silent) closeResults(p.replyTo);

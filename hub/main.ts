@@ -552,6 +552,14 @@ startOrphanReaper();
 startHostSweep();
 startSchedules(s => {
 	const channel = scheduleTarget(s, discord.status.enabled ? "chat" : "web");
+	// A check is the assistant's own: its turn is quiet (hub/prompts.ts quiet).
+	if (s.kind === "check") {
+		const all = [s];
+		const text = all.length > 1 ? all.map((x, i) => `${i + 1}) [${x.id}] ${x.text}`).join("\n") : s.text;
+		const event = { ts: now(), kind: "schedule", source: "schedule", channel, id: all.map(x => x.id).join(","), ids: all.map(x => x.id), quiet: true, text };
+		emit("inbox", event);
+		return void deliver(inboxText(event), { target: channel, quiet: true });
+	}
 	const event = { ts: now(), kind: "schedule", source: "schedule", channel, id: s.id, every: s.every_minutes, text: s.text };
 	emit("inbox", event);
 	deliver(inboxText(event), { target: channel });
