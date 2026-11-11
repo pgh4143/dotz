@@ -121,7 +121,8 @@ describe("decision options that need detail", () => {
 		expect(posted[0]!.path).toBe(`/api/notices/${n.id}/answer`);
 		expect(posted[0]!.body).toEqual({ n: 2, label: "고치기", note: "3시 말고 4시로" });
 		// the sheet stays open saying 고치는 중… with the old draft; the rewritten draft (a newer open one of the same conversation) replaces it
-		expect(await view.evaluate(`document.querySelector(".fs-ft .dc-st").textContent`)).toBeTruthy();
+		// the buttons stay in place and the pressed one says so itself: no line under the row
+		expect(await view.evaluate(`[document.querySelectorAll(".fs-ft .dc-st").length, [...document.querySelectorAll(".fs-ft .rq-acts .btn:not(.rq-manual)")].map(b => b.textContent)]`)).toEqual([0, ["보내기", "고치는 중…", "보내지 않기"]]);
 		// until the new draft lands the old one cannot be sent, sent back again or dropped: every choice is locked
 		expect(await view.evaluate(`[...document.querySelectorAll(".fs-ft .rq-acts .btn")].every(b => b.disabled)`)).toBe(true);
 		await view.evaluate(`(() => {

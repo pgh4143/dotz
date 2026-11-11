@@ -16,6 +16,8 @@ const CARDS = [
 ];
 const GROUPS = [{ key: "i:youtube", label: "유튜브", count: 2, cards: [CARDS[0], CARDS[2]] }, { key: "i:mail", label: "메일", count: 1, cards: [CARDS[1]] }];
 let reqs: Req[] = [];
+let hold: Promise<void> | null = null;   // a POST waits for this before it answers
+let failNext = false;
 let waiters: { n: number; res: () => void }[] = [];
 const arrived = (n: number): Promise<void> => {
 	if (reqs.length >= n) return Promise.resolve();
@@ -32,6 +34,8 @@ const hub = fakeHub({
 		if (p === "/api/approvals" && req.method === "POST") {
 			reqs.push({ method: "POST", path: p, body: (await req.json()) as Record<string, unknown> });
 			waiters = waiters.filter(w => (reqs.length >= w.n ? (w.res(), false) : true));
+			if (hold) await hold;
+			if (failNext) { failNext = false; return json({ error: "fail-text" }); }
 			return json({ ok: true, sending: 1, toBot: 0 });
 		}
 		if (p === "/api/drafts/Rxyz234/original") return json({ kind: "mail", from: "teacher@example.com", subject: "회의 수업 문의", text: "문서를 받을 수 있을까요?" });
@@ -41,7 +45,7 @@ const hub = fakeHub({
 	},
 });
 afterAll(() => { hub.stop(); });
-beforeEach(() => { reqs = []; waiters = []; });
+beforeEach(() => { reqs = []; waiters = []; hold = null; failNext = false; });
 
 const q = async <T = unknown>(v: View, code: string): Promise<T> => JSON.parse((await v.evaluate(`JSON.stringify((() => { ${code} })())`)) as string) as T;
 const key = (v: View, k: string) => run(v, `document.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(k)}, bubbles: true }))`);
@@ -75,7 +79,7 @@ describe("review queue", async () => {
 		expect(s.mail).toContain("kim@example.com");
 		expect(s.files).toBe("독서3부.pdf (1.2MB)");
 		expect(s.order).toBe(true);
-		expect(s.buttons).toEqual(["보내기", "고치기 …", "보내지 않기"]);
+		expect(s.buttons).toEqual(["보내기", "고치기", "보내지 않기"]);
 		expect(await q<string>(v, `return document.querySelector(".tr-ft").textContent`)).not.toContain("null");   // a missing hint is no node, not the word null
 	});
 
@@ -111,6 +115,39 @@ describe("review queue", async () => {
 		await arrived(1);
 		expect(reqs).toHaveLength(1);
 		expect(reqs[0]!.body).toEqual({ items: [{ ref: "Dxyz789", to: "main", n: 2, label: "고치기", note: "더 짧게" }] });
+	});
+
+	test("a press waits for the answer: buttons stay in place disabled, one request on a double press, the next card only after it", async () => {
+		await boot(v);
+		let release = () => {};
+		hold = new Promise<void>(res => { release = res; });
+		const before = await q<number[]>(v, `return [...document.querySelectorAll(".tr-acts .tr-b")].map(b => Math.round(b.getBoundingClientRect().top))`);
+		await run(v, `const b = document.querySelector(".tr-go"); b.click(); b.click()`);
+		await waitFor(v, `document.querySelector(".tr-go").disabled`);
+		const mid = await q<{ pos: string; tops: number[]; off: boolean[]; done: string }>(v, `return { pos: document.querySelector(".tr-pos").firstChild.textContent, tops: [...document.querySelectorAll(".tr-acts .tr-b")].map(b => Math.round(b.getBoundingClientRect().top)), off: [...document.querySelectorAll(".tr-acts .tr-b")].map(b => b.disabled), done: document.querySelector(".tr-sum").textContent }`);
+		expect(mid.pos).toBe("1/3");
+		expect(mid.tops).toEqual(before);
+		expect(mid.off).toEqual([true, true, true]);
+		expect(mid.done).toContain("0건");
+		release();
+		await waitFor(v, `document.querySelector(".tr-pos").firstChild.textContent === "2/3"`);
+		expect(reqs).toHaveLength(1);
+	});
+
+	test("a failed answer keeps the owner on that card, uncounted, with the reason in the footer and the buttons usable again", async () => {
+		await boot(v);
+		failNext = true;
+		await run(v, `document.querySelector(".tr-go").click()`);
+		await waitFor(v, `document.querySelector(".tr-fail")`);
+		const s = await q<{ pos: string; done: string; off: boolean; chip: boolean; fail: string }>(v, `return { pos: document.querySelector(".tr-pos").firstChild.textContent, done: document.querySelector(".tr-sum").textContent, off: document.querySelector(".tr-go").disabled, chip: !!document.querySelector(".tr-q .tr-st.err"), fail: document.querySelector(".tr-ft .tr-fail").textContent }`);
+		expect(s.pos).toBe("1/3");
+		expect(s.done).toContain("0건");
+		expect(s.off).toBe(false);
+		expect(s.chip).toBe(true);
+		expect(s.fail).toContain("fail-text");
+		await run(v, `document.querySelector(".tr-go").click()`);
+		await waitFor(v, `document.querySelector(".tr-pos").firstChild.textContent === "2/3"`);
+		expect(reqs).toHaveLength(2);
 	});
 
 	// A repaint is held while a field is typed in, but never one that moves to another card: the next press must answer the card on screen.

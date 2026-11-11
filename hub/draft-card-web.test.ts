@@ -94,7 +94,7 @@ for (const width of [1440, 390]) {
 		for (const b of got.buttons.slice(1)) expect(b).toEqual([]);
 		// The body is clamped to about six lines (10-reply-card.js), so a narrow card offers 펼치기; the actions are still exactly three.
 		expect(got.more).toEqual([1, 1, 1, 1, 1]);
-		expect(got.rm).toEqual([1, 0, 0, 0, 0]);   // 지우기 (x) only on the draft that waits
+		expect(got.rm).toEqual([0, 0, 0, 0, 0]);   // the waiting draft's button row has 보내지 않기: no second way to it (x) in the head
 		expect(got.rowCount).toBe(0);
 		expect(got.over).toBe(false);
 		expect(got.rowRole).toEqual(["button", 0]);

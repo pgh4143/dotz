@@ -6,6 +6,12 @@
 const RQ_APPS = { mail: ["메일", "mail"], kakao: ["카카오톡", "chat"], instagram: ["인스타그램", "chat"], youtube: ["유튜브", "chat"], site: ["웹사이트 댓글", "chat"] };
 const RQ_LINES = 6;
 const RQ_OPEN = new Set();   // card keys whose long body was unfolded (펼치기); kept across repaints
+// A press waits for its answer in the card itself: rqPress = the action in flight (its button says so, the others stay off in place), rqFail = the line a failed
+// action leaves right above the buttons (never a toast over the card's rows). Both are keyed by rqFk (30-replies.js): a notice by its id, any other draft by its key.
+const rqPress = new Map(), rqFail = new Map();
+const RQ_PRESS = { send: "보내는 중…", edit: "고치는 중…", drop: "처리하는 중…" };
+const rqNtKey = n => `nt:${n.id}`;
+const rqFailOf = (e, act) => ({ text: `${e instanceof TypeError ? "연결이 끊겨 " : ""}${act === "send" ? "보내지 못했어요 · 다시 보내기" : "처리하지 못했어요 · 다시 눌러 주세요"}`, why: e instanceof TypeError ? "" : String((e && e.message) || "") });
 // The app key of an instance id ("mail-2" -> "mail", a peer's "kakao~h1" -> "kakao").
 const rqBase = app => String(app || "").split("~")[0].split("-")[0];
 const rqAppName = app => (RQ_APPS[rqBase(app)] || [""])[0];
@@ -42,7 +48,7 @@ function rqBodyNode(key, b) {
 // The three actions, the same words everywhere. A missing handler leaves its button disabled; `busy` disables all three. a.manual (a mail draft's 직접 수정)
 // stands at the right end of the row.
 function rqActsNode(a) {
-  const b = (cls, k, text, fn) => el("button", { class: cls, type: "button", "data-k": k, disabled: !!a.busy || !fn, text, onclick: fn });
+  const b = (cls, k, text, fn) => el("button", { class: cls, type: "button", "data-k": k, disabled: !!a.busy || !fn, text: a.busy && a.press === k ? RQ_PRESS[k] : text, onclick: fn });
   return el("div", { class: "dr-act dr-row rq-acts" }, b("btn sm dr-send", "send", "보내기", a.send), b("btn tonal sm", "edit", "고치기", a.edit), b("btn text sm dr-drop", "drop", a.dropText || "보내지 않기", a.drop), a.manual ? rqManualBtn(a.manual, a.busy) : null);
 }
 const rqManualBtn = (fn, busy) => el("button", { class: "btn text sm rq-manual", type: "button", "data-k": "manual", "aria-label": "직접 수정", disabled: !!busy, onclick: fn }, icon("pencil"), el("span", { text: "직접 수정" }));
@@ -108,14 +114,14 @@ function rqMailOriginal(dr, t) {
 function rqMailParts(dr, o) {
   const m = String(o.t || "").startsWith("mail:") ? MAILS.get(o.t) : null, b = dr.brief || {}, who = (m && mailSender(m.from)) || rqRcptName(dr.to);
   return { cls: "rq-ml", head: { app: "mail", who, src: o.src ?? "메일", ic: "mail", pc: o.pc || "", at: o.at || null, tail: o.tail || [] }, original: rqMailOriginal(dr, o.t),
-    brief: b.summary || (!o.seen && (b.todo || b.questions)) ? el("div", { class: "rq-brief" }, b.summary ? el("div", { class: "rq-sumline", text: b.summary }) : null, o.seen ? null : mailLinesNode(b.todo, b.questions)) : null, recv: draftRecvFold(dr, { t: o.t, edit: o.edit }), subject: dr.subject,
-    attach: draftFilesNode(dr, { t: o.t, edit: o.edit, warn: o.warn }) };
+    brief: b.summary || (!o.seen && (b.todo || b.questions)) ? el("div", { class: "rq-brief" }, b.summary ? el("div", { class: "rq-sumline", text: b.summary }) : null, o.seen ? null : mailLinesNode(b.todo, b.questions)) : null, recv: draftRecvFold(dr, { t: o.t, edit: o.edit, hold: o.hold }), subject: dr.subject,
+    attach: draftFilesNode(dr, { t: o.t, edit: o.edit, warn: o.warn, hold: o.hold }) };
 }
 // The card. c: { key, cls, attrs, head (rqHeadNode), label + labelCls (a sub-head such as "답장 초안 · 메시지 2개"), to: [label, value],
 // recv (a mail draft's own 받는이·참조 rows, 10-decision-card.js draftToNode; given instead of `to`), subject,
 // original: {who, text} (what the draft answers), body, attach (a draft's attachments / attachmentsNone / cannotAttach, or the caller's own files node),
 // extra (nodes under the body: the mail that goes along), then one of: status (a line such as 고치는 중…), revise (rqReviseNode or the caller's own),
-// acts (rqActsNode) }.
+// acts (rqActsNode: { send, edit, drop, manual, busy, press }), fail ({ text, why }: the line above the buttons after a failed action) }.
 function rqCard(c) {
   const foot = c.sent ? rqSentNode(c.sentAt) : c.status ? el("div", { class: "kk-st", role: "status", text: c.status }) : c.revise ? c.revise : c.acts ? rqActsNode(c.acts) : null;
   const att = c.bare ? null : c.attach && c.attach.nodeType ? c.attach : rqAttachNode(c.attach || {});
@@ -127,7 +133,8 @@ function rqCard(c) {
     c.label ? el("div", { class: c.labelCls || "rq-lb", text: c.label }) : null,
     c.to ? (cm ? null : el("div", { class: "rq-to dr-to" }, el("span", { class: "dr-k", text: c.to[0] }), el("span", { class: "dr-chip", text: c.to[1] || "-" }))) : c.recv || null,   // a mail keeps its 받는이 rows
     c.subject ? el("div", { class: "dr-sub rq-sub", text: c.subject }) : null,
-    rqBodyNode(c.key, c.body), att, ...(c.extra || []).filter(Boolean), foot);
+    rqBodyNode(c.key, c.body), att, ...(c.extra || []).filter(Boolean),
+    c.fail ? el("div", { class: "rq-fail", role: "alert", title: c.fail.why || "", text: c.fail.text }) : null, foot);
 }
 // 보냈어요 in the card's own foot: the action row's place, so nothing below moves (the landing demo card's 보냈어요 · 방금).
 const rqSentNode = (at = "방금") => el("div", { class: "rq-sent", role: "status", "data-state": "send" }, icon("check"), el("span", { text: "보냈어요" }), el("span", { class: "rq-sent-at", text: `· ${at}` }));
@@ -156,7 +163,7 @@ function draftRecvFold(d, o = {}) {
 // reply card's parts (10-reply-card.js rqMailParts) straight on the sheet and the choices in the footer. Only the body scrolls.
 function mailSheetBody(dc, d, st, warnBox) {
   const open = String(dc.t || "").startsWith("mail:") ? el("button", { class: "btn text rq-open", type: "button", "data-k": "open", text: "열기", onclick: () => { dc.close(); go("monitoring", `c:${dc.t}`); } }) : null;
-  const p = rqMailParts(d, { t: dc.t, at: dc.at, edit: !st, warn: warnBox, tail: [open] });
+  const p = rqMailParts(d, { t: dc.t, at: dc.at, edit: true, hold: !!st, warn: warnBox, tail: [open] });   // sending: the rows stay where they are, off, so nothing under them moves
   return el("div", { class: "fs-body rq-sb", tabindex: "0", role: "region", "aria-label": "보낼 내용" },
     d.recipientWarning ? el("div", { class: "dr-warn dc-rw", role: "alert" }, el("span", { text: `받는이 확인: ${d.recipientWarning}` })) : null, decideNode(d), draftRuleNode(d),
     rqCard({ key: dc.key, ...p, body: { node: draftBodyNode(d.body, "dc-dr-b"), full: true }, extra: [draftOriginNode(d)] }));

@@ -138,12 +138,13 @@ describe.each(MACHINES)("mail drafts of %s", (_label, px, item, side) => {
 		await pick(v, "all");
 		await Bun.write(join(SHOTS, `list-${tag}.png`), await v.screenshot());
 
-		// 지우기 on the waiting draft = 보내지 않기, one answer to the computer that holds it
+		// 보내지 않기 on the waiting draft, pressed twice: one answer to the computer that holds it
 		await pick(v, "pending");
-		await waitFor(v, `document.querySelector('#mon-tl [data-nid="${px}pend"] .dr-rm')`);
+		await waitFor(v, `document.querySelector('#mon-tl [data-nid="${px}pend"] .rq-acts [data-k="drop"]')`);
+		expect(await q<number>(v, `return document.querySelectorAll('#mon-tl [data-nid="${px}pend"] .dr-rm').length`)).toBe(0);   // the button row has 보내지 않기: no second way in the head
 		await Bun.write(join(SHOTS, `pending-${tag}.png`), await v.screenshot());
 		const dropped = nextPost();
-		await run(v, `document.querySelector('#mon-tl [data-nid="${px}pend"] .dr-rm').click()`);
+		await run(v, `const b = document.querySelector('#mon-tl [data-nid="${px}pend"] .rq-acts [data-k="drop"]'); b.click(); b.click()`);   // a double press
 		await dropped;
 		await waitFor(v, `!document.querySelector('#mon-tl [data-nid="${px}pend"]')`);
 		const answers = side().posts.filter(x => (px === "l-" ? x.path.endsWith("/answer") : x.path === "answer"));

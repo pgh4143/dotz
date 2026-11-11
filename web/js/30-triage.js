@@ -5,7 +5,7 @@
 // place, and 보내기 / 고치기 / 건너뛰기 answer it and move on at once: the answer goes out in the background (POST /api/approvals) and the
 // gateway sends it itself; each card's progress comes back as approval_send events. 목록 shows every card of the group with its whole draft
 // and a pick per card; 확인한 것 보내기 answers the picked ones together. Nothing is sent that was not picked one by one.
-const TR = { groups: [], min: 3, results: {}, t: 0, h: null, key: "", label: "", items: [], i: 0, list: false, picks: {}, edits: {}, notes: {}, done: {}, org: {}, open: {}, noting: false };
+const TR = { groups: [], min: 3, results: {}, t: 0, h: null, key: "", label: "", items: [], i: 0, list: false, picks: {}, edits: {}, notes: {}, done: {}, org: {}, open: {}, busy: {}, noting: false };
 const trK = c => `${c.to}|${c.ref}`;
 const trQ = c => draftQ(c.question);
 
@@ -37,7 +37,7 @@ function trOpen(key, ref) {
   const g = TR.groups.find(x => x.key === key), cards = trCards(key);
   if (!cards.length) { toast("처리할 카드가 없어요"); return; }
   if (TR.h) TR.h.close(false);
-  Object.assign(TR, { key, label: g ? g.label : "전체", items: cards.slice(), list: false, picks: {}, edits: {}, notes: {}, done: {}, open: {}, noting: false });
+  Object.assign(TR, { key, label: g ? g.label : "전체", items: cards.slice(), list: false, picks: {}, edits: {}, notes: {}, done: {}, open: {}, busy: {}, noting: false });
   TR.i = Math.max(0, ref ? TR.items.findIndex(c => c.ref === ref) : 0);
   const h = fsOpen({ label: `${TR.label} 빠른 처리`, cls: "tall tr", onClose: () => { if (TR.h === h) TR.h = null; document.removeEventListener("keydown", trKey); } });
   TR.h = h;
@@ -120,26 +120,26 @@ async function trSaveEdits(c) {
   if (e.reply != null && e.reply.trim() && e.reply.trim() !== String(d.body || "").trim()) await api(`/api/drafts/${enc(c.ref)}/body`, "POST", { text: e.reply });
   if (d.mail && e.mail != null && e.mail.trim() && e.mail.trim() !== String(d.mail.body || "").trim()) await api(`/api/drafts/${enc(c.ref)}/body`, "POST", { text: e.mail, part: "mail" });
 }
-// Answers one card and moves on at once; the request runs behind (a failure is marked on that card, with a retry).
-function trAnswer(c, n, note) {
+// Answers one card and moves on once the gateway took the answer. While it waits, the card's buttons stay in place, disabled, and the pressed one says what is
+// happening (the 답장 확인 sheet's way); a second press is ignored. A failure keeps the owner on that card, with the reason where the buttons are and nothing counted.
+const TR_BUSY = { 1: "보내는 중…", 2: "고치는 중…", 3: "처리하는 중…" };
+async function trAnswer(c, n, note) {
   const k = trK(c);
-  if (TR.done[k] && TR.done[k].state !== "err") return;
-  TR.done[k] = { state: n === 1 ? "send" : n === 3 ? "drop" : "edit", at: Date.now() };
-  trNext();
-  (async () => {
-    try {
-      if (n === 1) await trSaveEdits(c);
-      await trPost([{ ref: c.ref, to: c.to, n, ...(note ? { note } : {}) }]);
-    } catch (err) {
-      TR.done[k] = { state: "err", text: err.message };
-      if (TR.h) trPaint();
-      toast(`${trQ(c) || "카드"}: ${err.message}`, true);
-    }
-  })();
+  if (TR.busy[k] || (TR.done[k] && TR.done[k].state !== "err")) return;
+  TR.busy[k] = n;
+  trPaint();
+  let fail = null;
+  try {
+    if (n === 1) await trSaveEdits(c);
+    await trPost([{ ref: c.ref, to: c.to, n, ...(note ? { note } : {}) }]);
+  } catch (err) { fail = err; }
+  delete TR.busy[k];
+  TR.done[k] = fail ? { state: "err", text: fail.message } : { state: n === 1 ? "send" : n === 3 ? "drop" : "edit", at: Date.now() };
+  if (fail || !TR.items[TR.i] || trK(TR.items[TR.i]) !== k) trPaint(); else trNext();
 }
 // ← / →: look at the previous / next card without answering (the last step past the end shows the summary).
 const trStep = d => { const j = TR.i + d; if (j < 0 || j > TR.items.length) return; TR.i = j; TR.noting = false; trPaint(); };
-const trLocked = c => { const s = TR.done[trK(c)]; return !!s && s.state !== "err"; };
+const trLocked = c => { const s = TR.done[trK(c)]; return !!TR.busy[trK(c)] || (!!s && s.state !== "err"); };
 
 function trKey(ev) {
   if (!TR.h || FS[FS.length - 1] !== TR.h || document.querySelector("dialog[open]:not([data-leaving])")) return;
@@ -173,7 +173,7 @@ function trEditSubmit(c) {
 /* ---- drawing ---- */
 function trPaint() {
   if (!TR.h) return;
-  const box = TR.h.box, n = TR.items.length, handled = TR.items.filter(c => TR.done[trK(c)]).length;
+  const box = TR.h.box, n = TR.items.length, handled = TR.items.filter(c => TR.done[trK(c)] && TR.done[trK(c)].state !== "err").length;   // a failed answer is not counted
   const bar = el("div", { class: "tr-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(n), "aria-valuenow": String(handled), "aria-label": "처리한 카드" }, el("span", { style: `width:${n ? (handled / n) * 100 : 0}%` }));
   const pos = TR.i < n ? `${TR.i + 1}/${n}` : `${n}/${n}`;
   const head = fsHead([el("span", { class: "fs-ey" }, `${TR.label} · 빠른 처리`), el("h2", { class: "fs-t tr-pos" }, TR.list ? `목록 ${n}건` : pos, el("span", { class: "tr-sum", text: ` · 처리 ${handled}건` })), bar], { close: () => TR.h && TR.h.close() });
@@ -194,7 +194,9 @@ function trOriginal(c) {
   }
   if (!o) return null;
   const who = o.kind === "mail" ? [o.from, o.subject].filter(Boolean).join(" · ") : [o.author, o.post && o.post.title].filter(Boolean).join(" · ");
-  return el("div", { class: "tr-org" }, el("div", { class: "tr-k", text: o.kind === "mail" ? "받은 메일" : "원댓글" }), who ? el("div", { class: "tr-who", text: who }) : null, el("div", { class: "tr-otx", text: String((o.kind === "mail" ? mailOwnBody(o.text, o.subject) : o.text) || "").slice(0, o.kind === "mail" ? 600 : 2000) }));
+  const text = String((o.kind === "mail" ? mailOwnBody(o.text, o.subject) : o.text) || "").slice(0, o.kind === "mail" ? 600 : 2000);
+  if (!who && !text.trim()) return null;   // an original with nothing in it draws no box
+  return el("div", { class: "tr-org" }, el("div", { class: "tr-k", text: o.kind === "mail" ? "받은 메일" : "원댓글" }), who ? el("div", { class: "tr-who", text: who }) : null, text.trim() ? el("div", { class: "tr-otx", text }) : null);
 }
 // A comment draft: the comment it answers, with the post, who and when (KST) and the linked-mail mark, right above the draft.
 function trCommentCtx(c) {
@@ -208,32 +210,33 @@ function trCommentCtx(c) {
 const trFiles = files => (files && files.length ? el("div", { class: "tr-files" }, ...files.map(f => el("span", { class: "tr-file", text: f.size ? `${f.name} (${f.size})` : f.name }))) : null);
 
 function trOneView(c) {
-  const k = trK(c), d = c.draft || {}, st = trState(c), gone = dcGone(c.to), locked = gone || (!!st && st.state !== "err");
+  const k = trK(c), d = c.draft || {}, st = trState(c), gone = dcGone(c.to), busy = TR.busy[k] || 0, locked = gone || !!busy || (!!st && st.state !== "err");
   const e = (TR.edits[k] ||= {});
   // A draft the gateway cannot change in place (a block a session wrote) is read here and goes back to the session with 고치기.
   const area = (part, value) => c.editable === false ? draftBodyNode(value, "dc-dr-b") : el("textarea", { class: "tr-ta", rows: "6", "aria-label": part === "mail" ? "함께 보낼 메일 본문" : "보낼 글", disabled: locked, oninput: ev => { e[part] = ev.target.value; trSendLabel(c); } }, value);
   const body = el("div", { class: "fs-body tr-body", tabindex: "-1" },
     el("div", { class: "tr-q" }, el("span", { text: trQ(c) || "이대로 보낼까요?" }), trChip(c)),
     decideNode(d),
-    el("div", { class: "tr-meta" }, d.toLabel ? el("span", { class: "tr-to" }, el("b", { text: d.toLabel }), ` ${d.to || ""}`) : null, d.subject ? el("span", { class: "tr-to" }, el("b", { text: "제목" }), ` ${d.subject}`) : null, d.rule ? el("span", { class: "tr-rule", text: `규칙: ${d.rule}` }) : null, !c.sendable ? el("span", { class: "tr-rule", text: "봇이 보내요" }) : null),
+    el("div", { class: "tr-meta" }, d.toLabel ? el("span", { class: "tr-to" }, el("b", { text: d.toLabel }), ` ${d.to || ""}`) : null, d.subject ? el("span", { class: "tr-to" }, el("b", { text: "제목" }), ` ${d.subject}`) : null, d.rule ? el("span", { class: "tr-rule", text: `규칙: ${d.rule}` }) : null, !c.sendable ? el("span", { class: "tr-rule", text: "보내기를 누르면 봇이 보내요" }) : null),
     c.comment ? trCommentCtx(c) : trOriginal(c),
     c.info && c.info.length ? el("ul", { class: "tr-info" }, ...c.info.map(l => el("li", { text: l }))) : null,
     d.warning ? el("div", { class: "tr-warn", text: d.warning }) : null,
     el("label", { class: "tr-k", text: d.mail ? "답글" : "보낼 글" }), area("reply", e.reply ?? d.body ?? ""), trFiles(d.attachments),
-    d.mail ? el("div", { class: "tr-mail" }, el("div", { class: "tr-k", text: "함께 보낼 메일" }), el("div", { class: "tr-meta" }, el("span", { class: "tr-to" }, el("b", { text: "받는이" }), ` ${d.mail.to || ""}`), d.mail.subject ? el("span", { class: "tr-to" }, el("b", { text: "제목" }), ` ${d.mail.subject}`) : null), area("mail", e.mail ?? d.mail.body ?? ""), trFiles(d.mail.attachments)) : null,
-    st && st.state === "err" ? el("div", { class: "tr-warn", text: `${TR_ST.err}: ${st.text || ""}` }) : null);
+    d.mail ? el("div", { class: "tr-mail" }, el("div", { class: "tr-k", text: "함께 보낼 메일" }), el("div", { class: "tr-meta" }, el("span", { class: "tr-to" }, el("b", { text: "받는이" }), ` ${d.mail.to || ""}`), d.mail.subject ? el("span", { class: "tr-to" }, el("b", { text: "제목" }), ` ${d.mail.subject}`) : null), area("mail", e.mail ?? d.mail.body ?? ""), trFiles(d.mail.attachments)) : null);
   const foot = el("div", { class: "fs-ft tr-ft" });
-  if (TR.noting && !locked) {
+  // a failed answer: the reason stands where the buttons are (the card stays, its head says which answer failed)
+  if (st && st.state === "err") foot.append(el("div", { class: "tr-hint tr-fail", role: "alert", text: st.text ? `${st.text} · 다시 눌러 주세요` : "다시 눌러 주세요" }));
+  if (TR.noting && !locked || busy === 2) {
     foot.append(el("textarea", { class: "dc-note tr-note", rows: "3", placeholder: "어떻게 고칠까요? 봇이 고쳐서 다시 물어봐요", "aria-label": "어떻게 고칠지", oninput: ev => { TR.notes[k] = ev.target.value; } }, TR.notes[k] || ""),
-      el("div", { class: "tr-acts" }, el("button", { class: "btn tr-b tr-go", type: "button", onclick: () => trEditSubmit(c) }, "고쳐 달라고 하기"), el("button", { class: "btn text tr-b", type: "button", onclick: () => { TR.noting = false; trPaint(); } }, "취소")));
+      el("div", { class: "tr-acts" }, el("button", { class: "btn tr-b tr-go", type: "button", disabled: !!busy, onclick: () => trEditSubmit(c) }, busy ? TR_BUSY[2] : "고쳐 달라고 하기"), el("button", { class: "btn text tr-b", type: "button", disabled: !!busy, onclick: () => { TR.noting = false; trPaint(); } }, "취소")));
   } else {
     // The reply card's three actions in its order (the prototype's #triage): 보내기, 고치기, then the quiet 보내지 않기.
     foot.append(el("div", { class: "tr-acts" },
-      el("button", { class: "btn tr-b tr-go", type: "button", disabled: locked, onclick: () => trAnswer(c, 1) }, trSendText(c)),
-      el("button", { class: "btn tonal tr-b", type: "button", disabled: locked, onclick: () => { TR.noting = true; trPaint(); } }, "고치기 …"),
-      el("button", { class: "btn text tr-b", type: "button", disabled: locked, onclick: () => trAnswer(c, 3) }, "보내지 않기")),
+      el("button", { class: "btn tr-b tr-go", type: "button", disabled: locked, onclick: () => trAnswer(c, 1) }, busy === 1 ? TR_BUSY[1] : trSendText(c)),
+      el("button", { class: "btn tonal tr-b", type: "button", disabled: locked, onclick: () => { TR.noting = true; trPaint(); } }, "고치기"),
+      el("button", { class: "btn text tr-b", type: "button", disabled: locked, onclick: () => trAnswer(c, 3) }, busy === 3 ? TR_BUSY[3] : "보내지 않기")),
       ...(gone ? [el("div", { class: "tr-hint", text: DC_GONE })] : []),   // foot.append turns a null into the word "null"
-      el("div", { class: "tr-nav" }, el("button", { class: "btn text sm", type: "button", "aria-label": "이전 카드", disabled: TR.i === 0, onclick: () => trStep(-1) }, "‹ 이전"), el("button", { class: "btn text sm", type: "button", "aria-label": "다음 카드", onclick: () => trStep(1) }, "다음 ›")),
+      el("div", { class: "tr-nav" }, el("button", { class: "btn text tr-b", type: "button", "aria-label": "이전 카드", disabled: TR.i === 0, onclick: () => trStep(-1) }, "이전"), el("button", { class: "btn text tr-b", type: "button", "aria-label": "다음 카드", onclick: () => trStep(1) }, "다음")),
       el("div", { class: "tr-keys", text: "Enter·1 보내기 · 2·E 고치기 · 3·X 보내지 않기 · ← → 이전·다음 · L 목록" }));
   }
   return [body, foot];

@@ -263,7 +263,7 @@ function draftFilesNode(d, o = {}) {
     // Files named in the message that dotz did not stage itself: the names stand, with a plain line saying the session attaches them.
     const named = !!st && st.tracked === false && Array.isArray(d.attachments) && d.attachments.length > 0;
     const fl = live ? st.files : Array.isArray(d.attachments) ? d.attachments : [];
-    const can = live && st.editable && o.edit !== false, busy = !!DRF.busy[ref];
+    const can = live && st.editable && o.edit !== false, busy = !!DRF.busy[ref] || !!o.hold;   // o.hold: the sheet is sending; the rows stay, off
     const warn = d.warning && !fl.length;
     const noSend = live && st.editable && !st.canAttach && (fl.length || d.warning);
     const issues = live && st.attachIssues ? st.attachIssues : d.attachIssues || [];
@@ -319,7 +319,7 @@ function draftToNode(d, o = {}) {
   // Which computer holds the draft: a peer's rows change there (the same map the 첨부 줄 uses for its own requests).
   if (ref && o.t !== undefined) DRF.pc[ref] = DRR.pc[ref] = o.t ? pqPc(o.t) : null;
   const box = el("div", { class: "dr-recv" });
-  const busy = () => !!DRR.busy[ref];
+  const busy = () => !!DRR.busy[ref] || !!o.hold;
   const run = async job => {
     if (!ref || DRR.busy[ref]) return;
     DRR.busy[ref] = true; paint();
@@ -493,7 +493,7 @@ function renderSheet(box, dc, picks, step) {
     const opts = dc.blocks[0].options, oe = opts.find(o => o.label === DRAFT_EDIT);
     const manual = oe && !st ? () => { delete DC.note[dc.key]; DC.edit[dc.key] = { bi: 0, opt: oe, manual: true }; paintDecision(); } : null;
     if (mail) {   // the reply card's row: 보내기 filled, 고치기 tonal, the rest as text, 직접 수정 at the right end
-      const bs = st === "undo" ? [dcUndoBtn(dc, "btn sm dr-send")] : opts.map((o, i) => el("button", { class: i === 0 ? "btn sm dr-send" : o.label === DRAFT_EDIT ? "btn tonal sm" : `btn text sm${o.label === "보내지 않기" ? " dr-drop" : ""}`, type: "button", "data-n": String(o.n), disabled: !!st, onclick: () => pickOption(dc, 0, o) }, o.label));
+      const bs = st === "undo" ? [dcUndoBtn(dc, "btn sm dr-send")] : opts.map((o, i) => el("button", { class: i === 0 ? "btn sm dr-send" : o.label === DRAFT_EDIT ? "btn tonal sm" : `btn text sm${o.label === "보내지 않기" ? " dr-drop" : ""}`, type: "button", "data-n": String(o.n), disabled: !!st, onclick: () => pickOption(dc, 0, o) }, st && picks[0] && picks[0].n === o.n ? dcStText(dc, st) : o.label));
       foot.append(el("div", { class: "dr-act dr-row rq-acts" }, ...bs, ...(manual ? [rqManualBtn(manual)] : [])));
     } else {
     const btns = st === "undo" ? [dcUndoBtn(dc, "dc-act main")] : opts.map((o, i) => el("button", { class: `dc-act${i === 0 ? " main" : o.label === DRAFT_EDIT ? " alt" : ""}${picks[0] && picks[0].n === o.n ? " on" : ""}`, type: "button", disabled: !!st, onclick: () => pickOption(dc, 0, o) }, o.label));
@@ -508,9 +508,9 @@ function renderSheet(box, dc, picks, step) {
       for (const o of blk.options) foot.append(choiceRow(dc, step, o, picks, st));
     }
   }
-  const sn = dcStNode(dc, st); if (sn) foot.append(sn);
-  if (org) col.append(body, foot);
-  if (!paintKeep(box, org ? [head, org.bar, el("div", { class: "od-stage" }, org.orig, col)] : [head, ...(body ? [body] : []), foot], dcAgain(box))) return;
+  const sn = mail && st && st !== "undo" ? null : dcStNode(dc, st); if (sn) foot.append(sn);
+  if (org) col.append(body);   // the button row stays outside the sliding column: it is the same under 초안 and 원문
+  if (!paintKeep(box, org ? [head, org.bar, el("div", { class: "od-stage" }, org.orig, col), foot] : [head, ...(body ? [body] : []), foot], dcAgain(box))) return;
   if (body) body.scrollTop = top;
   const nn = $(".dc-note", box);
   if (nn && (refocus || (edit && !oldNote))) { nn.focus({ preventScroll: true }); nn.setSelectionRange(caret || nn.value.length, caret || nn.value.length); }
@@ -595,15 +595,18 @@ function syncInlineChoices() {
 }
 // A tap on a message that is no longer the pending card: answered through the notice path, so the notice and the buttons settle together.
 async function answerInline(nd, opt) {
+  if (dcSending.has(nd.id)) return false;   // a second press while the first waits sends nothing
   // An option that needs detail opens the notice sheet with its text field; nothing is sent from the row. A draft's own sheet
   // (ntDraftSheet) is the decision card, so its 고치기 field is that card's edit state.
   if (ntNeedsNote(nd, opt)) {
     if (nd.decision.draft && !nd.pc) { DC.edit[`dk:${nd.id}`] = { bi: 0, opt }; ntDraftSheet(nd); return; }
     await noticeSheetOpen(nd.pc ? nd : nd.id); ntAnswer(nd, opt); return;
   }
-  dcSending.add(nd.id); syncInlineChoices();
-  try { dcAnswerToast(nd, opt, await ntPost(nd, opt.n, undefined, undefined, opt.label)); } catch (e) { toast(e.message, true); }
-  dcSending.delete(nd.id); syncInlineChoices();
+  const fk = rqNtKey(nd), act = opt.label === "보내기" ? "send" : opt.label === "고치기" ? "edit" : "drop";
+  dcSending.add(nd.id); rqFail.delete(fk); rqPress.set(fk, act); syncInlineChoices(); let ok = true;
+  try { dcAnswerToast(nd, opt, await ntPost(nd, opt.n, undefined, undefined, opt.label)); } catch (e) { ok = false; if (nd.decision.draft) rqFail.set(fk, rqFailOf(e, act)); else toast(e.message, true); }
+  dcSending.delete(nd.id); rqPress.delete(fk); syncInlineChoices();
+  return ok;
 }
 // What a draft answered in place did, with the next step: 보냈어요 · 메일 열기 (the mail it answered), 보내지 않았어요 · 되돌리기 (the draft waits again).
 function dcAnswerToast(nd, opt, held) {

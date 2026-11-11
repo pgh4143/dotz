@@ -312,7 +312,7 @@ function draftCardNode(n, o = {}) {
   const when = ntTime(d.answered_at || n.updated || n.ts), mail = d.to.startsWith("mail:"), seen = mailLinesOpen(d.to);
   const q = ntPlain(n.title).replace(/\s*\([^()]*\)\s*$/, "");
   const editing = open && DR.edit.has(n.id), man = editing && DR.manual.has(n.id);
-  let go2 = null;
+  let go2 = null; const gone = open && dcGone(d.to);
   const ta = editing ? el("textarea", { class: man ? "dr-edit" : "dr-edit ask", rows: man ? "8" : "2", maxlength: man ? "6000" : "500", placeholder: man ? "" : DRAFT_HINT, "aria-label": man ? "직접 수정" : "고칠 내용", disabled: busy, oninput: () => { DR.note[n.id] = ta.value; if (go2) go2.disabled = !ta.value.trim(); } }) : null;
   if (ta) ta.value = DR.note[n.id] ?? (man ? drParas(dr.body).join("\n\n") : "");
   const leave = () => { DR.edit.delete(n.id); DR.manual.delete(n.id); delete DR.note[n.id]; };
@@ -328,8 +328,8 @@ function draftCardNode(n, o = {}) {
   const head = { app: mail ? "mail" : d.to, label: mail ? monInstLabel(d.to) : pcTargetName(d.to, n.pc), pc: mail && pqPc(d.to) ? pqPc(d.to).name : pqSelf(), model: dr.model || "", at: null,   // the state tag carries the time once
     ...(who ? { who, src: monInstLabel(d.to) || "메일" } : {}),
     tail: [dr.rule ? draftRuleTag(dr.rule, "dr-rule") : null, sent ? null : el("span", { class: `tag dr-st${stTone ? ` ${stTone}` : ""}`, "data-state": st, text: `${stText} · ${when}` }),
-      // 지우기 on a waiting draft is 보내지 않기: the same answer path, so the owning computer drops it once and nothing is sent
-      open && !editing && oDrop ? el("button", { class: "ib dr-rm", type: "button", title: "지우기 (보내지 않아요)", "aria-label": "초안 지우기", disabled: busy, onclick: () => { if (!busy) answerInline(n, oDrop); } }, icon("close")) : null] };
+      // x in the head is 보내지 않기 only for a card whose button row has none (its conversation is gone): otherwise it is a second way to the same thing and reads as close
+      open && !editing && oDrop && gone ? el("button", { class: "ib dr-rm", type: "button", title: "지우기 (보내지 않아요)", "aria-label": "초안 지우기", disabled: busy, onclick: () => monDraftRun(n, oDrop) }, icon("close")) : null] };
   if (editing) {
     go2 = el("button", { class: "btn", type: "button", disabled: busy || !ta.value.trim(), text: man ? "이 내용으로 고치기" : "고쳐 달라고 하기", onclick: async () => {
       const text = ta.value.trim();
@@ -339,19 +339,19 @@ function draftCardNode(n, o = {}) {
       dcSending.delete(n.id); syncInlineChoices();
     } });
   }
-  const gone = open && dcGone(d.to), acts = editing || gone ? null : open ? {
-    send: () => { if (!oSend || busy) return; if (dr.warning || (dr.attachments || []).length) drfSure(dr, d.to).then(ok => ok && answerInline(n, oSend)); else answerInline(n, oSend); },
+  const acts = editing || gone ? null : open ? {
+    send: () => { if (!oSend || busy) return; if (dr.warning || (dr.attachments || []).length) drfSure(dr, d.to).then(ok => ok && monDraftRun(n, oSend)); else monDraftRun(n, oSend); },
     edit: oEdit ? () => { DR.edit.add(n.id); redraw(); } : null,
-    drop: oDrop ? () => { if (!busy) answerInline(n, oDrop); } : null,
-    busy,
+    drop: oDrop ? () => { if (!busy) monDraftRun(n, oDrop); } : null,
+    busy, press: rqPress.get(rqNtKey(n)),
   } : null;
   // 직접 수정 (man) types the mail itself: the field stands where the body was, with only the two buttons below it.
   const revise = editing ? el("div", { class: "rq-edit" }, man ? null : el("div", { class: "dr-q2", text: "어떻게 고칠까요?" }), man ? null : ta,
     el("div", { class: "dr-act dr-row" }, go2, el("button", { class: "btn text", type: "button", disabled: busy, text: "취소", onclick: () => { leave(); redraw(); } }),
       man ? null : el("button", { class: "btn text dr-manual", type: "button", disabled: busy, onclick: () => { DR.manual.add(n.id); delete DR.note[n.id]; redraw(); } }, icon("pencil"), el("span", { text: "직접 수정" })))) : null;
   // A mail draft reads as the 답장 확인 sheet does (10-reply-card.js rqMailParts): the same head line, quote, subject, folded 받는이 and 첨부 줄, here in place.
-  const mp = mail && dr.toLabel === "받는이" ? rqMailParts(dr, { t: d.to, pc: head.pc, edit: open, tail: head.tail, seen, src: "" }) : null;
-  const card = rqCard({ key: `dr:${n.id}`, attrs: { "data-nid": n.id },
+  const mp = mail && dr.toLabel === "받는이" ? rqMailParts(dr, { t: d.to, pc: head.pc, edit: open, hold: busy, tail: head.tail, seen, src: "" }) : null;
+  const card = rqCard({ key: `dr:${n.id}`, attrs: { "data-nid": n.id }, fail: rqFail.get(rqNtKey(n)),
     ...(mp ? { ...mp, cls: `bm alert rc dr ${st} ${mp.cls}` } : { cls: `bm alert rc dr ${st}`, head, label: open ? null : q || null, labelCls: "rc-title dr-q",   // a waiting draft's title asks to confirm it: the state tag says so already
       recv, subject: dr.subject, ...(who && orig ? { original: { text: orig, ...(dr.ref ? { ref: dr.ref, t: d.to } : {}) } } : {}), brief: who ? (seen ? null : mailLinesNode(b.todo, b.questions)) : draftBriefNode(dr.brief, seen),
       // A draft always shows its 첨부 줄 right before 보내기; the files are editable while the draft waits.
@@ -656,7 +656,7 @@ function monChronoNodes(it, names) {
   else if (cut) nodes.unshift(monOlderSentinel(it.key, cut), monMoreBtn(it.key, cut, `이전 소식 ${cut}개 보기`));
   if (hidden && (hidden.size || CVP.more)) nodes.push(...mbMoreNodes(hidden.size));
   if (withMails) mbRowsPrune();
-  if (withMails) return MX.scr ? mxScreen() : [...mxTop(it), ...mailFilterBar(it.mails, it.notices.filter(ok)), ...[mbList(held ? [] : it.mails.filter(t => MAILS.has(t) && mf[2](MAILS.get(t), t)))].filter(Boolean), ...(nodes.length ? nodes : [el("div", { class: "empty", text: mailEmptyText() })]), el("div", { class: "mbox-fab-gap", "aria-hidden": "true" }), mbFab()];   // the gap keeps the last card, its 첨부 줄 included, clear of 메일 쓰기
+  if (withMails) return MX.scr ? mxScreen() : [...mxTop(it), ...mailFilterBar(it.mails, it.notices.filter(ok)), ...[mbList(held ? [] : it.mails.filter(t => MAILS.has(t) && mf[2](MAILS.get(t), t)))].filter(Boolean), ...(nodes.length ? nodes : [el("div", { class: "empty", text: mailEmptyText() })]), ...(held ? [] : [el("div", { class: "mbox-fab-gap", "aria-hidden": "true" }), mbFab()])];   // the gap keeps the last card, its 첨부 줄 included, clear of 메일 쓰기; the waiting drafts view has no round button over a card corner
   return nodes;
 }
 // A short feed (a handful of reports) reads best as the whole cards, newest first, with the machine of a peer's report; past MON_COMPACT

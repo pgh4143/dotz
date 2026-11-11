@@ -37,6 +37,7 @@
 .tr-acts { display: flex; gap: var(--sp-2); justify-content: flex-start; flex-wrap: wrap; }
 .tr-b { height: 40px; min-width: 0; padding: 0 var(--sp-4); font-size: 15px; }
 .tr-hint, .tr-keys { color: var(--fg-3); font: 400 12px/16px var(--font); }
+.tr-fail { color: var(--err); }
 .tr-note { min-height: 84px; }
 .tr-empty { align-items: center; justify-content: center; text-align: center; }
 .tr-done-t { font: 700 20px/28px var(--font); }
@@ -59,7 +60,7 @@
 .tr-rn { min-height: 40px; padding: 0 var(--sp-3); border: 0; border-radius: 10px; background: var(--ff-fill); color: var(--fg); font: 400 14px/20px var(--font); }
 .tr-rn:focus { outline: 0; box-shadow: var(--ff-ring); }
 @media (max-width: 639px) {
-  .fs-card.tr { width: 100%; height: 100%; }
+  .fs-card.tr { width: 100%; height: 100%; max-height: none; }   /* the whole screen: the desktop's max-height would stop the card short and lift its buttons off the bottom */
   .tr-keys { display: none; }
   .tr-b, .tr-go { height: 44px; padding: 0 var(--sp-4); }
   .tr-list .tr-seg { align-self: stretch; }

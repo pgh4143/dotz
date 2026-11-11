@@ -64,6 +64,8 @@
 .rq-q > .rq.busy { opacity: .6; }
 .rq-filter { display: flex; }
 .rq-open { margin-left: auto; height: 28px; padding: 0 var(--sp-2); font-size: 12px; }
+.rq-sheet .rq-hd .rc-time { display: none; }   /* the sheet's head line has room for who and where only; the time stands in the list row */
+.rq-fail { margin-top: var(--sp-2); color: var(--err); font-size: var(--fs-meta); line-height: var(--lh-meta); }   /* a failed press: above the buttons, in the card's flow */
 @media (pointer: coarse), (max-width: 639px) { .rq-q > .rq { padding: var(--sp-3); } }
 
 /* 댓글 답글 카드: 작은 아바타 + 이름과 출처가 한 줄, 댓글은 조용한 인용, 초안이 본문, 버튼은 작은 단계 하나 줄 (원칙 1·5·9) */

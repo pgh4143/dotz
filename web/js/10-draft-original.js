@@ -45,7 +45,9 @@ function orgFill(pane, d, t, retry) {
   if (pc) PQ.of.set(`mail:${m.key}`, { pc, key: m.key });   // its body and files are read from the computer that owns the mail
   const files = mailRealFiles(m.attachments);   // the body's own pictures are drawn in it, not listed as files
   // 보낸 사람 / 받는 사람 / 참조 come from the mail view's own header (30-mail-thread.js), so every place a mail is read names them the same way
-  const people = mailHeadNode({ ...m, ...mailPeople(m, m.text, m.subject) });   // no 보낸 사람 / 받는 사람 / 참조 known: no box at all
+  const pp = mailPeople(m, m.text, m.subject), blank = v => !String(v || "").replace(/[\s\-–—]+/g, "");   // a lone "-" names nobody
+  const people = mailHeadNode({ ...m, from: blank(m.from) ? "" : m.from, to: blank(pp.to) ? "" : pp.to, cc: blank(pp.cc) ? "" : pp.cc });   // no 보낸 사람 / 받는 사람 / 참조 known: no box at all
+  if (!people.childElementCount && !m.date && !m.subject && !m.html && !String(m.text || "").trim() && !files.length) { note("원문이 없어요"); return; }   // nothing known: say so, not a few empty rows
   pane.append(...[people.childElementCount ? people : null, orgRow("날짜", kstStamp(m.date)), orgRow("제목", m.subject),
     el("div", { class: "od-body" }, mailBodyNode(m.key, m.html, m.text, m.subject)),
     files.length ? el("div", { class: "od-files" }, ...files.map(({ f, i }) => el("a", { class: "dr-att", href: mailFileUrl(m.key, i), target: "_blank", rel: "noopener", title: `${f.name} 열기` },
