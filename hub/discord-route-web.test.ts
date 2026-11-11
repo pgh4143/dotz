@@ -121,8 +121,8 @@ describe.each([[390, 844], [1280, 900]] as const)("at %ipx", (width, height) => 
 		await openScreen(v);
 		await waitForView(v, `document.querySelectorAll("#discord .hs-sw[data-k]").length === 5 && document.querySelectorAll("#discord .hs-sw[data-dc]").length === 4`);
 		expect(await q<string>(v, `document.querySelector("#discord [data-ms-status], #discord .li").querySelector(":scope .tag").textContent`)).toBe("연결됨");
-		expect(await q<string>(v, `document.querySelector("#discord .li .sup").textContent`)).toBe("dotz-bot 봇으로 연결돼 있어요.");
-		expect(await q<string>(v, `document.querySelector("#discord [data-ms-connect]").textContent`)).toBe("연결");
+		expect(await q<string>(v, `document.querySelector("#discord .li .sup").textContent`)).toBe("dotz-bot");
+		expect(await q<string>(v, `document.querySelector("#discord [data-ms-connect]").textContent`)).toBe("다시 연결");
 		expect(await q<boolean>(v, `document.querySelector("#discord details[data-ms-advanced]").open`)).toBe(false);
 		expect(await q<number>(v, `document.querySelectorAll("#discord input").length`)).toBe(0);
 		await click(v, "#discord details[data-ms-advanced] summary");

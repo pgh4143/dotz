@@ -6,11 +6,11 @@ function budgetCard(B) {
     el("button", { class: "btn text inrow", type: "button", onclick: () => budgetDialog() }, "설정")));
   const src = B.source === "admin" ? "콘솔 기준 (관리자 키)" : "이 앱 사용분 추정";
   if (B.limit_usd) {
-    const pct = B.pct || 0, tone = pct >= 80 ? "warn" : "";
+    const pct = B.pct || 0, tone = pct >= 80 ? "warn" : "", left = Math.max(0, Math.min(100, 100 - pct));   // the bar says what is left, as the subscription cards do
     card.append(el("div", { class: "lim" },
-      el("div", { class: "kv" }, el("span", { class: "k", text: `${abUsd(B.spent_usd)} / ${abUsd(B.limit_usd)}` }), el("span", { style: "font-weight:500", text: `${Math.round(pct)}% 사용` })),
-      el("div", { class: `bar ${tone}`, role: "progressbar", "aria-valuenow": Math.round(Math.min(100, pct)), "aria-valuemin": 0, "aria-valuemax": 100 }, el("i", { style: `width:${Math.min(100, pct).toFixed(1)}%` })),
-      el("div", { class: "kv", style: "margin-top:var(--sp-1)" }, el("span", { class: "v", text: `${kstStamp(B.resets_at)} 초기화 (KST)` }), el("span", { class: "v", text: rel(B.resets_at) }))));
+      el("div", { class: "kv" }, el("span", { class: "k", text: `${abUsd(B.spent_usd)} / ${abUsd(B.limit_usd)}` }), el("span", { style: "font-weight:500", text: `${Math.round(left)}% 남음` })),
+      el("div", { class: `bar ${tone}`, role: "progressbar", "aria-valuenow": Math.round(left), "aria-valuemin": 0, "aria-valuemax": 100 }, el("i", { style: `width:${left.toFixed(1)}%` })),
+      el("div", { class: "kv", style: "margin-top:var(--sp-1)" }, el("span", { class: "v", text: `${kstStamp(B.resets_at)} (KST)` }), el("span", { class: "v", text: rel(B.resets_at) }))));
   } else {
     card.append(el("div", { class: "lim" }, el("div", { class: "kv" }, el("span", { class: "k", text: `이번 달 ${abUsd(B.spent_usd)}` }), el("span", { class: "v", text: "월 한도 없음" })),
       el("div", { class: "sup", text: "콘솔에서 정한 월 한도를 설정에 입력하면 사용 비율을 보여줘요." })));

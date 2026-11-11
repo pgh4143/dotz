@@ -266,8 +266,8 @@ function mnDialog() {
 }
 const mnRow = () => MN.info && el("button", { class: "li tap", type: "button", onclick: mnDialog },
   el("span", { class: "lead" }, icon("term")),
-  el("span", { class: "tx" }, el("div", { class: "hd", text: "이 컴퓨터 이름" }), el("div", { class: "sup", text: "다른 컴퓨터의 목록에 이 이름으로 보여요" })),
-  el("span", { class: "li-end" }, MN.info.name ? el("span", { class: "tag", text: MN.info.name }) : null, icon("chev", "chev")));
+  el("span", { class: "tx" }, el("div", { class: "hd", text: "이 컴퓨터 이름" }), MN.info.name ? el("div", { class: "sup", text: MN.info.name }) : null),
+  el("span", { class: "li-end" }, icon("chev", "chev")));
 mnLoad();
 
 $("#brand").append(el("span", { class: "brand-c", id: "brand-c", hidden: true }, icon("drop")));

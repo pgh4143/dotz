@@ -66,6 +66,7 @@ button.hm-sh { cursor: pointer; }
   #harness .hm-bar > .seg { flex: 1 1 100%; }
   #harness .hm-bar > .seg button { flex: 1 1 0; }
   #harness .hm-bar > .btn { flex: 1 1 0; padding: 0 var(--sp-3); }
+  #harness .hm-bar > .btn[data-hm-refresh] { flex: none; }
   .hm-simple > .hm-st > .hm-ar, .hm-simple > .hm-st:nth-of-type(n) > .hm-ar { top: calc(var(--hm-gap) / -2); left: 32px; margin: var(--hm-ar-h) 0 0 var(--hm-ar-h); transform: rotate(90deg); }
   /* the vertical connector: a hairline through the gap behind the chevron */
   .hm-simple > .hm-st + .hm-st::before { content: ""; position: absolute; top: calc(var(--hm-gap) * -1); left: 31px; width: 2px; height: var(--hm-gap); background: var(--line-2); }
@@ -149,7 +150,7 @@ textarea.fi { display: block; height: auto; padding: var(--sp-2) var(--sp-3); li
 @media (min-width: 640px) { #harness.hs-open { padding-right: var(--sheet-w); } }
 /* 구성: 기능 보기 (badges on the map, 기능 목록 panel, 상세의 "여기서 작동하는 기능") */
 .btn.tonal[aria-pressed="true"] { background: var(--active); color: var(--accent); }
-[data-hm-refresh] { min-width: 112px; }
+[data-hm-refresh] { min-width: var(--btn-hit); }
 .hm-bd { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-05); }
 .bd { display: inline-flex; align-items: center; height: 16px; padding: 0 var(--sp-15); border-radius: 4px; font: 500 var(--fs-tag)/var(--lh-tag) var(--font); white-space: nowrap; }
 .bd.f { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }

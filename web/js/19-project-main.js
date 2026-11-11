@@ -538,7 +538,7 @@ function renderContext() {
     const off = !p.running && (p.status === "idle" || !!p.key);
     const t = p.key || (p.kind === "lane" ? `lane:${p.name}` : MAIN), [word, tone] = runStatus(t, off ? "idle" : p.status, targetInfo(t).ask);
     list.append(el("div", { class: "card" },
-      el("div", { class: "heads" }, el("span", { class: `dot ${tone}` }), el("span", { class: "t", text: p.kind === "orchestrator" ? botName : p.name }), el("span", { class: "sp" }), el("span", { class: `tag ${tone}`, text: word })),
+      el("div", { class: "heads" }, el("span", { class: `dot ${tone}` }), el("span", { class: "t", text: p.kind === "orchestrator" ? botName : p.name }), el("span", { class: "sp" }), word === statusKo("") ? null : el("span", { class: `tag ${tone}`, text: word })),   // a state nobody knows is left out, not named 알 수 없음
       p.model ? el("div", { class: "sup sub", text: selLabel(p.model) }) : null,
       p.running || (p.key && p.tokens > 0) ? el("div", { class: "mt8" }, ctxBar(p)) : null,
       p.running ? null : el("div", { class: "sup mt8", text: off ? "꺼져 있어요. 다음 메시지가 오면 다시 시작해요" : "실행 중이 아니에요" }),

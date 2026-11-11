@@ -184,9 +184,9 @@ function renderHarness() {
     pj ? hProjHead(pj) : null,
     el("div", { class: "sup", text: pj ? `이 프로젝트만의 지도예요. 전역 값과 다른 설정에는 '바꿈' 표시가 붙어요.` : hDetail ? "점선 카드는 곁에서 돕는 시스템이에요." : `큰 카드가 메시지가 흐르는 길이에요. 작은 칩은 함께 실행되는 시스템·파일이에요.` }),
     onlySeg,
-    FC && !pj ? el("button", { class: "btn tonal sm", type: "button", "aria-pressed": String(hFeat), title: "각 카드에 강제(실선)·권고(점선) 기능 수를 붙여요", onclick: () => { hFeat = !hFeat; try { localStorage.setItem("dotz-hfeat", hFeat ? "1" : "0"); } catch {} renderHarness(); } }, "기능 보기") : null,
     el("button", { class: "btn tonal sm", type: "button", "aria-pressed": String(hDetail), title: "모든 시스템과 연결선을 한 화면에 그려요", onclick: () => { hDetail = !hDetail; try { localStorage.setItem("dotz-hdetail", hDetail ? "1" : "0"); } catch {} renderHarness(); } }, "자세히"),
-    el("button", { class: "btn tonal sm", type: "button", "data-hm-refresh": "", onclick: ev => busy(ev.currentTarget, async () => { await loadHarness(); hFlash($("#harness [data-hm-refresh]"), "새로 불러왔어요"); }) }, "새로고침"),
+    FC && !pj ? el("button", { class: "btn tonal sm", type: "button", "aria-pressed": String(hFeat), title: "각 카드에 강제(실선)·권고(점선) 기능 수를 붙여요", onclick: () => { hFeat = !hFeat; try { localStorage.setItem("dotz-hfeat", hFeat ? "1" : "0"); } catch {} renderHarness(); } }, "기능 보기") : null,
+    el("button", { class: "btn tonal sm", type: "button", "data-hm-refresh": "", title: "새로고침", "aria-label": "새로고침", onclick: ev => busy(ev.currentTarget, async () => { await loadHarness(); }) }, icon("refresh")),
     hOrigin() ? el("div", { class: "sup hm-legend" }, el("span", { class: "bd m", text: "내 설정" }), `내가 바꾼 값·파일·기능이에요. 표시가 없는 것은 기본값이에요 (${shortPath(hData())}).`) : null);
   const parts = [bar];
   const keep = box.querySelector(".hm-scroll");

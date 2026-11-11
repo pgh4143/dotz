@@ -33,9 +33,9 @@ function provRow(p, g, own) {
     : p.can_login ? el("button", { class: `btn inrow ${on ? "text" : "tonal"}`, type: "button", onclick: () => startLogin(p) }, on ? "다시 로그인" : "로그인") : null;
   const rm = (p.can_logout ?? p.removable) ? el("button", { class: "ib", type: "button", title: out, "aria-label": out, onclick: ev => busy(ev.currentTarget, () => logoutProvider(p)) }, icon("trash")) : null;
   const slot = key && g ? g.accounts[0] : null;
-  const sub = [slot && slot.label !== "API 키" ? slot.label : "", p.account || p.masked || "", p.in_use ? "지금 사용 중" : "", p.accounts > 1 ? `계정 ${p.accounts}개` : ""].filter(Boolean).join(" · ");
+  const sub = [slot && slot.label !== "API 키" ? slot.label : "", p.account ? accName(p.account) : p.masked || "", p.in_use ? "지금 사용 중" : "", p.accounts > 1 ? `계정 ${p.accounts}개` : ""].filter(Boolean).join(" · ");
   const tx = el("div", { class: "tx" }, el("div", { class: "heads" }, el("span", { class: "hd", text: own ? (key ? "API 키" : "로그인") : p.name || p.id }),
-      el("span", { class: `tag ${tone}`, text: p.auth === "oauth" ? "로그인됨" : key ? "API 키" : "연결 안 됨" })),
+      own && on ? null : el("span", { class: `tag ${tone}`, text: p.auth === "oauth" ? "로그인됨" : key ? "API 키" : "연결 안 됨" })),
     sub ? el("div", { class: "sup", text: sub }) : null,
     ...provLimits(p).map(l => el("div", { class: "prow-lim" }, el("span", { class: "k", text: limitName(l) }), bar(l), el("span", { class: "v", text: pctText(l) }))));
   return el("div", { class: "li prow", "data-prov": own ? null : p.id, "data-prov-conn": p.id },

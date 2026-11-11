@@ -176,7 +176,7 @@ describe("메신저 설정", () => {
 
 	test("every screen has one action, a closed 직접 입력, and no input outside it", async () => {
 		const v = await open(1280, 800);
-		const want = { discord: "연결", jandi: "켜기", slack: "연결", telegram: "연결" } as const;
+		const want = { discord: "다시 연결", jandi: "켜기", slack: "연결", telegram: "연결" } as const;
 		for (const [id, text] of Object.entries(want)) {
 			await run(v, `go("${id}")`);
 			await waitFor(v, `document.querySelector("#${id} [data-ms-connect]") && document.querySelector("#${id} [data-ms-status]")`);
@@ -229,7 +229,7 @@ describe("메신저 설정", () => {
 		const v = await open(1280, 800, "light", "jandi");
 		puts.length = 0;
 		await click(v, "#jandi [data-ms-connect]");
-		await waitFor(v, `document.querySelector("#jandi [data-ms-connect]").textContent === "연결"`);
+		await waitFor(v, `document.querySelector("#jandi [data-ms-connect]").textContent === "다시 연결"`);
 		expect(puts).toEqual([{ enabled: true }]);
 	}, 30_000);
 
@@ -299,7 +299,7 @@ describe("메신저 설정", () => {
 		expect(await ev<number[]>(v, `[document.querySelector("#slack [data-ms-connect]").disabled, document.querySelectorAll("#slack [data-onb-cancel]").length]`)).toEqual([true, 0]);
 		startFail = true;
 		free();
-		await waitFor(v, `document.querySelector('#slack [data-onb-state="idle"]') && !document.querySelector("#slack [data-ms-connect]").disabled`);
+		await waitFor(v, `!document.querySelector("#slack [data-onb-state]") && !document.querySelector("#slack [data-ms-connect]").disabled`);
 		expect(await ev<number>(v, `document.querySelectorAll("#slack [data-onb-error], #slack [data-onb-owner]").length`)).toBe(0);
 	}, 30_000);
 
@@ -319,7 +319,7 @@ describe("메신저 설정", () => {
 		expect(await ev<string>(v, `document.querySelector("#telegram [data-onb-url]").textContent`)).toBe("https://t.me/example");
 	}, 30_000);
 
-	test("자동 연결 leaves a live messenger, and stays for a failed run or a link still connecting", async () => {
+	test("자동 연결 leaves a live messenger, stays for a failed run, and is not drawn while nothing has started", async () => {
 		items.find(m => m.id === "jandi").state = "ok";
 		ob.jandi = { ...idle("jandi"), state: "failed", error: "웹훅을 만들지 못했어요" };
 		const v = await open(1280, 800, "light", "jandi");
@@ -327,9 +327,6 @@ describe("메신저 설정", () => {
 		ob.jandi = idle("jandi");
 		await run(v, `loadOnboarding("jandi")`);
 		await waitFor(v, `!document.querySelector("#jandi [data-onb]") && [...document.querySelectorAll("#jandi .sec")].every(x => x.textContent !== "자동 연결")`);
-		items.find(m => m.id === "jandi").state = "connecting";
-		await run(v, `loadMessengerIndex()`);
-		await waitFor(v, `document.querySelector('#jandi [data-onb-state="idle"]')`);
 	}, 30_000);
 
 	test("JANDI rooms stay read-only and 저장 sends only what changed", async () => {

@@ -8,7 +8,7 @@ const MS_AS_USER = "내 계정으로 보냅니다";
 const MSS = { items: null, fail: "", asked: false, loading: false, page: null };
 const msItem = id => (MSS.items || []).find(x => x.id === id) || null;
 const msTag = m => !m ? ["", ""] : !m.configured ? ["설정 안 됨", "warn"] : m.state === "error" ? ["연결 안 됨", "err"] : ["연결됨", "ok"];
-const msConnectLabel = m => (!m || !m.configured || m.error ? "연결" : !m.enabled ? "켜기" : "연결");
+const msConnectLabel = m => (!m || !m.configured || m.error ? "연결" : !m.enabled ? "켜기" : "다시 연결");
 const msKind = k => (MS_KINDS.find(x => x[0] === k) || [k, k])[1];
 const msAgo = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? "방금" : s < 3600 ? `${Math.floor(s / 60)}분 전` : s < 86400 ? `${Math.floor(s / 3600)}시간 전` : `${Math.floor(s / 86400)}일 전`; };
 const msPage = id => {
@@ -70,10 +70,9 @@ async function loadMessengerSettings(id) {
 function msLine(id, m, s) {
   if (m && m.error) return m.error;
   if (!m) return "";
-  if (!m.configured) return "아직 연결되지 않았어요. 연결을 누르면 자동으로 설정해요.";
+  if (!m.configured) return "연결을 누르면 자동으로 설정해요.";
   if (!m.enabled) return "설정은 돼 있어요. 켜기를 누르면 알림을 보내요.";
-  if (id === "jandi" && s && s.rooms) return `연결돼 있어요 · 방 ${s.rooms.items.length}개`;
-  return "연결돼 있어요.";
+  return id === "jandi" && s && s.rooms ? `방 ${s.rooms.items.length}개` : "";   // the tag beside it already says 연결됨
 }
 // JANDI's 나와의 대화 login: one row, every word from settings(); 다시 연결 (lost) is the lead, the other states offer a small button.
 function msSelfChatRow(id, s) {
@@ -192,26 +191,30 @@ function renderMessenger(id) {
   const s = p.s, [tag, tone] = m ? msTag(m) : ["", ""], c = s.self_chat;
   // With the login row on screen the status row stays only for what the login row does not say, and 연결 would start the same flow a second time.
   const loginOnly = c && (!m || !m.configured || c.state === "lost"), turnOn = m && m.configured && !m.enabled && !m.error;
+  // Before it is connected the screen holds the connect card alone: switches, rooms, people and the check have nothing to show yet.
+  const fresh = Boolean(m && !m.configured), line = msLine(id, m, s);
   const nodes = [el("div", { class: "sec", text: "연결" }),
     el("div", { class: "list" },
       loginOnly ? null : el("div", { class: "li", "data-ms-status": id }, el("span", { class: "lead" }, icon("chat")),
-        el("span", { class: "tx" }, el("div", { class: "hd", text: (m && m.label) || MS_LABELS[id] }), el("div", { class: "sup", text: msLine(id, m, s) })),
+        el("span", { class: "tx" }, el("div", { class: "hd", text: (m && m.label) || MS_LABELS[id] }), line ? el("div", { class: "sup", text: line }) : null),
         liEnd(tag ? el("span", { class: `tag ${tone}`, text: tag, title: (m && m.error) || "" }) : null, c && !turnOn ? null : el("button", { type: "button", class: "btn tonal inrow", "data-ms-connect": id, disabled: OB_WAIT.has(id), onclick: ev => msConnect(id, ev.currentTarget) }, OB_WAIT.has(id) ? "연결하는 중" : msConnectLabel(m)))),
       msSelfChatRow(id, s)),
     ...obSection(id, !!m && m.state === "ok")];
-  if (s.notify) nodes.push(el("div", { class: "sec", text: "알림" }), el("div", { class: "list" },
+  if (s.notify && !fresh) nodes.push(el("div", { class: "sec", text: "알림" }), el("div", { class: "list" },
     ...notifyRows(k => s.notify[k] !== false, (k, on) => msNotifySet(id, k, on))));
-  if (s.rooms) nodes.push(el("div", { class: "sec", text: s.rooms.label }), el("div", { class: "list" },
+  if (s.rooms && !fresh) nodes.push(el("div", { class: "sec", text: s.rooms.label }), el("div", { class: "list" },
     ...s.rooms.items.map(r => el("div", { class: "li", "data-room": r.id },
       el("span", { class: "lead" }, el("span", { class: `dot ${r.last_error ? "err" : r.last_in || r.last_out ? "ok" : ""}`, "aria-hidden": "true" })),
       el("span", { class: "tx" }, el("div", { class: "hd", text: r.name }), el("div", { class: "sup", text: [`→ ${msKind(r.kind)}${r.project ? ` · ${r.project.name}` : ""}`, r.last_in ? `받음 ${msAgo(r.last_in)}` : "", r.last_out ? `보냄 ${msAgo(r.last_out)}` : ""].filter(Boolean).join(" · ") }),
         r.last_error ? el("div", { class: "dcs-err", text: r.last_error }) : null))),
     ...(s.rooms.hint ? [el("div", { class: "li" }, el("span", { class: "tx" }, el("div", { class: "sup", "data-ms-hint": "1", text: s.rooms.hint })))] : [])));
-  nodes.push(...msRelaySection(p, s));
-  if (s.allow) nodes.push(el("div", { class: "sec", text: s.allow.label }), el("div", { class: "list" },
-    ...p.allow.map(a => el("div", { class: "li", "data-allow": a }, el("span", { class: "tx" }, el("div", { class: "hd", text: a }))))));
+  if (!fresh) nodes.push(...msRelaySection(p, s));
+  // A person who is also one of the rooms shows by name with the id under it (Telegram's private chats); otherwise the id alone.
+  const who = a => (s.rooms ? s.rooms.items.find(r => String(r.id) === String(a) && r.name && r.name !== String(a)) : null);
+  if (s.allow && !fresh) nodes.push(el("div", { class: "sec", text: s.allow.label }), el("div", { class: "list" },
+    ...p.allow.map(a => { const r = who(a); return el("div", { class: "li", "data-allow": a }, el("span", { class: "tx" }, el("div", { class: "hd", text: r ? r.name : a }), r ? el("div", { class: "sup", text: a }) : null)); })));
   // 연결 확인 is one row: the result shows in this row (under the title), the action sits in .li-end.
-  nodes.push(el("div", { class: "list" }, el("div", { class: "li", "data-ms-test-row": "1" }, el("span", { class: "tx" }, el("div", { class: "hd", text: "연결 확인" }),
+  if (!fresh) nodes.push(el("div", { class: "list" }, el("div", { class: "li", "data-ms-test-row": "1" }, el("span", { class: "tx" }, el("div", { class: "hd", text: "연결 확인" }),
     p.test ? el("div", { class: "dcs-res" }, ...(p.test.length ? p.test.map(t => el("div", { class: t.ok ? "dcs-ok" : "dcs-err", text: t.ok ? `${t.name}: 보냈어요` : `${t.name}: ${t.error || "보내지 못했어요"}` })) : [el("div", { class: "sup", text: "방이 없어요" })])) : null),
   liEnd(el("button", { type: "button", class: "btn tonal inrow", "data-ms-test": "1", onclick: ev => msTest(ev.currentTarget), text: "확인" })))));
   // The toggle event arrives after a redraw can already have replaced the element, so read the live state.

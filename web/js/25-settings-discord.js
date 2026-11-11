@@ -2,7 +2,7 @@
 // and what also goes to Discord by conversation (GET/PUT /api/discord/post, hub/discord-post.ts; the per-class switches are in 설정 → 앱과 알림). The web app always gets everything; a switch that is off
 // keeps that kind on the web only. The switches show once Discord is enabled; the gateway reads the connection only at start, so a change
 // waits for a restart (restart_needed).
-const DP_KINDS = [["chat", "대화 답장", "내가 디스코드에서 묻지 않은 대화의 답"], ["lanes", "세션 보고", "세션이 올리는 진행·완료 보고"], ["worklog", "작업내역", "작업 기록 메시지"], ["web_lanes", "웹에서 시작한 세션", "웹이나 터미널에서 시작한 세션도 디스코드에 채널을 만들어요"]];
+const DP_KINDS = [["chat", "대화 답장", "내가 Discord에서 묻지 않은 대화의 답"], ["lanes", "세션 보고", "세션이 올리는 진행·완료 보고"], ["worklog", "작업내역", "작업 기록 메시지"], ["web_lanes", "웹에서 시작한 세션", "웹이나 터미널에서 시작한 세션도 Discord에 채널을 만들어요"]];
 const DP = { v: null };
 const DCS = { v: null, fail: "", err: "", chk: null, asked: false, advOpen: false,
   guild: input({ inputmode: "numeric", placeholder: "예: 123456789012345678", name: "discord-guild" }),
@@ -54,7 +54,7 @@ async function dcCheck(btn) {
   renderDiscord();
 }
 async function dcClear(btn) {
-  if (!await ask("봇 토큰 지우기", "저장된 봇 토큰을 지워요. 게이트웨이를 다시 시작하면 디스코드 연결이 끊겨요.", "지우기", true)) return;
+  if (!await ask("봇 토큰 지우기", "저장된 봇 토큰을 지워요. 게이트웨이를 다시 시작하면 Discord 연결이 끊겨요.", "지우기", true)) return;
   await busy(btn, async () => { DCS.v = await api("/api/discord/connection", "DELETE"); DCS.chk = null; DCS.err = ""; });
   renderDiscord();
 }
@@ -64,13 +64,13 @@ const dcRestart = btn => busy(btn, async () => {
 });
 function dcStatus() {
   const v = DCS.v;
-  if (!v.enabled) return ["설정 안 됨", "warn", v.has_token ? "토큰은 저장돼 있어요. 서버 ID와 내 사용자 ID까지 저장하고 게이트웨이를 다시 시작하면 연결돼요." : "아직 디스코드 봇이 연결되지 않았어요."];
-  if (v.connected) return ["연결됨", "ok", v.user ? `${v.user} 봇으로 연결돼 있어요.` : "연결돼 있어요."];
+  if (!v.enabled) return ["설정 안 됨", "warn", v.has_token ? "토큰은 저장돼 있어요. 서버 ID와 내 사용자 ID까지 저장하고 게이트웨이를 다시 시작하면 연결돼요." : "아직 Discord 봇이 연결되지 않았어요."];
+  if (v.connected) return ["연결됨", "ok", v.user || ""];   // the tag says 연결됨; the line is the bot's name only
   if (v.error) return ["연결 안 됨", "err", v.error];
   return ["연결 중", "warn", "연결하는 중이에요."];
 }
 function dcSwitch(label, on, key, onclick) {
-  return el("button", { type: "button", class: "hs-sw", role: "switch", "aria-checked": String(on), "aria-label": `${label} 디스코드로도 보내기`, "data-dc": key, onclick });
+  return el("button", { type: "button", class: "hs-sw", role: "switch", "aria-checked": String(on), "aria-label": `${label} Discord로도 보내기`, "data-dc": key, onclick });
 }
 function dcSwitches() {
   const li = (title, desc, k, on) => el("div", { class: "li" }, el("span", { class: "tx" }, el("div", { class: "hd", text: title }), el("div", { class: "sup", text: desc })), liEnd(dcSwitch(title, on, k, () => dpSet(k, !on))));
@@ -80,8 +80,8 @@ function dcSwitches() {
     // Which notice classes Discord gets (discord-post.json ask/alert/result/news/conv; 진행 follows the conversation switches below).
     el("div", { class: "sec", text: "알림" }),
     el("div", { class: "list" }, ...(on ? [...notifyRows(k => DP.v[k] !== false, dpSet, ["ask", "alert", "result", "news", "conv"]),
-      el("div", { class: "li" }, el("span", { class: "tx" }, el("div", { class: "sup", text: "디스코드에서 직접 물은 것의 답은 디스코드에도 가요." })))] : [hint()])),
-    el("div", { class: "sec", text: "대화별로 디스코드에도 보내기" }),
+      el("div", { class: "li" }, el("span", { class: "tx" }, el("div", { class: "sup", text: "Discord에서 직접 물은 것의 답은 Discord에도 가요." })))] : [hint()])),
+    el("div", { class: "sec", text: "대화별로 Discord에도 보내기" }),
     el("div", { class: "list" }, ...(on ? [...DP_KINDS.map(([k, label, desc]) => li(label, desc, k, k === "web_lanes" ? DP.v[k] === true : DP.v[k] !== false))] : [hint()])),
   ];
 }
@@ -110,11 +110,11 @@ function dcAdvanced(v) {
 }
 function renderDiscord() {
   const box = $("#discord");
-  if (!DCS.v) { clear(box).append(DCS.asked && DCS.fail ? emptyNode("디스코드 설정을 불러오지 못했어요") : emptyNode("불러오는 중")); return; }
+  if (!DCS.v) { clear(box).append(DCS.asked && DCS.fail ? emptyNode("Discord 설정을 불러오지 못했어요") : emptyNode("불러오는 중")); return; }
   const v = DCS.v, m = msItem("discord"), [, , line] = dcStatus();
   const [tag, tone] = m ? msTag(m) : v.enabled ? (v.connected ? ["연결됨", "ok"] : v.error ? ["연결 안 됨", "err"] : ["연결됨", "ok"]) : ["설정 안 됨", "warn"];
   const guide = v.enabled ? [] : [el("div", { class: "list" }, el("div", { class: "li", "data-dc-guide": "1" }, el("details", {}, el("summary", { class: "sup", text: "연결하는 방법" }), el("ol", { class: "steps" },
-    el("li", { text: "디스코드 개발자 포털(discord.com/developers)에서 새 앱을 만들고 Bot 탭에서 MESSAGE CONTENT를 켠 뒤 봇 토큰을 복사해요" }),
+    el("li", { text: "Discord 개발자 포털(discord.com/developers)에서 새 앱을 만들고 Bot 탭에서 MESSAGE CONTENT를 켠 뒤 봇 토큰을 복사해요" }),
     el("li", { text: "초대 링크로 내 서버에 봇을 초대해요 (위에서 저장한 뒤 연결 확인을 누르면 초대 링크가 나와요)" }),
     el("li", { text: "봇 토큰, 서버 ID, 내 사용자 ID를 ‘직접 입력’에 붙여 넣고 저장해요" })))))];
   // The toggle event arrives after a redraw can already have replaced the element, so read the live state.
@@ -123,7 +123,7 @@ function renderDiscord() {
   const det = msAdvanced("data-ms-advanced", DCS.advOpen, () => dcAdvanced(v));
   det.addEventListener("toggle", () => { DCS.advOpen = det.open; });
   clear(box).append(el("div", { class: "sec", text: "연결" }), el("div", { class: "list" },
-    el("div", { class: "li", "data-ms-status": "discord" }, el("span", { class: "lead" }, icon("discord")), el("span", { class: "tx" }, el("div", { class: "hd", text: "Discord 봇" }), el("div", { class: "sup", text: line })),
+    el("div", { class: "li", "data-ms-status": "discord" }, el("span", { class: "lead" }, icon("discord")), el("span", { class: "tx" }, el("div", { class: "hd", text: "Discord 봇" }), line ? el("div", { class: "sup", text: line }) : null),
       liEnd(el("span", { class: `tag ${tone}`, text: tag }), el("button", { type: "button", class: "btn tonal inrow", "data-ms-connect": "discord", disabled: OB_WAIT.has("discord"), onclick: dcConnect }, OB_WAIT.has("discord") ? "연결하는 중" : msConnectLabel(m))))),
   ...obSection("discord", m ? m.state === "ok" : v.connected), ...dcSwitches(), ...guide, det);
 }
