@@ -97,7 +97,7 @@ async function settings(width: number, height: number) {
 	await run(v, `go("settings")`);
 	await waitForView(v, `document.querySelector("#settings [data-ms-hub] .sup").textContent !== ""`);
 	await click(v, "#settings [data-ms-hub]");
-	await waitForView(v, `current === "messengers" && document.querySelectorAll("#messengers [data-ms-row]").length === 4 && document.querySelector('#messengers [data-ms-row="discord"] .dot')`);
+	await waitForView(v, `current === "messengers" && document.querySelectorAll("#messengers [data-ms-row]").length === 4 && document.querySelector('#messengers [data-ms-row="discord"] .tag')`);
 	return v;
 }
 const openScreen = async (v: View) => {

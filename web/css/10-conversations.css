@@ -110,7 +110,7 @@
 .cv-card { overflow: hidden; border-radius: var(--r-card); background: var(--card); }
 .cv-sec { margin: var(--sp-6) var(--sp-1) var(--sp-2); color: var(--fg-2); font: 600 14px/20px var(--font); }
 .cv-sec:first-child { margin-top: 0; }
-.cv-card + .cv-card { margin-top: var(--sp-6); }
+.cv-card + :is(.cv-card, .card.empty) { margin-top: var(--sp-6); }   /* the list's loading / failed card keeps the gap between groups */
 #chat-convo .cv-gh { padding: var(--sp-3) var(--sp-4) var(--sp-1); }
 #chat-convo .cv-row { min-height: 48px; padding: var(--sp-2) var(--sp-4); gap: var(--sp-3); border-radius: 0; }
 #chat-convo .cv-row + .cv-row { margin-top: 0; border-top: 1px solid var(--line); }

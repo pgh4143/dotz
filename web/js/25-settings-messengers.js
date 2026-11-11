@@ -35,7 +35,7 @@ function renderMessengers() {
     const m = msItem(id), [tag, tone] = m ? msTag(m) : ["", ""];
     const r = el("button", { class: "li tap", type: "button", onclick: () => go(id) }, el("span", { class: "lead" }, icon(id === "discord" ? "discord" : "chat")),
       el("span", { class: "tx" }, el("div", { class: "hd", text: (m && m.label) || MS_LABELS[id] }), m && m.error ? el("div", { class: "sup", text: m.error }) : null),
-      el("span", { class: "li-end" }, tag ? el("span", { class: `tag ${tone}` }, el("span", { class: `dot ${tone}`, "aria-hidden": "true" }), tag) : null, icon("chev", "chev")));
+      el("span", { class: "li-end" }, tag ? el("span", { class: `tag ${tone}`, text: tag }) : null, icon("chev", "chev")));
     r.dataset.msRow = id;
     return r;
   })));

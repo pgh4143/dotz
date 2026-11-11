@@ -143,7 +143,8 @@ for (const width of [1440, 390]) {
 			return r;
 		})))`)) as string) as [string | null, string][];
 		expect(got[0][0]).toBe("월간 점검 보고서 확인 요청");
-		expect(got[0][1]).toMatch(/^예: ‘.+’/);
+		expect(got[0][1]).toMatch(/^예: /);
+		expect(got[0][1]).not.toMatch(/[‘’…]/);   // no clipped quote of the mail inside the sample
 		expect(got[0][1]).not.toContain("비워 두면");
 		expect(got[0].slice(2)).toEqual([true, true, true]);   // the sample fits one line; the one button keeps its own width at the footer's right end
 		expect(got[1].slice(0, 2)).toEqual(["본문이 없는 메일", "예: 금요일까지 보내 드린다고 써 줘"]);

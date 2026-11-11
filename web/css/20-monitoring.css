@@ -75,6 +75,7 @@
    and its one-line summary, the status tag of the moment, and the chevron that says the row opens. The wait bar stays under the row (its
    own product feature), aligned with the text. */
 #v-monitoring > #mon-side, #v-chat > #chat-convo.mon-side { padding: 0 0 var(--sp-4); background: transparent; border-radius: 0; }
+:is(#mon-side, #chat-convo.mon-side) .mon-grp + .card.empty { margin-top: var(--sp-4); }
 :is(#mon-side, #chat-convo.mon-side) .mon-sec { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; margin: var(--sp-4) var(--sp-1) var(--sp-15); color: var(--fg-2); font: 600 13px/18px var(--font); }
 :is(#mon-side, #chat-convo.mon-side) .mon-sec:first-child { margin-top: 0; }
 :is(#mon-side, #chat-convo.mon-side) .mon-grp { min-width: 0; border-radius: var(--r-card); background: var(--card); overflow: hidden; }

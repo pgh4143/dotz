@@ -160,17 +160,15 @@ const mailDraftAsk = async (t, btn, instruction = "") => {
   if (btn) { btn.disabled = true; if (!btn.classList.contains("ib")) btn.textContent = "만드는 중…"; }
 };
 // The sample in the 초안 작성 box, made from the summary the mail already has (hub/mail.ts MailRecord.summary: 요약, 할 일), no model call:
-// the first 할 일, else the first point of 요약, quoted in one short example instruction that fits it - one line of the box. "" without a summary (the fixed hint then).
-const mailDraftCut = s => { const one = s.split(/(?<=[.!?])\s+/)[0].replace(/[.!?。]+$/, "").trim(); return one.length > 8 ? `${one.slice(0, 7).trim()}…` : one; };
+// the first 할 일, else the first point of 요약, decides which short example fits - one line of the box, with no clipped quote of the mail. "" without a summary (the fixed hint then).
 function mailDraftSample(m) {
   if (!m || !m.summary) return "";
   const skip = mailSkip(m), p = mailParts(m.summary, skip), lead = p.todo || p.points[0] || mailLines(m.summary, skip)[0] || "";
   if (!lead) return "";
-  const x = `‘${mailDraftCut(lead)}’`;
-  if (p.todo) return `예: ${x} 이번 주에 한다고 써 줘`;
-  if (/일정|회의|미팅|약속|방문|참석/.test(lead)) return `예: ${x} 그 시간 괜찮다고 써 줘`;
-  if (/요청|문의|부탁|검토|확인|회신|답변|제안/.test(lead)) return `예: ${x} 확인했다고 써 줘`;
-  return `예: ${x} 잘 받았다고 써 줘`;
+  if (p.todo) return "예: 이번 주 안에 처리하겠다고 써 줘";
+  if (/일정|회의|미팅|약속|방문|참석/.test(lead)) return "예: 그 시간 괜찮다고 써 줘";
+  if (/요청|문의|부탁|검토|확인|회신|답변|제안/.test(lead)) return "예: 확인하고 금요일까지 답한다고 써 줘";
+  return "예: 잘 받았다고 짧게 써 줘";
 }
 // 초안 작성 asks first what the reply should say (owner 2026-10-28); an empty box makes the draft on its own, as before. Above the box: the mail
 // it answers (sender, subject, the row's summary lines), so the owner writes the instruction without going back to the mail.
