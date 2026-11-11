@@ -197,12 +197,12 @@ test("390px: the chat task card's 완료 pill is a green dot plus the word, like
 	dots.forEach(hasDot);
 	expect(await q<number>(v, `return document.querySelectorAll(".cv-task .ct-pill svg").length`)).toBe(0);
 });
-test("390px: the notices screen's 실패 tag has the dot too", async () => {
+test("390px: the notices screen's 실패 tag is a word; the red lead dot of the row is the only dot", async () => {
 	const v = await page(390, "light", `go("notices")`, `NT.loaded && !!document.querySelector("#v-notices .ln .tag")`);
 	await shot(v, "6-notices-fail");
 	const dots = (await dotsOf(v, "#v-notices .ln .tag")).filter(d => d.text === "실패");
 	expect(dots.length).toBeGreaterThan(0);
-	dots.forEach(hasDot);
+	dots.forEach(d => expect(d.kind).toBe("none"));
 });
 
 /* 8. type sizes: 11-16 or 20-22px text, and a line at least 1.295 of its size */

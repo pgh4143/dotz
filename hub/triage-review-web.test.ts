@@ -76,6 +76,7 @@ describe("review queue", async () => {
 		expect(s.files).toBe("독서3부.pdf (1.2MB)");
 		expect(s.order).toBe(true);
 		expect(s.buttons).toEqual(["보내기", "고치기 …", "보내지 않기"]);
+		expect(await q<string>(v, `return document.querySelector(".tr-ft").textContent`)).not.toContain("null");   // a missing hint is no node, not the word null
 	});
 
 	test("1 sends and moves on at once, X drops, the mail card shows the incoming mail, and the end shows what happened", async () => {

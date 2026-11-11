@@ -234,7 +234,7 @@ function nyMonRow(it) {
 // The list of the 홈 card: every row, six in sight (08-home.js capLists). lead: the login rows above what is asked; tail: the rows that close it.
 function nyListNode(items, lead = [], tail = []) {
   const rows = [...lead, ...nyRows(items).map(r => r.node), ...tail];
-  return el("div", { class: "hn", "data-k": "needs", "data-cap": "needs" }, ...rows, ...(rows.length ? [] : [hcNone("답변할 항목이 없어요")]));
+  return el("div", { class: "hn", "data-k": "needs", "data-cap": "needs" }, ...rows, ...(rows.length ? [] : [hcNone(hcState() || hmState() || "답변할 항목이 없어요")]));
 }
 function attnChanged() {
   renderBars();

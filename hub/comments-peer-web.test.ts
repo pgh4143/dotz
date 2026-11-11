@@ -98,7 +98,7 @@ describe.each([[390, 844], [1280, 900]])("another computer's comment app at %ipx
 		expect(got.pcWhole).toBe(true);   // the computer in a card's head shows whole or not at all, never cut mid-word
 		expect(got.pc).toBe("· 맥미니");
 		expect(got.chip).toBe("가나");
-		expect(got.attach).toBe("첨부: 없음 · 파일을 붙일 수 없는 곳이에요");
+		expect(got.attach).toBe("");   // text only and no file left behind: no 첨부 line at all
 		expect(got.acts).toEqual(["보내기", "고치기", "보내지 않기"]);
 		expect(got.tabs).toBe(0);
 		expect(got.overflow).toBe(false);

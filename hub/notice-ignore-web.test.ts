@@ -66,6 +66,7 @@ describe("the x (무시) in a headless browser", () => {
 		// surface 3: the decision sheet header
 		await phone.evaluate(`document.querySelector(".hn .hrx .hrx-m").click()`);
 		await waitFor(phone, `document.querySelector(".fs-card .fs-ign")`);
+		expect(await phone.evaluate(`document.querySelectorAll(".fs-card .fs-ign .ic, .fs-card .fs-ign svg").length`)).toBe(0);   // 무시 is a word; the one ✕ in the head is 닫기
 		const x3 = await rect(phone, ".fs-card .fs-ign");
 		const sheet = await rect(phone, ".fs-card");
 		expect(x3!.h).toBeGreaterThanOrEqual(44);

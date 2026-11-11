@@ -716,16 +716,31 @@ function paintDecision() {
     box.hidden = false;
     if (box.dataset.sig !== sig) {
       // The answer goes out: this same card turns into 보내는 중 / 보냈어요 in place instead of being replaced.
-      const st = DC.st[dc.key] || "", swap = box.dataset.key === dc.key && (box.dataset.st || "") !== st;
+      const st = DC.st[dc.key] || "", fresh = box.dataset.key !== dc.key, swap = box.dataset.key === dc.key && (box.dataset.st || "") !== st;
       const draw = () => renderDecision(box, dc, picks, step);
       if (swap) motionSwap(box, draw); else draw();
       box.dataset.sig = sig; box.dataset.key = dc.key; box.dataset.st = st;
       if (arrived) motionIn(box);
+      if (fresh && dc.draft) dcShowDraft(dc);
     }
   }
   syncInlineChoices();
   dkPaint();
   if (had !== !!dc) updateComposerMeta();
+}
+// "이대로 보낼까요?" sits in the dock, so the draft it asks about must be on the screen with it: when a draft card docks and the end of the draft's message is out of
+// the timeline's view (the dock took the room, or the owner was reading higher), the view moves just far enough to put that end right above the card.
+function dcShowDraft(dc) {
+  requestAnimationFrame(() => {
+    const m = dc.at && [...document.querySelectorAll("#timeline .bm[data-ts]")].find(x => x.dataset.ts === dc.at);
+    if (!m || target !== dc.t) return;
+    const tb = timeline.getBoundingClientRect(), mb = m.getBoundingClientRect();
+    if (mb.bottom <= tb.bottom && mb.bottom > tb.top) return;
+    chatUnpin();
+    timeline.scrollTop += mb.bottom - tb.bottom + 12;
+    chatStick = timeline.scrollTop + timeline.clientHeight >= timeline.scrollHeight - 40;
+    $("#chat-jump").hidden = chatStick;
+  });
 }
 // A docked question that is a send approval: a draft notice was made from its message.
 const dcDraftAsk = dc => !dc.each && ntDecisions().some(n => n.decision.draft && n.decision.to === dc.t && n.decision.reply_to === dc.at);

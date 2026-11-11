@@ -63,7 +63,7 @@ function nscWhen(t) {
 }
 function nscLines(n, group, summary, when, tag, prefix = "") {
   return [el("span", { class: "ln" }, el("span", { class: "hd", title: ntPlain(hcLine(n)), text: ntPlain(hcLine(n)) }), el("span", { class: "t", text: when })),
-    el("span", { class: "ln" }, el("span", { class: "nsc-s" }, prefix, summary), el("span", { class: tag === "실패" ? "tag err" : "tag", text: tag }))];
+    el("span", { class: "ln" }, el("span", { class: "nsc-s" }, prefix, summary), el("span", { class: "tag", text: tag }))];
 }
 function nscRow(n, group) {
   const tone = group === "past" ? "" : nscTone(n), rep = n.repeats && n.repeats.length ? n.repeats : null, open = rep && NSC.open.has(n.id);
@@ -105,25 +105,23 @@ function nscInit() {
   nscBox = {
     tabs: segKeep(el("div", { class: "nsc-f", role: "tablist", "aria-label": "알림 종류" }, ...NSC_FILTERS.map(([k, l]) =>
       el("button", { class: "nsc-fb", type: "button", role: "tab", "data-f": k, onclick: () => nscFilter(k) }, l, el("span", { class: "n", "data-n": k }))))),
-    num: el("span", { "data-nu": "1", text: "0" }),
     all: el("button", { class: "btn text sm", type: "button", "data-k": "read-all", hidden: true, text: "모두 읽음", onclick: ev => nscReadAll(ev.currentTarget) }),
     list: el("div", { class: "nsc-l" }),
   };
-  nscBox.meta = el("div", { class: "nsc-m" }, el("span", { class: "meta" }, "안 읽은 알림 ", nscBox.num, "개"), el("span", { class: "sp" }), nscBox.all);
+  nscBox.meta = el("div", { class: "nsc-m" }, el("span", { class: "sp" }), nscBox.all);
   v.append(nscBox.tabs, nscBox.meta, nscBox.list);
 }
 // One paint per frame at most, and only when what it shows changed (ntPaint calls nscSchedule on every notice change).
 function nscPaint(force) {
   if (current !== "notices") return;
   nscInit();
-  const rows = nscIn(NSC.f).sort((a, b) => ntAt(b) - ntAt(a)), readable = nscReadable().length, unread = rows.reduce((c, n) => c + (n.read ? 0 : 1), 0);
+  const rows = nscIn(NSC.f).sort((a, b) => ntAt(b) - ntAt(a)), readable = nscReadable().length;
   for (const b of nscBox.tabs.children) {
     const on = b.dataset.f === NSC.f, c = NT.loaded ? nscUnreadIn(b.dataset.f) : 0, el0 = b.lastChild;
     b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on));
     if (el0.dataset.c !== String(c)) { el0.dataset.c = String(c); rollCount(el0, c ? String(c) : ""); }
   }
-  nscBox.meta.hidden = !(NT.loaded && nscIn("all").length);
-  if (nscBox.num.textContent !== String(unread)) rollCount(nscBox.num, String(unread));
+  nscBox.meta.hidden = !(NT.loaded && readable);   // the unread count is the tabs' own; this row is only 모두 읽음
   nscBox.all.hidden = !readable;
   const sig = JSON.stringify([NSC.f, NT.loaded, NT.failed, NSC.lim, [...NSC.open], rows.map(n => [n.id, n.read ? 1 : 0, n.tone, n.updated || n.ts, n.waits || "", n.decision ? n.decision.state : "", (n.repeats || []).length])]);
   if (!force && sig === NSC.sig) return;

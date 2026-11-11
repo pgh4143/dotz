@@ -88,7 +88,7 @@ describe("the 알림 screen", () => {
 		expect(await ev<string[]>(`[...document.querySelectorAll("#v-notices .sec")].map(s => s.textContent)`)).toEqual(["처리할 것", "새 소식", "지난 알림"]);   // no 오늘 / 어제 divider
 		expect(await ev<string[][]>(`[...document.querySelectorAll("#v-notices .list[data-g]")].map(l => [l.dataset.g, ...[...l.querySelectorAll(".nsc-r")].map(r => r.dataset.nid)])`)).toEqual([
 			["need", "dec", "fail", "login"], ["news", "price", "cmt", "res"], ["past", "old", ...Array.from({ length: 14 }, (_, i) => `a${13 - i}`)]]);   // log and conv are not on the screen
-		expect(await ev(`document.querySelector("#v-notices [data-nu]").textContent`)).toBe("6");
+		expect(await ev(`document.querySelectorAll("#v-notices .nsc-m .meta, #v-notices [data-nu]").length`)).toBe(0);   // the unread count is said once, by the tabs
 		expect(await ev<string[]>(`[...document.querySelectorAll("#v-notices .nsc-fb")].map(b => b.textContent)`)).toEqual(["전체6", "답변 필요1", "결과1", "새 소식2", "경고2"]);
 		// one row shape: the title with its time, the summary with its tag, one cell at the end
 		expect(await ev(`[...document.querySelectorAll("#v-notices .nsc-r")].every(r => r.querySelectorAll(".ln").length === 2 && r.querySelector(".ln .hd") && r.querySelector(".ln .t") && r.querySelector(".ln .tag") && r.querySelectorAll(".nsc-x, .nsc-tr, .nsc-fold").length === (r.dataset.nid === "fail" ? 2 : 1))`)).toBe(true);
@@ -102,7 +102,6 @@ describe("the 알림 screen", () => {
 		await click(v, '#v-notices .nsc-fb[data-f="ask"]');
 		await waitFor(`document.querySelectorAll("#v-notices .nsc-r").length === 1`);
 		expect(await ids(v)).toEqual(["dec"]);
-		expect(await ev(`document.querySelector("#v-notices [data-nu]").textContent`)).toBe("1");
 		await click(v, '#v-notices .nsc-fb[data-f="alert"]');
 		await waitFor(`document.querySelectorAll("#v-notices .nsc-r").length === 16`);
 		expect((await ids(v)).slice(0, 2)).toEqual(["fail", "login"]);

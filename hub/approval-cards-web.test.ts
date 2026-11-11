@@ -63,4 +63,13 @@ describe("approval cards one after another", () => {
 		await view.evaluate(`(document.querySelector("#dcard .dc-wait").click(), 0)`);
 		await waitFor(`DK.nid === ${JSON.stringify(n.id)}`);
 	});
+
+	test("a draft card that docks brings the end of its draft message into view, whether it sat below or above the fold", async () => {
+		history = [];
+		await load(`(openTarget("main", "chat"), 0)`);
+		await waitFor(`document.getElementById("timeline").clientHeight > 0`);
+		const place = (top: number) => view.evaluate(`(async () => { const tl = document.getElementById("timeline"); const fill = () => { const d = document.createElement("div"); d.style.height = "900px"; return d; }; const m = document.createElement("div"); m.className = "bm"; m.dataset.ts = "TD1"; m.style.height = "300px"; tl.replaceChildren(fill(), m, fill()); tl.scrollTop = ${top}; dcShowDraft({ at: "TD1", t: target }); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); const a = m.getBoundingClientRect(), b = tl.getBoundingClientRect(); return a.bottom <= b.bottom + 1 && a.bottom > b.top; })()`);
+		expect(await place(0)).toBe(true);   // the draft ends below the fold
+		expect(await place(1800)).toBe(true);   // the draft ends above the view
+	});
 });
