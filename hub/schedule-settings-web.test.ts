@@ -92,7 +92,7 @@ describe("a schedule row has the watch row's ⋯ and settings screen", () => {
 			expect(await q(v, `return [...document.querySelectorAll("[data-as-open]")].filter(b => b.offsetParent && !b.hidden).length`)).toBe(0);
 			await shot(v, `schedule-row-${label}-${w}.png`);
 			await openScreen(v, S_APP);
-			expect(await rowNames(v)).toEqual(["예약 켜기", "다음 실행", "반복 주기(분)", "내용", "예약 삭제"]);
+			expect(await rowNames(v)).toEqual(["예약 켜기", "다음 실행", "반복 주기", "내용", "예약 삭제"]);
 			expect(await sections(v)).toEqual(watchSecs.filter(s => s !== "알림"));
 			const stat = await q<string>(v, `return document.querySelector("#app-sw .as-stat").textContent`);
 			expect(stat).toContain("아침 보고 써 줘");

@@ -139,7 +139,8 @@ describe("monitor settings at desktop width", async () => {
 		await openScreen(v);
 		await waitFor(v, `document.querySelector('#app-sw [data-k="enabled"]')`);
 		const names = await q<string[]>(v, `return [...document.querySelectorAll("#app-sw .as-row:not(.as-stat) .as-n")].map(n => n.textContent)`);
-		expect(names).toEqual(["알림 방식", "새 소식 알림", "휴대폰 알림", "감시 켜기", "감시 주기(분)", "이름", "감시 삭제"]);
+		expect(names).toEqual(["알림 방식", "새 소식 알림", "휴대폰 알림", "감시 켜기", "감시 주기", "이름", "감시 삭제"]);
+		expect(await q<string[]>(v, `return [...document.querySelectorAll('#app-sw [data-setting="every_minutes"] .as-unit')].map(n => n.textContent)`)).toEqual(["분"]);
 		await shot(v, "monitor-controls-desktop.png");
 	});
 

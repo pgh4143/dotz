@@ -214,7 +214,7 @@ const suite = (label: string, width: number, height: number, tag: string) => des
 		const inv = await appInventory("w:disk-check");
 		expect(inv.secs).toEqual(EXPECTED_SECS["w:disk-check"]!);
 		expect(inv.settings).toEqual(["to", "enabled", "every_minutes", "label"]);
-		expect(inv.labels).toEqual(["알림 방식", "감시 켜기", "감시 주기(분)", "이름"]);
+		expect(inv.labels).toEqual(["알림 방식", "감시 켜기", "감시 주기", "이름"]);
 		expect(inv.features).toEqual([]);
 		expect(inv.stats).toEqual(["disk-check"]);
 		expect(inv.internals).toEqual([]);
