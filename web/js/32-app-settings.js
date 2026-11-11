@@ -42,27 +42,11 @@ async function asRetry(app, watch, down) {
   try { asFeatSave(app, await api(asFeatUrl(app, "retry"), "POST", { watch })); toast(down ? MON_RECONNECT : "다시 확인했어요"); } catch (e) { toast(e.message || "다시 시도하지 못했어요", true); }
   AS.busy[app] = false; MON.sig = ""; monSchedule(); asPaint();
 }
-// An answer from the row: the notice's own answer route on this computer, or - for a peer's app - the same answer sent to that computer (/api/peer/act, 34-peer-monitoring.js).
-async function asApprove(app, a, o) {
-  if (AS.busy[app]) return;
-  AS.busy[app] = true; asPaint();
-  try {
-    const n = !app.includes("~") && typeof ntById === "function" ? ntById(a.id) : null;
-    if (n) await ntPost(n, o.n, undefined, undefined, o.label);
-    else await api(app.includes("~") ? `/api/integrations/${enc(app)}/approve` : `/api/notices/${enc(a.id)}/answer`, "POST", app.includes("~") ? { id: a.id, n: o.n } : { n: o.n, label: o.label });
-    toast(`${o.label}(으)로 답했어요`);
-    await asFeatLoad(app);
-  } catch (e) { toast(e.message || "답하지 못했어요", true); }
-  AS.busy[app] = false; asPaint();
-}
-// The list item an app's answers open (자세히): this computer's app, or a peer app's own item key on that computer.
-const asAppItemKey = app => { const pe = typeof PQ !== "undefined" ? PQ.of.get(`settings:${app}`) : null; return pe && pe.key ? pe.key : `i:${app.split("~")[0]}`; };
-function asApprovalNode(app, a) {
-  const opts = a.options || [], when = a.at ? `승인 대기 · ${monTime(a.at)}` : "승인 대기";
-  return el("div", { class: "as-row as-appr", "data-approval": a.id },
-    el("span", { class: "as-b" }, el("span", { class: "as-n", text: a.title || "승인 요청" }), el("span", { class: "as-h", text: a.kind ? `${a.kind} · ${when}` : when }), ...(a.note ? [el("span", { class: "as-h as-warn", "data-note": "blocked", text: a.note })] : [])),
-    el("span", { class: "as-btns" }, ...opts.map(o => el("button", { class: "btn tonal inrow", type: "button", "data-k": `appr:${o.label}`, onclick: () => asApprove(app, a, o) }, o.label)),
-      el("button", { class: "btn text inrow", type: "button", "data-k": "appr:open", onclick: () => { if (ASC.h) ASC.h.close(false); go("monitoring", asAppItemKey(app)); } }, "자세히")));
+// 승인 대기 is one row: the count and a chevron that opens 답장 대기 (30-replies.js rqOpen) on this app's own drafts. The answers live there, not in a settings screen.
+function asWaitRow(app, n) {
+  const pe = PQ.of.get(`settings:${app}`);
+  return el("button", { class: "li tap as-row", type: "button", "data-k": "approvals", onclick: () => { if (ASC.h) ASC.h.close(false); rqOpen(app.split("~")[0], pe ? pe.pc : null); } },
+    el("span", { class: "tx" }, el("div", { class: "hd", text: "승인 대기" })), el("span", { class: "li-end" }, el("span", { class: "as-v", text: `${n}건` }), icon("chev", "chev")));
 }
 // One watch the app owns (로그인 유지 / 동기화 / 파일 점검): its status, when it last ran, and its period. The period is editable when the watch lives on this
 // computer; a peer's period is read only (its settings are written through that computer's own act routes). 다시 시도 only on a row that is not ok.
@@ -480,7 +464,7 @@ function asPaint() {
   for (const f of fields.filter(f => !f.memory && f !== fRules && f !== fDef)) put(f.section || "advanced", f.type === "list" ? 4 : f.switch ? 1 : 3, asSettingRow(app, f, feat, box));
   if (feat) {
     for (const f of feat.features) if (!(f.setting && keys.has(f.setting))) put(f.section || "more", 2, asFeatRow(app, f));
-    if (feat.approvals.length) { put("draft", 5, el("div", { class: "as-sub", "data-sub": "approvals", text: "승인 대기" })); for (const a of feat.approvals) put("draft", 5, asApprovalNode(app, a)); }
+    if (feat.approvals.length) put("draft", 5, asWaitRow(app, feat.approvals.length));
   }
   // Every watch the app owns gets one status row, whether or not the features route answers (an older hub has none); its kind, reason and period
   // ride on that row when it does.

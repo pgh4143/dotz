@@ -118,6 +118,8 @@ ul.mr-sum.mr-pts { display: block; margin: 0; padding: 0; list-style: none; }
 .md-ctx .mr-todo { margin-top: var(--sp-05); font-size: 13px; line-height: 20px; }
 .md-ask { display: flex; flex-direction: column; gap: var(--sp-2); }
 .md-lbl { color: var(--fg-2); font-size: 14px; line-height: 20px; font-weight: 500; }
+/* the one filled button stays at the footer's right end at its own width, like 새 메일's 초안 만들기 (ui-spec .fs-ft), not the phone's full-width lone button */
+.fs-card.md-d .fs-ft.row .btn:only-child { flex: none; }
 .md-ask textarea.fi { min-height: 88px; font-size: 15px; line-height: 22px; padding: var(--sp-2) var(--sp-3); }
 /* the ⋯ of a mail card (30-monitoring.js mailMenuBtn): the last item of the header, at the top right; the negative margin keeps the 16px header line */
 /* --fg-2 and a larger icon (owner 2026-10-29): the --fg-3 dots were easy to miss on the card */

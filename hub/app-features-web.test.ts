@@ -167,8 +167,8 @@ const suite = (label: string, width: number, height: number, tag: string) => des
 		expect(text).not.toMatch(RAW);
 		expect(text).toContain("댓글 가져오기");
 		expect(text).toContain("인스타그램 로그인");
-		expect(await q(v, `return document.querySelector("#app-sw [data-approval] .as-n").textContent`)).toBe("주말 여행 릴스예요 #여행");
-		expect(await q(v, `return [...document.querySelectorAll("#app-sw [data-approval] [data-k^='appr:']")].map(b => b.textContent)`)).toEqual(["올리기", "그만두기", "자세히"].slice(0, 2).concat(["자세히"]));
+		expect(await q(v, `return document.querySelector("#app-sw [data-k='approvals']").textContent`)).toBe("승인 대기1건");
+		expect(await q(v, `return document.querySelectorAll("#app-sw [data-approval], #app-sw [data-k^='appr:']").length`)).toBe(0);   // the answers live in 답장 대기, not here
 		expect(await q(v, `return document.querySelector("#app-sw .as-chip, #app-sw .as-sum")`)).toBeNull();
 		expect(await q(v, `return !!document.querySelector('#app-sw [data-setting="approval"] .as-n')`)).toBe(true);
 		expect(await q(v, `return document.querySelectorAll('#app-sw [data-setting="approval"] .as-seg button').length`)).toBe(2);
@@ -177,11 +177,11 @@ const suite = (label: string, width: number, height: number, tag: string) => des
 		await shot(v, `${tag}-instagram-settings.png`);
 	});
 
-	test("an approval row answers from the row (not 고치기) through the notice's answer route", async () => {
+	test("the 승인 대기 row opens 답장 대기 and answers nothing itself", async () => {
 		const before = answers.length;
-		await run(v, `document.querySelector("#app-sw [data-approval] [data-k='appr:그만두기']").click()`);
-		await waitFor(v, `!AS.busy.instagram`);
-		expect(answers.slice(before)).toEqual([{ id: "n-ig", body: { n: 3, label: "그만두기" } }]);
+		await run(v, `document.querySelector("#app-sw [data-k='approvals']").click()`);
+		await waitFor(v, `MON.sel === RQ_KEY`);
+		expect(answers.length).toBe(before);
 	});
 
 	test("a peer app's approval answer is forwarded as the peer's own decision (/api/peer/act answer)", async () => {

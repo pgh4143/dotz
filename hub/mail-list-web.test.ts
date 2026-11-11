@@ -136,13 +136,17 @@ for (const width of [1440, 390]) {
 		const got = JSON.parse((await v.evaluate(`(${draw}, JSON.stringify(["mail:fx-1", "mail:fx-4"].map(t => {
 			mailDraftDialog(t, null);
 			const d = document.querySelector("dialog[open]:not([data-leaving])"), r = [d.querySelector(".md-subj")?.textContent ?? null, d.querySelector('[data-k="draft-instruction"]').placeholder];
+			const ta = d.querySelector('[data-k="draft-instruction"]'), cs = getComputedStyle(ta), px = d.querySelector(".dact .btn").getBoundingClientRect(), pd = d.querySelector(".dact").getBoundingClientRect();
+			const cx = document.createElement("canvas").getContext("2d"); cx.font = cs.font;
+			r.push(cx.measureText(ta.placeholder).width <= ta.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), px.width < pd.width / 2, Math.abs(px.right - pd.right) <= 24);
 			d.close();
 			return r;
 		})))`)) as string) as [string | null, string][];
 		expect(got[0][0]).toBe("월간 점검 보고서 확인 요청");
 		expect(got[0][1]).toMatch(/^예: ‘.+’/);
 		expect(got[0][1]).not.toContain("비워 두면");
-		expect(got[1]).toEqual(["본문이 없는 메일", "예: 금요일까지 보내 드린다고 써 줘"]);
+		expect(got[0].slice(2)).toEqual([true, true, true]);   // the sample fits one line; the one button keeps its own width at the footer's right end
+		expect(got[1].slice(0, 2)).toEqual(["본문이 없는 메일", "예: 금요일까지 보내 드린다고 써 줘"]);
 	}, 30_000);
 
 	test(`the original view at ${width}px lists the attachments with name and size as download links`, async () => {

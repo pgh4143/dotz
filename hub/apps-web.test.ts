@@ -65,6 +65,12 @@ describe("앱 at 390px", () => {
 		expect(list).toContain("불러오지 못한 앱");
 		expect(list).toContain("broken");
 		expect(await view.evaluate(`(() => document.querySelectorAll("#apps-side .cv-row").length)()`)).toBe(3);
+		// a broken app's dialog offers the same 다시 확인 an unreachable app has
+		await view.evaluate(`(() => { [...document.querySelectorAll("#apps-side .cv-row")].find(b => b.textContent.includes("broken")).click(); return 0; })()`);
+		await waitFor(`!!document.querySelector("dialog[open] .dact .btn")`);
+		expect(await view.evaluate(`(() => document.querySelector("dialog[open] .dact .btn").textContent)()`)).toBe("다시 확인");
+		await view.evaluate(`(() => { document.querySelector("dialog[open] .dact .btn").click(); return 0; })()`);
+		await waitFor(`!document.querySelector("dialog[open]")`);
 		// the state is said once, at the row's right as dot + word; no corner dot on the icon
 		expect(await view.evaluate(`(() => !!document.querySelector("#apps-side .cv-row .tag.ok") && !document.querySelector("#apps-side .app-dot"))()`)).toBe(true);
 		await Bun.write(join(SHOTS, "apps-list-390.png"), await view.screenshot());
