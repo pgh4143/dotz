@@ -83,6 +83,8 @@ describe("메일함 설정", () => {
 		const v = await open(SET);
 		expect(await ev<any>(v, `({ scr: MX.scr, acct: MX.acct, box: MX.box, rows: document.querySelectorAll("#mon-tl > .mr").length, mode: document.querySelector(".mxs-mode.on").dataset.m, items: [...document.querySelectorAll(".mxs-ah")].map(b => b.dataset.k) })`))
 			.toEqual({ scr: "set", acct: "mail", box: "b-score", rows: 0, mode: "ask", items: ["name", "match", "judge", "tone", "how", "greet", "files", "bans"] });
+		// the chosen 처리 방식 is the one with the check at its right; the others have none
+		expect(await ev<any>(v, `({ on: document.querySelectorAll(".mxs-mode.on .mxs-mt .ic").length, off: document.querySelectorAll(".mxs-mode:not(.on) .ic").length })`)).toEqual({ on: 1, off: 0 });
 		await openItem(v, "how");
 		expect(await ev<string>(v, `document.querySelector(".mxs-ab textarea").value`)).toBe("짧게 답해요");
 		await openItem(v, "match");
@@ -177,6 +179,8 @@ describe("메일함 추가", () => {
 
 	test("a suggestion fills the name and the sender-domain condition, and creating it moves no mail", async () => {
 		const v = await open(NEW);
+		await waitFor(v, `document.querySelector(".mxs-sg")`);
+		expect(await ev<any>(v, `({ rows: document.querySelectorAll(".mxs-sg").length, counts: document.querySelectorAll(".mxs-sg > .mxs-cnt").length })`)).toEqual({ rows: 1, counts: 1 });
 		await pickGroup(v);
 		expect(await ev<any>(v, `({ name: document.querySelector('input[aria-label="메일함 이름"]').value, from: MXS.d.conds.from, bring: MXS.d.bring })`)).toEqual({ name: "team", from: ["@team.example.org"], bring: false });
 		await click(v, "[data-mxs-go]");

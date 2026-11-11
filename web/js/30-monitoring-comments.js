@@ -97,6 +97,7 @@ function cmSourceNode(s) {
   const node = el("div", { class: "kk-pick-src", "data-src": s.key },
     el("div", { class: "kk-pr" }, el("span", { class: "cv-b" }, el("span", { class: "cv-n", text: s.label }), s.error ? el("span", { class: "cv-p", role: "status", text: `읽지 못했어요 · ${s.error}` }) : null),
       kkSwitch(all, `${s.label} 전부 지켜보기`, "all", v => cmUpdate(s, { watch: v ? ["*"] : [] }))),
+    el("div", { class: "sec", text: "설정" }),
     el("div", { class: "kk-pr" }, el("span", { class: "cv-b" }, el("span", { class: "cv-n", text: "자동 초안" })),
       kkSwitch(!!s.autoDraft, `${s.label} 자동 초안`, "auto", v => cmUpdate(s, { autoDraft: v }), true)),
     // Config-only: the mail app (`mailApp`) is set in the source config (docs/comments-api.md); without it the card says no mail was made.
@@ -116,7 +117,7 @@ function cmPickPaint() {
   const d = CM.pickD;
   if (!d) return;
   const srcs = cmSrcOf(d.dataset.app);
-  clear(d.querySelector(".kk-pd-b")).append(...(srcs.length ? [el("div", { class: "kk-hint", text: "새 댓글마다 답글 초안을 만들어서 토큰이 들어요." }), ...srcs.map(cmSourceNode)] : [el("div", { class: "kk-note", text: "켜 둔 곳이 없어요. 채팅에서 켜 달라고 해 주세요." })]));
+  clear(d.querySelector(".kk-pd-b")).append(...(srcs.length ? [el("div", { class: "kk-hint", text: "새 댓글마다 답글 초안을 만들어서 토큰이 들어요." }), el("div", { class: "sec", text: "지켜볼 채널" }), ...srcs.map(cmSourceNode)] : [el("div", { class: "kk-note", text: "켜 둔 곳이 없어요. 채팅에서 켜 달라고 해 주세요." })]));
 }
 function cmPickOpen(app) {
   if (CM.pickD) return;

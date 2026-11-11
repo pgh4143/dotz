@@ -126,12 +126,20 @@ function appsBody(a) {
   if (a.off) return el("div", { class: "apps-card" }, el("p", { class: "apps-note", text: "꺼짐" }), el("button", { class: "btn tonal sm", type: "button", text: "켜기", onclick: () => appsToggle(a) }));
   if (a.status === "unreachable") {
     return el("div", { class: "apps-card" },
-      el("p", { class: "apps-note", text: `${a.label}이(가) 응답하지 않아요${a.reason ? ` (${a.reason})` : ""}.` }),
+      el("p", { class: "apps-note", text: `${a.label} 앱이 응답하지 않아요${a.reason ? ` (${a.reason})` : ""}.` }),
       a.start ? el("p", { class: "apps-note", text: "앱이 떠 있는지 확인해 주세요." }) : null,
       el("button", { class: "btn tonal sm", type: "button", text: "다시 확인", onclick: () => loadApps().then(() => { APPS.sig = ""; appsSchedule(); }) }));
   }
-  const frame = el("iframe", { class: "apps-frame", src: a.web.href, title: a.label, referrerpolicy: "same-origin" });
+  const frame = el("iframe", { class: "apps-frame", src: a.web.href, title: a.label, referrerpolicy: "same-origin", onload: () => appsFrameCheck(frame, a) });
   return frame;
+}
+// The gateway answers a plain-text page ("not found", or why the app did not answer) when the app is not there; an app's own page is never plain text.
+// Say that in the app's words, with a way to open it again.
+function appsFrameCheck(frame, a) {
+  let plain = false;
+  try { plain = frame.contentDocument.contentType === "text/plain"; } catch { return; }
+  if (!plain) return;
+  frame.replaceWith(emptyNode(`${a.label} 앱이 열리지 않아요. 앱이 켜져 있는지 확인하고 다시 열어 보세요`, async () => { await loadApps(); APPS.sig = ""; $("#apps-pane").dataset.key = ""; appsRender(); }));
 }
 
 let appsRaf = 0;

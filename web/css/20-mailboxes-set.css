@@ -20,9 +20,11 @@
 .mxs-mode { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--sp-3); border: 0; border-radius: var(--r-card); background: var(--card); color: var(--fg); text-align: left; }
 @media (hover: hover) { .mxs-mode:hover { background: var(--card-hover); } }
 .mxs-mode.on { background: color-mix(in srgb, var(--accent) 10%, var(--card)); } @media (hover: hover) { .mxs-mode.on:hover { background: color-mix(in srgb, var(--accent) 10%, var(--card)); } }
-.mxs-mt { display: flex; align-items: center; gap: var(--sp-2); font: 600 var(--fs-sec)/var(--lh-sec) var(--font); white-space: nowrap; }
-.mxs-rd { flex: none; width: 16px; height: 16px; border: 1.5px solid var(--line-2); border-radius: 50%; }
-.mxs-mode.on .mxs-rd { border: 5px solid var(--accent); }
+.mxs-mt { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); font: 600 var(--fs-sec)/var(--lh-sec) var(--font); white-space: nowrap; }
+.mxs-mt .ic { flex: none; color: var(--accent); }
+/* suggested groups (메일함 추가): the sub line is one line with an ellipsis, the mail count has its own place at the right */
+.mxs-sg .sup { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mxs-cnt { flex: none; color: var(--fg-3); font-size: var(--fs-meta); line-height: var(--lh-meta); }
 .mxs-md { color: var(--fg-2); font-size: var(--fs-meta); line-height: var(--lh-meta); }
 
 /* one folding item at a time */

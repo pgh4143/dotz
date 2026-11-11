@@ -204,11 +204,11 @@ async function asDelGo(a) {
 function asDelNode(a) {
   const d = AD.del, p = d.plan, cb = el("input", { type: "checkbox", "data-k": "delete-data", onchange: () => { d.data = cb.checked; } });
   cb.checked = d.data;
-  const lines = [`${d.machine ? `${d.machine}에서 ` : ""}${a.label}을(를) 완전히 지워요. 되돌릴 수 없어요`, "이름과 설정을 지우고, 앱 목록에서 빠져요", p ? (p.watches.length ? `감시 ${p.watches.length}개를 지워요: ${p.watches.join(", ")}` : "지울 감시는 없어요") : "이 앱의 감시도 함께 지워요"];
+  const lines = [`${d.machine ? `${d.machine}에서 ` : ""}${a.label} 앱을 완전히 지워요. 되돌릴 수 없어요`, "이름과 설정을 지우고, 앱 목록에서 빠져요", p ? (p.watches.length ? `감시 ${p.watches.length}개를 지워요: ${p.watches.join(", ")}` : "지울 감시는 없어요") : "이 앱의 감시도 함께 지워요"];
   return el("div", { class: "as-rm", "data-k": "del-confirm" },
     el("ul", { class: "as-rml" }, ...lines.map(t => el("li", { text: t }))),
     !p || p.data.length ? el("label", { class: "as-del" }, cb, el("span", { text: p ? `저장된 데이터(${p.data.join(", ")})도 지우기. 체크하지 않으면 남겨요` : "저장된 데이터도 지우기. 체크하지 않으면 남겨요" })) : null,
-    el("div", { class: "as-act" }, el("button", { class: "btn", type: "button", "data-k": "del-go", disabled: d.busy, onclick: () => asDelGo(a) }, "삭제 확인"), el("button", { class: "btn tonal", type: "button", "data-k": "del-cancel", onclick: () => { AD.del = null; asAddPaint(); } }, "취소")));
+    el("div", { class: "as-act" }, el("button", { class: "btn danger fill", type: "button", "data-k": "del-go", disabled: d.busy, onclick: () => asDelGo(a) }, "삭제 확인"), el("button", { class: "btn tonal", type: "button", "data-k": "del-cancel", onclick: () => { AD.del = null; asAddPaint(); } }, "취소")));
 }
 // The 앱 관리 row's second line: what it holds (the apps switched off, then adding a new one), not a bare list of names that reads like apps in use.
 const asAddHint = () => { const off = asOffApps().map(a => a.label); return off.length ? `꺼 둔 앱 ${off.join(", ")} · 새로 추가` : "새로 추가하기"; };
@@ -228,21 +228,23 @@ function asAddPaint() {
   if (!h) return;
   const off = asOffApps();
   for (const a of off) if (a.iconPath && !ICONS[a.icon]) ICONS[a.icon] = a.iconPath;
+  // 맡기기 stays off while the box is empty (an empty request would do nothing).
+  const send = el("button", { class: "btn", type: "button", "data-k": "new-app", disabled: (AT.draft || "").trim() ? null : true, onclick: asNewSend }, "맡기기");
   const box = el("textarea", { class: "as-new-in", rows: "3", "data-k": "new-app-text", placeholder: "어떤 앱을 연결하거나 만들까요?", "aria-label": "연결하거나 만들 앱",
-    oninput: ev => { AT.draft = ev.currentTarget.value; },
+    oninput: ev => { AT.draft = ev.currentTarget.value; send.disabled = !AT.draft.trim(); },
     onkeydown: ev => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); asNewSend(); } } });
   box.value = AT.draft || "";
   clear(h.box).append(
     fsHead([el("h2", { class: "fs-t", id: "as-add-t", text: "앱 관리" })], { close: () => h.close() }),
-    el("div", { class: "fs-body" }, box,
+    el("div", { class: "fs-body" }, el("div", { class: "as-sec", text: "새 앱 추가" }), box,
       ...(off.length ? [el("div", { class: "as-sec", text: "꺼 둔 앱" }), ...off.flatMap(a => [el("div", { class: "as-row", "data-app": a.key },
         el("span", { class: "as-ic", "aria-hidden": "true" }, icon(a.icon)),
         el("span", { class: "as-b" }, el("span", { class: "as-n", text: a.label }), a.machine ? el("span", { class: "as-h", text: a.machine }) : null),
         el("span", { class: "as-btns" },
           el("button", { class: "btn tonal inrow", type: "button", "data-k": `on:${a.key}`, onclick: () => asAdd(a.key, a.pc) }, "다시 켜기"),
-          el("button", { class: "btn text inrow", type: "button", "data-k": `del:${a.key}`, "aria-expanded": String(asDelOpen(a)), onclick: () => asDelOpen(a) ? (AD.del = null, asAddPaint()) : asDelAsk(a) }, "삭제"))),
+          el("button", { class: "btn danger inrow", type: "button", "data-k": `del:${a.key}`, "aria-expanded": String(asDelOpen(a)), onclick: () => asDelOpen(a) ? (AD.del = null, asAddPaint()) : asDelAsk(a) }, "삭제"))),
         ...(asDelOpen(a) ? [asDelNode(a)] : [])])] : [])),
-    el("div", { class: "fs-ft row" }, el("button", { class: "btn text", type: "button", "data-k": "new-app-cancel", onclick: () => h.close() }, "취소"), el("button", { class: "btn", type: "button", "data-k": "new-app", onclick: asNewSend }, "보내기")));
+    el("div", { class: "fs-ft row" }, el("button", { class: "btn text", type: "button", "data-k": "new-app-cancel", onclick: () => h.close() }, "취소"), send));
 }
 // 보내기: the request goes to the main orchestrator as the owner's message ("연결할 앱: <what he typed>", docs/app-templates) through the chat's
 // own send, and the main chat opens on it, so the work that starts is right there.
@@ -445,7 +447,7 @@ function asPaint() {
   const fields = AS.by[app];
   if (!fields) {
     const sig = AS.none[app] ? "none" : "load";
-    if (box.dataset.sig !== sig) { box.dataset.sig = sig; clear(box).append(el("div", { class: "as-row" }, el("span", { class: "as-h", text: AS.none[app] ? "설정을 불러오지 못했어요" : "불러오는 중…" }))); }
+    if (box.dataset.sig !== sig) { box.dataset.sig = sig; clear(box).append(AS.none[app] ? emptyNode("설정을 불러오지 못했어요", () => asLoad(app, true)) : el("div", { class: "as-row" }, el("span", { class: "as-h", text: "불러오는 중…" }))); }
     return;
   }
   const feat = asOwn(app) ? null : AS.feat[app] || null;
@@ -501,7 +503,7 @@ function asScreen(app) {
   if (!asOwn(app)) asFeatLoad(app);
   clear(h.box).append(
     el("div", { class: "fs-hd" }, el("button", { class: "ib fs-x as-back", type: "button", "aria-label": "뒤로", "data-k": "as-back", onclick: () => h.close() }, icon("back")),
-      el("div", { class: "fs-tt" }, el("span", { class: "fs-ey", text: "설정" }), el("h2", { class: "fs-t", id: "as-scr-t", text: monSettingsName(`settings:${app}`) }))),
+      el("div", { class: "fs-tt" }, monSettingsName(`settings:${app}`) === "설정" ? null : el("span", { class: "fs-ey", text: "설정" }), el("h2", { class: "fs-t", id: "as-scr-t", text: monSettingsName(`settings:${app}`) }))),
     el("div", { class: "fs-body" }, el("div", { class: "app-sw", id: "app-sw" })));
   asPaint();
 }

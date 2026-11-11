@@ -728,7 +728,7 @@ function monTimeline(it) {
 function monSettingsName(t) {
   const a = settingsApp(t);
   if (a.startsWith("s:")) { const m = NM.items.find(x => x.schedule === a.slice(2)); return m ? monTitle(m) : "예약"; }
-  if (!a.startsWith("w:")) { const pe = PQ.of.get(t), it = pe && pe.app ? { label: pe.label } : INTG.items.find(x => x.key === a); return it ? it.label : "설정"; }
+  if (!a.startsWith("w:")) { const pe = PQ.of.get(t), it = pe && pe.app ? { label: pe.label } : INTG.items.find(x => x.key === a) || INTG.available.find(x => x.key === a); return it ? it.label : "설정"; }
   const pe = PQ.of.get(t), m = pe ? pe.mon : NM.items.find(x => x.watch === a.slice(2));
   return m ? monTitle(m) : "설정";
 }

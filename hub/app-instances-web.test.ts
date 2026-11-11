@@ -149,9 +149,13 @@ describe("앱 인스턴스 at 390px", () => {
 		await run(v, `asAddSheet()`);
 		await waitFor(v, `document.querySelector('[data-k="del:mail-3"]')`);
 		expect(await q(v, `return !!document.querySelector('[data-k="on:mail-3"]') && !document.querySelector('[data-k="del:mail-2"]')`)).toBe(true);
-		expect(await q(v, `return document.querySelectorAll(".as-sec").length`)).toBe(1);
+		// the request box has its own section label above it, the off apps another; 맡기기 waits for text; 삭제 is the red row action
+		expect(await q(v, `return document.querySelectorAll(".as-sec").length`)).toBe(2);
+		expect(await q(v, `return document.querySelector('.fs-body > .as-sec:first-child + textarea') !== null && document.querySelector('[data-k="new-app"]').disabled`)).toBe(true);
+		expect(await q(v, `return document.querySelector('[data-k="del:mail-3"]').classList.contains("danger")`)).toBe(true);
 		await run(v, `document.querySelector('[data-k="del:mail-3"]').click()`);
 		await waitFor(v, `document.querySelector('[data-k="del-confirm"] [data-k="del-go"]')`);
+		expect(await q(v, `const b = document.querySelector('[data-k="del-go"]'); return b.classList.contains("danger") && b.classList.contains("fill") && !document.querySelector('[data-k="del-confirm"]').textContent.includes("(\uB97C)")`)).toBe(true);
 		await waitFor(v, `document.querySelector('[data-k="del-confirm"]').textContent.includes("webmail-daum")`);
 		await shot(v, "03-delete-confirm.png");
 		await run(v, `document.querySelector('[data-k="del-cancel"]').click()`);
