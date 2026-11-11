@@ -28,6 +28,7 @@ test("a worklog post becomes a persisted unread notice", () => {
 	const [n] = byText("첫 번째 작업 기록");
 	expect(n).toMatchObject({ kind: "worklog", tone: "run", title: "작업 기록", open: "worklog", read: false });
 	expect(n!.id).toHaveLength(8);
+	expect(listNotices(300).items.find(i => i.id === n!.id)).toMatchObject({ wk: "note" });
 	expect(unreadCount()).toBe(0);   // class log: stored unread, but the 알림 screen does not list it
 });
 

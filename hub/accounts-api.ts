@@ -11,6 +11,7 @@ import { TZ } from "./config.ts";
 import { msg } from "./i18n.ts";
 import { deleteOmoAccount, writeOmoPin } from "./omo-pin.ts";
 import { accountUsedChanged } from "./notices.ts";
+import { ACCOUNT_CHANGED, ACCOUNT_LEAD, ACCOUNT_PICKED } from "./worklog-kind.ts";
 import { type AccountReport, limitsText, usedAccount } from "./usage-account.ts";
 
 export class AccountsError extends Error {
@@ -88,7 +89,7 @@ export function switchText(s: AccountSwitch, aliases = readAliases()): string {
 // The worklog sentence for a switch other than the first pick.
 export function switchNotice(s: AccountSwitch, aliases = readAliases()): string {
 	const to = label(s.to, undefined, aliases);
-	const head = s.from ? `계정을 ${label(s.from, undefined, aliases)}에서 ${to}${josa(to, "으로", "로")} 바꿨어요.` : `계정을 ${to}${josa(to, "으로", "로")} 정했어요.`;
+	const head = s.from ? `${ACCOUNT_LEAD}${label(s.from, undefined, aliases)}에서 ${to}${josa(to, "으로", "로")} ${ACCOUNT_CHANGED}` : `${ACCOUNT_LEAD}${to}${josa(to, "으로", "로")} ${ACCOUNT_PICKED}`;
 	const because: Record<SwitchKind, string> = {
 		start: "처음 골랐기 때문이에요.",
 		limit: "이전 계정이 한도에 걸렸기 때문이에요.",

@@ -20,6 +20,7 @@ import { type ResultFile, type ResultLink, resultFiles, resultLinks } from "./re
 import { broadcast, summary } from "./notices-read.ts";
 import { QUIET_MS, awaitingReply, isViewing, quietReplies, viewers } from "./notices-viewing.ts";
 import { decisionsOf, expiresAtOf, sending } from "./notices-decisions.ts";
+import { worklogKind } from "./worklog-kind.ts";
 
 // A report stored before a schedule was said by its short name and a match that lists items by its count (2026-11-10) reads as a new one does.
 const MATCHED = `: ${watchReasonKo("matched /./")}`;
@@ -78,7 +79,7 @@ function trim(): void {
 }
 
 // `repeat`: overwrites the alert it repeats (alert-gate), `fold`: a monitor report that joins the watch's newest row; both keep the old text in `repeats`.
-type Input = { kind: NoticeKind; tone: NoticeTone; title: string; text: string; open: string; files?: ResultFile[]; links?: ResultLink[]; key?: string; watch?: string; by?: string; ref?: string; item?: WatchItem; read?: boolean; unread?: boolean; src?: string; at?: string; msg?: string; repeat?: boolean; fold?: boolean };
+type Input = { kind: NoticeKind; tone: NoticeTone; title: string; text: string; open: string; files?: ResultFile[]; links?: ResultLink[]; key?: string; watch?: string; by?: string; ref?: string; item?: WatchItem; read?: boolean; unread?: boolean; src?: string; at?: string; msg?: string; repeat?: boolean; fold?: boolean; wk?: string; wst?: string };
 // The row a monitor report joins: the watch's newest row when it is under a day old, has the same tone and no card on either side, and neither is a
 // report with nothing new (log). One pass over the list.
 function foldTarget(i: Input, at: string): Notice | undefined {
@@ -151,6 +152,11 @@ export function upsert(i: Input): Notice {
 		}
 	}
 	if (quiet) return item;
+	if (i.wk) {
+		item.wk = i.wk;
+		if (i.wst) item.wst = i.wst;
+		else delete item.wst;
+	}
 	// The owner's read position may already cover the message this notice points at (read on another device first): it is born read.
 	if (!item.read && coveredByRead(item)) item.read = true;
 	if (item.kind === "watch") stampApp(item);
@@ -198,7 +204,7 @@ function fromOutbox(e: HubEvent, asks = false): void {
 		// A gateway [ask] / [fail] there still waits, and so does a daily digest with its own title (야간 정리, 토큰 점검).
 		const title = systemTitle(text, "작업 기록");
 		const status = e.source === "gateway" && tone !== "ask" && tone !== "fail" && title === "작업 기록";
-		return void upsert({ kind: "worklog", tone, title, text, open: target === "worklog" ? "worklog" : "main", key, read: restart || status, ...resultsOf(e.text), at: e.ts });
+		return void upsert({ kind: "worklog", tone, title, text, open: target === "worklog" ? "worklog" : "main", key, read: restart || status, ...resultsOf(e.text), ...worklogKind(e), at: e.ts });
 	}
 	if (target === "alert") {
 		if (asks) return;

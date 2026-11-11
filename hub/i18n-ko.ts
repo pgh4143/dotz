@@ -35,6 +35,9 @@ const koLeads: Leads = {
 
 const koRetainNudge = "이어가기 전에, 지금까지의 대화에서 나온 오너·프로젝트·선호 중 오래 남길 사실이 아직 메모리에 없으면 메모리 도구가 있으면 그것으로(omp: `retain`), 없으면(OmO) dotz 데이터 폴더에 저장하세요(오너 사실은 memory/owner.md, 오너가 한 '하지 마' 원문은 memory/boundaries.md, 규칙은 RULES.md, 교훈은 LESSONS.md, 진행 중인 일은 state.json). 없으면 건너뛰세요.";
 
+export const NIGHT_LEAD = "야간 정리:";
+export const SCHEDULE_CHECK_LEAD = "예약 점검:";
+
 export const ko: Catalog = {
 	...koLeads,
 
@@ -294,7 +297,7 @@ export const ko: Catalog = {
 	cardAudit: (closed, refreshed, open) => `[dotz 업데이트] 이번 업데이트에서 이 설치의 카드를 한 번 전역 점검해요. 게이트웨이가 전송 기록으로 보낸 카드 ${closed}장을 닫았고 ${refreshed}장을 새로 고쳤어요. 열린 카드는 ${open}장이에요.\n메일, 답장 초안, 댓글, 쪽지, 카톡, sns 작업, 승인 대기, 알림을 모두 읽고 전송 기록과 맞춰 보세요. 읽는 길은 features/<앱>/feature.md에 있고, 카드는 GET /api/notices와 GET /api/approvals로 읽어요.\n- 외부로 아무것도 보내지 않아요. 다시 보내기, 승인, 버리기를 하지 않아요. 보내기 명령은 실행하지 않아요.\n- 전송 기록으로 보낸 것이 증명된 카드만 닫아요(POST /api/notices/resolve의 ids).\n- 증명하지 못한 카드는 열어 둬요. 초안과 어긋나면 보내기가 되도록 카드만 새로 고쳐요.\n- 끝나면 이 대화에 오너에게 짧게 요약해요: 닫은 카드, 남은 카드, 오너가 볼 것. 이 점검은 다시 오지 않아요.`,
 	inboxSchedule: (id, every, channel) => `[dotz inbox] 예약 항목 (${id}${every ? `, ${every}분마다` : ""}) - 지금 처리하세요. 최종 답은 ${channel}로 가요:`,
 	inboxCheck: (ids, channel) => `[dotz inbox] 조용한 점검 (${ids.join(", ")}) - 오너가 시킨 일이 아니라 내가 걸어 둔 시스템 점검${ids.length > 1 ? `이에요. ${ids.length}개가 같은 시각이라 한 번에 와요: 번호 순서대로 보고 답은 하나로 쓰세요` : "이에요"}. 모두 정상이면 평범한 한 줄로만 답하세요(조용히 작업로그에만 남아요). 오너가 정해야 하거나 꼭 알아야 할 때만 답을 [ask] 또는 [fail]로 시작하세요. 할 말이 없으면 \"-\" 한 글자만 답하세요. 최종 답은 ${channel}로 가요:`,
-	scheduleCheckLine: text => `예약 점검: ${text}`,
+	scheduleCheckLine: text => `${SCHEDULE_CHECK_LEAD} ${text}`,
 	inboxThread: (thread, parent) => ` (#${parent}의 스레드 "${thread}". 답은 스레드로 가요)`,
 	inboxFirst: channel => `(새 작업 채널 #${channel}: 오너는 채널 단위로 일을 맡겨요. 이 채널의 작업과 보고는 여기에 두세요. 이 채널의 일에 로그인 유지나 시간이 지나며 확인할 것이 필요하면 직접 dotz_channel setup으로 이 채널에 설정하세요.)`,
 	inboxBurst: n => `(sent as ${n} messages in a row; 하나의 요청으로 함께 읽으세요)`,
@@ -317,7 +320,7 @@ export const ko: Catalog = {
 3. 문제가 있으면(실패, 이상, 되풀이된 실수, 토큰 누수, RULES.md나 LESSONS.md가 이미 다루는데도 되풀이된 일) alert로 한 번만 ${koIssue}
 4. 여기서 RULES.md는 절대 수정하지 마세요. 규칙 변경은 선택지로 올리고 답을 기다리세요.
 5. 위 예약이 서로 겹치면 합치고(dotz_schedule remove 후 add), 할 일이 끝난 예약은 지우세요.
-6. 마지막으로 dotz_send worklog에 한 줄만 올리세요(identity의 Notices 문체, "야간 정리: ..."로 시작). 문제가 없었다면 이 한 줄이 전부예요. alert에는 아무것도 보내지 마세요.`,
+6. 마지막으로 dotz_send worklog에 한 줄만 올리세요(identity의 Notices 문체, "${NIGHT_LEAD} ..."로 시작). 문제가 없었다면 이 한 줄이 전부예요. alert에는 아무것도 보내지 마세요.`,
 
 	lessonRepeats: (rows, today) => `\n\n아직 지키게 하는 장치가 없는 교훈이에요. 오늘의 정정과 맞춰 봤어요. 단어가 아니라 뜻으로 판단하세요: 점수는 정정이 교훈의 단어를 얼마나 되풀이했는지일 뿐이고("likely" = 0.4 이상), "broken N"은 이미 어긴 것으로 확인된 밤의 수예요. 오늘 정말 어긴 교훈마다: 그 줄의 "(broken: ...)" 목록에 ${today}를 더하고(없으면 새로), 되는 가장 높은 단계에서 고치세요: 코드나 이 계약에서 원인을 없애고, 안 되면 바른 방법을 알려 주는 가드나 검사, 그다음 테스트예요. 판단이 필요한 것만 문장을 고치고 실패 예를 붙이세요. 구조로 고친 뒤 줄 끝에 "(enforced: <가드·검사·테스트>)"를 붙이고, 실수가 더는 일어날 수 없으면 교훈을 지우세요. 두 밤 이상 어긴 교훈은 문장을 또 고치지 말고 지금 구조로 고치세요. 나머지는 그대로 두세요:\n${rows.map(r => `${r.line}${r.broken ? ` [broken ${r.broken}]` : ""}${r.likely ? ` [likely ${r.score}]` : ""}`).join("\n")}`,
 	staleObservations: stale => `\n\n${paths.observations}에 90일 넘은 줄이 있어요. 지우세요(아직 맞는 패턴은 먼저 owner.md나 LESSONS.md로 옮기기):\n${stale.join("\n")}`,

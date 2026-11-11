@@ -29,6 +29,7 @@ import { compareReleases, diskRelease, failedTestNames, failureBlocks, gateIn, p
 import { type FetchJson, type SigMode, type Signature, signatureAlert as signatureText, signed, verifyGitTag, verifyGithubTag, wantOf } from "./release-verify.ts";
 import { trackTimer } from "./shutdown.ts";
 import type { Pending } from "./update-watchdog.ts";
+import { SELF_UPDATE_LEAD } from "./worklog-kind.ts";
 
 export type Exec = (cmd: string[], cwd: string, timeoutMs: number) => Promise<{ code: number; out: string }>;
 export type Commit = { sha: string; short: string; date: string; subject: string };
@@ -830,7 +831,7 @@ async function autoApply(o: Options, c: CheckResult, s: State, hooks: AutoHooks)
 	if (j.status === "updated") {
 		delete s.autoRefused;
 		delete s.autoFailed;
-		hooks.worklog(`dotz를 새 버전으로 자동 업데이트했어요 (${rel}, ${c.rewrite ? "저장소 기록 정리" : `커밋 ${c.incomingTotal}개`}, 테스트 통과).${j.note ? ` ${j.note}` : ""} 하던 일이 모두 끝나면 다시 시작해요.${c.available ? ` 릴리스 노트: https://github.com/ddotz/dotz/releases/tag/v${c.available}` : ""}`);
+		hooks.worklog(`${SELF_UPDATE_LEAD} (${rel}, ${c.rewrite ? "저장소 기록 정리" : `커밋 ${c.incomingTotal}개`}, 테스트 통과).${j.note ? ` ${j.note}` : ""} 하던 일이 모두 끝나면 다시 시작해요.${c.available ? ` 릴리스 노트: https://github.com/ddotz/dotz/releases/tag/v${c.available}` : ""}`);
 		hooks.restartIdle();
 		return;
 	}

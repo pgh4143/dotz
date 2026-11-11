@@ -26,6 +26,9 @@ export type Notice = {
 	// The conversation holding the `at` message when it is not `src`: a session's line posted to 작업내역 belongs to the session (src) but lives there.
 	msg?: string;
 	key?: string;
+	// kind "worklog": what the post is and its state (hub/worklog-kind.ts); the web draws its row from them.
+	wk?: string;
+	wst?: string;
 	// Who raised it: "orchestrator", "lane:<name>" or "gateway" (older items have none: originOf falls back to the decision target / lane key).
 	by?: string;
 	// The owner message (or earlier post) the asking post replied to: what lets a later [done] to that same request tell it is about the same matter.

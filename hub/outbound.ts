@@ -103,7 +103,7 @@ function makeQueue(key: string, o: Orchestrator, pendingFile: string, bg: () => 
 		regenerated: isOpenNudge,
 		post: (target, text, replyTo) => out(target, text, replyTo, { auto: true, session: key }),
 		// A quiet check's plain answer: one gateway line in the worklog. Its text opens the line, so no tone marker in the answer can make it a result that pushes.
-		quietNote: (_target, text) => void out("worklog", msg().scheduleCheckLine(text.replace(/\s+/g, " ").slice(0, 300)), undefined, { source: "gateway" }).catch(e => log(`quiet check line failed: ${e}`)),
+		quietNote: (_target, text) => void out("worklog", msg().scheduleCheckLine(text.replace(/\s+/g, " ").slice(0, 300)), undefined, { source: "gateway", wk: "check" }).catch(e => log(`quiet check line failed: ${e}`)),
 		// An answer no label explains lands in the session's own conversation; work another session handed over goes back to it, as that session's next prompt.
 		home: primaryTarget(key),
 		handBack: (from, text, replyTo) => void convs.deliverTo(from, `${msg().handbackLead} ${text}`, { target: convs.get(from)?.primary ?? primaryTarget(from), replyTo, handback: true }),
@@ -536,7 +536,7 @@ export async function progress(target: string, key: string, text: string, replyT
 			const { head, rest } = splitTone(t);
 			if (prefix) t = `${head}${prefix}${dropClaim(rest)}`;
 		}
-		emit("outbox", outEvent({ ts: now(), kind: "out", source: "orchestrator", target, text: t, update_key: key }, threadHome, threadMail));
+		emit("outbox", outEvent({ ts: now(), kind: "out", source: "orchestrator", target, text: t, update_key: key, ...(target === "worklog" && key.startsWith("lane:") ? { wk: "session" } : {}) }, threadHome, threadMail));
 		return t;
 	});
 	if (isLocal(target) || !discord.status.enabled || !route({ target, text: sent, extra: { update_key: key }, replyTo }).messengers.discord) return { delivered: true };

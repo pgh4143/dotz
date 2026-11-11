@@ -7,10 +7,11 @@ import type { Notice } from "./notices-types.ts";
 import { laneTitleOf, watchLabelOf } from "./notices-wiring.ts";
 import { waitsOf, type Waits } from "./notices-rules.ts";
 import { channelTitle, recordedTitle } from "./notices-lanes.ts";
+import { worklogKind } from "./worklog-kind.ts";
 
 export const withClass = (n: Notice, shown: Notice = n): Notice & { cls: string; waits?: Waits } => {
 	const waits = waitsOf(n);
-	return { ...shown, cls: classOfNotice(n).cls, ...(waits ? { waits } : {}) };
+	return { ...shown, cls: classOfNotice(n).cls, ...(waits ? { waits } : {}), ...(n.kind === "worklog" ? worklogKind({ ...n, update_key: n.key, source: n.by }) : {}) };
 };
 export const broadcast = (e: Record<string, unknown>): void => broadcastRaw(e.kind === "notice" && e.item && typeof e.item === "object" ? { ...e, item: withClass(e.item as Notice, readable(e.item as Notice)) } : e);
 // First three meaningful lines (no blank lines, rules or fences).

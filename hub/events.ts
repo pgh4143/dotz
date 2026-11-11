@@ -7,6 +7,7 @@ import { stripSteerMark } from "./steer-mark.ts";
 import { mailByThread, mailTarget } from "./mail.ts";
 import { deriveSpec } from "./message-spec-derive.ts";
 import { noteBroken, ownerKind, ownerText, shownEvent } from "./owner-text.ts";
+import { withWorklogKind } from "./worklog-kind.ts";
 import { maskSecrets } from "./public-scrub.ts";
 import { dropClaim, statedTone, stripHandoff } from "./tone.ts";
 
@@ -72,7 +73,7 @@ export function emit(box: "inbox" | "outbox", event: HubEvent): void {
 	if (typeof event.text === "string" && event.text.includes("[file]")) snapshotSent(event.text);
 	recent.push(event);
 	if (recent.length > 300) recent.shift();
-	broadcast(event);
+	broadcast(withWorklogKind(event));
 	for (const fn of emitListeners) {
 		try {
 			fn(event);
@@ -329,7 +330,7 @@ function conversationEvents(target: string, before?: string): HubEvent[] {
 }
 // `before` (an ISO ts) pages backwards: the newest `limit` events older than it.
 export function historyEvents(target: string, limit: number, before?: string): HubEvent[] {
-	return conversationEvents(target, before).slice(-limit).map(shownEvent);
+	return conversationEvents(target, before).slice(-limit).map(e => withWorklogKind(shownEvent(e)));
 }
 // A page that need not touch what the page already has: `around` centres it on one message (its mid, message_id or ts), `after` starts it past a ts.
 // `at` is the ts of the `around` message (no `at`: the window of history does not hold it), `prev` and `next` the ts just outside the page, absent at
@@ -340,7 +341,7 @@ export function historyPage(target: string, limit: number, where: { around: stri
 	if ("around" in where && hit < 0) return { events: [] };
 	const after = "after" in where ? all.findIndex(e => e.ts > where.after) : -1;
 	const lo = "around" in where ? Math.max(0, hit - (limit >> 1)) : after < 0 ? all.length : after;
-	return { events: all.slice(lo, lo + limit).map(shownEvent), at: all[hit]?.ts, prev: all[lo - 1]?.ts, next: all[lo + limit]?.ts };
+	return { events: all.slice(lo, lo + limit).map(e => withWorklogKind(shownEvent(e))), at: all[hit]?.ts, prev: all[lo - 1]?.ts, next: all[lo + limit]?.ts };
 }
 
 export function sseResponse(lastId?: string | null): Response {

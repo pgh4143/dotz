@@ -488,7 +488,7 @@ for (const name of resumedLanes) void send(`lane:${name}`, "게이트웨이가 �
 // flooded worklog (owner 2026-10-20). Failures to start go to alert elsewhere.
 if (restarted) {
 	const at = new Date().toLocaleTimeString("ko-KR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
-	if (replayed || resumedLanes.length) void out(discord.status.enabled ? "worklog" : "web", msg().gatewayRestart(replayed, resumedLanes), undefined, { source: "gateway", update_key: "gateway-restart" }).catch(e => log(`restart notice failed: ${e}`));
+	if (replayed || resumedLanes.length) void out(discord.status.enabled ? "worklog" : "web", msg().gatewayRestart(replayed, resumedLanes), undefined, { source: "gateway", update_key: "gateway-restart", wk: "system" }).catch(e => log(`restart notice failed: ${e}`));
 	else log(`restart at ${at}: nothing interrupted, worklog notice skipped`);
 }
 // After an update and restart: local changes the updater backed up (dotz-local/<stamp>) and text overrides that no longer fit this version
@@ -569,7 +569,7 @@ syncRoutineSchedules();
 startReflection(text => deliver(text), () => orch.sessionFile, text => out("alert", text, undefined, { source: "gateway" }), text => void steerOrchestrator(text), recipeBlock);
 for (const l of telemetryOff()) log(l);
 for (const l of installDotzCommand({ dir: DATA_DIR, pkg: join(import.meta.dir, ".."), bun: Bun.which("bun") ?? process.execPath, home: HOME, expose: DATA_DIR === join(HOME, ".dotz"), shell: process.env.SHELL })) log(l);
-startHarnessUpdate(text => void out("worklog", text, undefined, { source: "gateway" }).catch(e => log(`harness update post failed: ${e}`)), restartGateway, alert);
+startHarnessUpdate(text => void out("worklog", text, undefined, { source: "gateway", wk: "update" }).catch(e => log(`harness update post failed: ${e}`)), restartGateway, alert);
 startTokenAudit(alert);
 // Settings → 업데이트: the daily check announces a new dotz version (push + a toast on open pages + one bell item); with self_update.auto_apply
 // on it applies it instead (worklog on success, alert with a choice block otherwise) and restarts through the idle restart gate.
@@ -586,7 +586,7 @@ void startSelfUpdate(text => {
 	pushNotify({ kind: "update", title: `${NAME} 업데이트`, body: text, url: "/#settings", tag: "update" });
 	broadcast({ ts: now(), kind: "update_available", source: "gateway", text });
 }, undefined, {
-	worklog: text => void out("worklog", text, undefined, { source: "gateway" }).catch(e => log(`self-update worklog post failed: ${e}`)),
+	worklog: text => void out("worklog", text, undefined, { source: "gateway", wk: "update" }).catch(e => log(`self-update worklog post failed: ${e}`)),
 	alert,
 	restartIdle: restartGateway,
 }).catch(e => log(`self-update start failed: ${e}`));
@@ -602,8 +602,8 @@ const cards: CardAudit = {
 	turn: c => wakeOnce(CARD_AUDIT_ID, msg().cardAudit(c.closed, c.refreshed, c.open)),
 };
 // A state file that did not parse at load (hub/config.ts readJsonOrQuarantine) was set aside; tell the owner what the gateway started from.
-for (const r of takeRecoveries()) void out(discord.status.enabled ? "worklog" : "web", msg().fileRecovered(basename(r.file), r.restored), undefined, { source: "gateway" }).catch(e => log(`recovery notice failed: ${e}`));
-void runMigrations({ ...(process.env.DOTZ_NO_ORCHESTRATOR === "1" ? {} : { cards }), dataDir: DATA_DIR, ask: alert, notify: text => void out(discord.status.enabled ? "worklog" : "web", text, undefined, { source: "gateway" }).catch(e => log(`migration notice failed: ${e}`)) }).catch(e => log(`migrations failed: ${e}`));
+for (const r of takeRecoveries()) void out(discord.status.enabled ? "worklog" : "web", msg().fileRecovered(basename(r.file), r.restored), undefined, { source: "gateway", wk: "system" }).catch(e => log(`recovery notice failed: ${e}`));
+void runMigrations({ ...(process.env.DOTZ_NO_ORCHESTRATOR === "1" ? {} : { cards }), dataDir: DATA_DIR, ask: alert, notify: text => void out(discord.status.enabled ? "worklog" : "web", text, undefined, { source: "gateway", wk: "system" }).catch(e => log(`migration notice failed: ${e}`)) }).catch(e => log(`migrations failed: ${e}`));
 setWatchSummarizer(createWatchSummarizer());
 nameWatches();
 // A monitor's own 디스코드에도 보내기 (hub/watch-settings.ts), or for an app's watch the app's (hub/app-settings.ts appDiscordField; a mail instance's
@@ -740,7 +740,7 @@ const restartGate = createRestartGate({
 	startedAt: Date.now(),
 	minGapMs: Number(process.env.DOTZ_RESTART_MIN_GAP_MS ?? 5 * 60_000),
 	noticeAfterMs: RESTART_NOTICE_MS,
-	notice: text => void out(discord.status.enabled ? "worklog" : "web", text, undefined, { source: "gateway" }).catch(e => log(`restart wait notice failed: ${e}`)),
+	notice: text => void out(discord.status.enabled ? "worklog" : "web", text, undefined, { source: "gateway", wk: "system" }).catch(e => log(`restart wait notice failed: ${e}`)),
 	hold: () => markRestartPending(DATA_DIR, true),
 	capAfterMs: restartCapMs(),
 	cap: (busy, min) => alert(restartCapText(busy, min)),

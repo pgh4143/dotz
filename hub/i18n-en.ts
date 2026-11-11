@@ -39,6 +39,9 @@ Decision: <question>
 <one-line consequence>
 **2) <name>**
 <one-line consequence>`;
+export const NIGHT_LEAD = "Nightly review:";
+export const SCHEDULE_CHECK_LEAD = "Scheduled check:";
+
 export const en = {
 	...enLeads,
 
@@ -306,7 +309,7 @@ export const en = {
 	cardAudit: (closed: number, refreshed: number, open: number) => `[dotz update] This update audits this install's cards once. The gateway closed ${closed} card(s) the send records prove went out and refreshed ${refreshed}. ${open} card(s) are open.\nRead mail, reply drafts, comments, website direct messages, KakaoTalk, sns jobs, the approval queue and notices, and compare them with the send records. How to read each app is in features/<app>/feature.md; read cards with GET /api/notices and GET /api/approvals.\n- Send nothing outside. Do not resend, approve or discard. Run no send command.\n- Close only cards the send records prove went out (ids of POST /api/notices/resolve).\n- Keep every other card open. When one no longer matches its draft, refresh only the card so 보내기 works.\n- At the end give the owner a short summary in this conversation: cards closed, cards left, what they should look at. This audit does not come again.`,
 	inboxSchedule: (id: string, every: number | undefined, channel: string) => `[dotz inbox] scheduled (${id}${every ? `, every ${every} min` : ""}) - do it now; your final answer goes to ${channel}:`,
 	inboxCheck: (ids: string[], channel: string) => `[dotz inbox] quiet check (${ids.join(", ")}) - not something the owner asked for but a system check you set yourself${ids.length > 1 ? `. ${ids.length} fall at the same time, so they come as one turn: go through them in order and write one answer` : ""}. If everything is normal, answer one plain line (it is kept quietly in the worklog only). Start the answer with [ask] or [fail] only when the owner must decide or must know. If there is nothing to say, answer \"-\" alone. Your final answer goes to ${channel}:`,
-	scheduleCheckLine: (text: string) => `Scheduled check: ${text}`,
+	scheduleCheckLine: (text: string) => `${SCHEDULE_CHECK_LEAD} ${text}`,
 	inboxThread: (thread: string, parent: string) => ` (thread "${thread}" in #${parent}; your answer goes into the thread)`,
 	inboxFirst: (channel: string) => `(new work channel #${channel}: the owner hands out work by channel. Keep this channel's work and reports here. If its work needs a login kept alive or something checked over time, set that up for this channel with dotz_channel setup yourself.)`,
 	inboxBurst: (n: number) => `(sent as ${n} messages in a row; read them together as one request)`,
@@ -331,7 +334,7 @@ Do this, briefly:
 3. If there is an issue (a failure, an anomaly, a repeated mistake, a token leak, something that recurred although RULES.md or LESSONS.md already covers it), once, ${enIssue}
 4. Never edit RULES.md here; offer a rule change as an option and wait for the owner's answer.
 5. If the schedules above overlap, merge them (dotz_schedule remove + add), and remove those whose task is over.
-6. Finish with one dotz_send worklog line in the identity's language and Notices style, starting "Nightly review: ...". If nothing was wrong, that one line is all you send: nothing to alert.`,
+6. Finish with one dotz_send worklog line in the identity's language and Notices style, starting "${NIGHT_LEAD} ...". If nothing was wrong, that one line is all you send: nothing to alert.`,
 
 	// Gateway-written: the lessons gate and the repeat card (hub/reflect.ts admitLessons, sendRepeatAlerts).
 	lessonGate: (topics: string[]) => `\n\nThese lesson topics hold prose and nothing enforced, so the gateway removes any further prose line in them: ${topics.join(", ")}. A new line there needs "(enforced: <guard, test or check>)". Name a line's topic with "(topic: <name>)" when its words do not show it.`,

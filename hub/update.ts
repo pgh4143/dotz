@@ -13,6 +13,7 @@ import { activeHarness } from "./runtime/index.ts";
 import { BUN_GLOBAL_OMO, OMO } from "./runtime/omo-hosts.ts";
 import { telemetryOff } from "./runtime/omo.ts";
 import { trackTimer } from "./shutdown.ts";
+import { HARNESS_ASK_TAIL, HARNESS_BLOCKED_TAIL, HARNESS_FAILED_MID, HARNESS_RESTART_TAIL } from "./worklog-kind.ts";
 
 export type Mode = "check" | "install" | "off";
 export type Check =
@@ -157,7 +158,7 @@ async function updateOne(id: string, spec: Spec, { mode, post, alert = post, run
 	if (mode === "check" || blocked) {
 		const stateFile = join(stateDir, `${id}-update.json`);
 		if (readState(stateFile).notified === c.latest) return {};
-		const line = blocked ? `${describe(c, spec.label)} ${blocked}. 그 설치 방식대로 올려 주세요.` : `${describe(c, spec.label)} 설치는 확인한 뒤에 해요.`;
+		const line = blocked ? `${describe(c, spec.label)} ${blocked}${HARNESS_BLOCKED_TAIL}` : `${describe(c, spec.label)}${HARNESS_ASK_TAIL}`;
 		if (blocked) log(`${id} update: ${line}`);
 		writeAtomic(stateFile, JSON.stringify({ notified: c.latest }));
 		post(line);
@@ -169,12 +170,12 @@ async function updateOne(id: string, spec: Spec, { mode, post, alert = post, run
 		// A half-done install must not leave the harness on a version that does not verify.
 		const back = now !== c.current && spec.rollback ? await spec.rollback(t, c.current) : undefined;
 		const kept = back ? `${back.code === 0 ? "이전 버전으로 되돌렸어요" : "이전 버전으로 되돌리지 못했어요"}(${await spec.version(t)})` : `지금 ${now}`;
-		const line = `${spec.label} ${c.current} → ${c.latest} 설치하지 못했어요(${kept}): ${u.out.split("\n").pop()?.slice(0, 160) || `exit ${u.code}`}`;
+		const line = `${spec.label} ${c.current} → ${c.latest}${HARNESS_FAILED_MID}${kept}): ${u.out.split("\n").pop()?.slice(0, 160) || `exit ${u.code}`}`;
 		log(`${id} update: ${line}`);
 		alert(`${line}\n${issueBlock("업데이트를 어떻게 할까요?", [{ name: "다시 설치해 봐요", result: "지금 한 번 더 설치하고 결과를 알려드려요." }, { name: "다음 점검까지 둬요", result: "내일 새벽 점검 때 다시 시도해요." }])}`);
 		return { line };
 	}
-	const line = `${spec.label} ${c.current} → ${now} 올리고 재시작해요 (하던 일이 끝나면).`;
+	const line = `${spec.label} ${c.current} → ${now}${HARNESS_RESTART_TAIL}`;
 	log(`${id} update: ${line}`);
 	for (const l of telemetryOff()) log(l);
 	post(line);
