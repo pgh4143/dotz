@@ -23,7 +23,7 @@
 .tr-otx { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 22px; max-height: 9.5em; overflow-y: auto; }
 .tr-info { margin: 0; padding: 0 0 0 var(--sp-5); color: var(--fg-2); font-size: 13px; line-height: 20px; }
 .tr-warn { padding: var(--sp-2) var(--sp-3); border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, var(--card)); color: var(--warn); font-size: 13px; line-height: 20px; }
-.tr-ta { width: 100%; min-height: 88px; max-height: 52vh; field-sizing: content; padding: var(--sp-3); border: 0; border-radius: 12px; background: var(--ff-fill); color: var(--fg); font: 400 15px/24px var(--font); resize: vertical; box-sizing: border-box; }
+.tr-ta { width: 100%; min-height: 88px; max-height: 52vh; field-sizing: content; padding: var(--sp-3); border: 0; border-radius: 12px; background: var(--ff-fill); color: var(--fg); font: 400 15px/24px var(--font); resize: none; box-sizing: border-box; }
 .tr-ta:focus { outline: 0; box-shadow: var(--ff-ring); }
 .tr-ta:disabled { opacity: .7; }
 .tr-mail { display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-3); border-top: 1px solid var(--line); }

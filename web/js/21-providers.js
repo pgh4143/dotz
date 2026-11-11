@@ -71,7 +71,7 @@ function addProviderDialog() {
     clear(keyBox); keyIn = null;
     for (const [id, n] of rowsByKey) { n.classList.toggle("on", !!pick && pick.id === id); n.setAttribute("aria-pressed", pick && pick.id === id ? "true" : "false"); }
     if (pick && pick.kind === "api_key") { keyIn = input({ type: "password", autocomplete: "new-password" }); keyBox.append(textField(free ? "API 키" : `${pick.name || pick.id} API 키`, keyIn)); if (!free) keyIn.focus(); }
-    const actions = [{ label: "취소", kind: "tonal", onclick: c => c() }];
+    const actions = pick && pick.kind === "api_key" ? [{ label: "취소", kind: "tonal", onclick: c => c() }] : [];   // only a list to pick from: the ✕ is the one way out
     if (pick && pick.kind === "api_key") actions.push({ label: "저장", kind: "pri", onclick: (c, btn) => busy(btn, async () => {
       const provider = free ? free.value.trim() : pick.id, key = keyIn.value;
       if (!provider || !key.trim()) { toast("공급자와 API 키를 입력해 주세요", true); return; }

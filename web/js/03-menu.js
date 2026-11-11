@@ -62,7 +62,7 @@ function showMenu(anchor, items, { value, onPick, sheet, end }) {
     const up = below < 220 && above > below;
     node.style.maxHeight = `${Math.min(400, up ? above : below)}px`;
     const w = node.offsetWidth, h = node.offsetHeight;
-    let left = Math.max(8, end ? r.right - w : r.left);   // end: the menu ends where its anchor ends (a ⋯ at the right edge)
+    let left = Math.max(8, end && r.left + r.width / 2 > vw / 2 ? r.right - w : r.left);   // end: a ⋯ in the right half of the screen ends its menu where it ends; one in the left half opens rightwards as before
     if (left + w > vw - 8) left = Math.max(8, r.right - w);
     node.style.left = `${left}px`;
     node.style.top = `${Math.max(8, up ? r.top - h - 4 : r.bottom + 4)}px`;

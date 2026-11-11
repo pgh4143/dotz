@@ -150,7 +150,9 @@ for (const [label, w, h] of [["phone", 390, 844], ["desktop", 1280, 860]] as con
 		await waitFor(v, `document.querySelector(".pickbox")`);
 		expect(await q(v, `const secs = [...document.querySelectorAll(".pickbox .sec")].map(s => s.textContent); const login = document.querySelector(".pickbox .list").textContent; return [secs, login.includes("GitHub Copilot"), login.includes("xAI")]`)).toEqual([["로그인", "API 키"], true, true]);
 		await shot(v, `providers-add-${w}.png`);
-		await run(v, `${button("document.querySelector('dialog[open]')", "취소")}.click()`);
+		// a list to pick from has no button row: the ✕ is its one way out
+		expect(await q(v, `return document.querySelectorAll("dialog[open] .dact button").length`)).toBe(0);
+		await run(v, `document.querySelector('dialog[open] [aria-label="닫기"]').click()`);
 		await waitFor(v, `!document.querySelector("dialog[open]")`);
 
 		await run(v, `document.querySelector("#accounts [data-acc-add]").click()`);
