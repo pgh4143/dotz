@@ -13,7 +13,10 @@
 :is(#mon-tl, .fr-list) > .bm.rc.fr { gap: var(--sp-1); padding: var(--sp-2) var(--sp-4); cursor: pointer; }
 .fr-list > .bm.alert { padding: var(--sp-2) var(--sp-4); border-radius: var(--r-card); background: var(--card); }
 .fr-list > .bm.rc { display: flex; flex-direction: column; gap: var(--sp-3); }
-@media (hover: hover) { :is(#mon-tl, .fr-list) > .bm.rc.fr:hover { background: var(--hover); } }
+@media (hover: hover) { :is(#mon-tl, .fr-list) > .bm.rc.fr:not(.fr-all):hover { background: var(--hover); } }
+/* a report said whole on its row: nothing to unfold, so it is not a button and its line is not clipped */
+:is(#mon-tl, .fr-list) > .bm.rc.fr.fr-all { cursor: auto; }
+.fr-all .fr-sum { display: block; }
 :is(#mon-tl, .fr-list) > .bm.rc.fr:focus-visible { outline-offset: -2px; }
 .fr-sum { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--fg-2); font-size: 14px; line-height: 20px; overflow-wrap: break-word; }
 /* unread: the source in full weight and a dot before it (never a coloured edge) */

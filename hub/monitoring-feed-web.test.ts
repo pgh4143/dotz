@@ -55,10 +55,13 @@ test("a report's first line that only repeats its title is not repeated under it
 			clearTimeout(t);
 			const names = ["샘플 라 감시"], plain = { title: "샘플 라 감시", text: "샘플 라 감시\\n가격이 내렸어요" }, bold = { title: "샘플 라 감시", text: "**샘플 라 감시**\\n가격이 내렸어요" }, only = { title: "샘플 라 감시", text: "샘플 라 감시" };
 			const one = monRowNode({ id: "t-one", title: "샘플 라 감시: 확인했어요.", text: "샘플 라 감시: 확인했어요.", tone: "ok", read: true, ts: new Date().toISOString() }, []), two = monRowNode({ id: "t-two", title: "샘플 라 감시", text: "가격이 내렸어요", tone: "ok", read: true, ts: new Date().toISOString() }, []);
-			res(JSON.stringify({ plain: monLines(plain, names), bold: monLines(bold, names), sum: monSummary(only, names), card: monStrip(bold.text, names), rows: [one, two].map(r => [r.querySelector(".rc-src").textContent, [...r.querySelectorAll(".fr-sum")].map(x => x.textContent)]) }));
+			res(JSON.stringify({ plain: monLines(plain, names), bold: monLines(bold, names), sum: monSummary(only, names), card: monStrip(bold.text, names), rows: [one, two].map(r => [r.querySelector(".rc-src").textContent, [...r.querySelectorAll(".fr-sum")].map(x => x.textContent)]),
+				taps: [{ text: "가격이 내렸어요" }, { text: "가격이 내렸어요\\n89,000원에서 72,000원\\n배송비는 그대로예요" }, { text: "확인했어요\\n원문\\nHTTP 200" }].flatMap(x => { const n = { id: "t-tap", title: "샘플 라 감시", tone: "ok", read: true, ts: new Date().toISOString(), ...x }; return [monRowNode(n, []), monLogRow(n, [])].map(r => r.getAttribute("role")); }) }));
 		};
 		tick();
-	})`)) as string) as { plain: string[]; bold: string[]; sum: string; card: string; rows: [string, string[]][] };
+	})`)) as string) as { plain: string[]; bold: string[]; sum: string; card: string; rows: [string, string[]][]; taps: (string | null)[] };
+	// a row is a button only when unfolding it shows more than the row says (more than two lines, or the folded original); feed row and log row alike
+	expect(got.taps).toEqual([null, null, "button", "button", "button", "button"]);
 	expect(got.plain).toEqual(["가격이 내렸어요"]);
 	expect(got.bold).toEqual(["가격이 내렸어요"]);
 	expect(got.sum).toBe("샘플 라 감시");

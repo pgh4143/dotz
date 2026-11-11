@@ -1303,7 +1303,7 @@ dotz 웹앱의 `views` 배열(`web/js/04-state.js:36`)은 23개예요. 설정 �
 
 - 목적: 감시, 예약, 앱의 알림 하나를 상태에 맞는 모양으로 보여줘요.
 - 구성(종류): (1) 결과 카드 `monNoticeNode`: 감시 이름, 시각, 결과 태그(`정상`ok, `바뀜`, `실패`err, `주의`, `답변 필요`), 섹션, 원문 접기; 가격 변경 줄은 이전 값 취소선과 새 값 굵게(`nwChangeNode`). (2) 압축 행 `monLogRow`/`monLogLine`: 결과 점, 첫 줄, 둘째 줄, 오른쪽 시각(`방금 전...`, 하루 지나면 날짜), 탭하면 펼침. (3) 접힌 소식 행 `monRowNode`(`.fr`): 출처, 컴퓨터 이름표, 태그, 시각, 두 줄 요약(140자 제한), 답 필요면 `답하러 가기`. (4) 같은 출처 묶음 `monGroupNode`(`.grp`): 건수 `<n>건`(질문이면 `같은 질문 <n>번`), 안 읽음 수, 펼침 화살표, 펼치면 `.fr-list`. (5) 결정 카드 `monDecisionNode`: 제목(없으면 `답변이 필요해요`), 시각, 선택 행(`추천` 태그), 열린 결정은 그 자리에서 `answerInline`, 끝난 결정은 `무시했어요` / `기한 지남` / `답 없이 끝났어요` / `답했어요 · <답>`. (6) 앱 항목 카드 `monItemNode`: 메일을 알림이 가리키면 메일 행처럼, 아니면 제목과 보낸이만 보여주고 점검 원문을 접어 붙여요.
-- 기능: 행 탭 `monToggle`로 펼치기/접기(`접기` 버튼, aria `<출처> 소식 펼치기|접기`), 키보드 Enter/Space, `답하러 가기`(`noticeOpen`), 더 보기 `<n>개 더 보기`(페이지 30), 이전 소식 `이전 소식 <n>개 보기`. 알림에서 점프하면(`MON.want`) 해당 행을 펼치고 페이지를 맞추고 `ntFlash`로 강조(`MON.hl`).
+- 기능: 펼쳐서 더 볼 것이 있는 행만 눌려요(`monHasMore`: 요약 두 줄보다 줄이 많거나, 요약이 잘렸거나, 접힌 원문이 있을 때). 볼 것이 없는 행은 단추가 아니고 글을 자르지 않고 다 보여 줘요(`.fr-all`, 확인 기록 줄도 같음). 행 탭 `monToggle`로 펼치기/접기(`접기` 버튼, aria `<출처> 소식 펼치기|접기`), 키보드 Enter/Space, `답하러 가기`(`noticeOpen`), 더 보기 `<n>개 더 보기`(페이지 30), 이전 소식 `이전 소식 <n>개 보기`. 알림에서 점프하면(`MON.want`) 해당 행을 펼치고 페이지를 맞추고 `ntFlash`로 강조(`MON.hl`).
 - 상태: 묶음 `monFoldKey`(결과와 요약이 같은 연속 3건 이상), 안 읽음(`.un`), 폰/데스크톱 차이 없음. 한 건짜리 묶음은 그냥 행.
 - 데이터: `NT.items`, SSE `notice` / `notice_read` / `notice_dismiss`; 답하기 `ntPost`; 읽음 `pqNoticesRead`, `POST /api/notices/read`.
 - css: web/css/20-monitoring.css(`mon-lr`, `mon-log`), web/css/19-volume.css(`fr-*`, `grp`, `mon-more`, `mon-day`, `mon-sh`), web/css/16-result-card.css, web/css/07-chat.css(`dcm`).

@@ -450,7 +450,8 @@ const MON_PAGE = 30;       // rows per page (더 보기 / 이전 소식 보기 b
 const monPageTo = (key, i) => { if (i >= 0) MON.more.set(key, Math.max(MON.more.get(key) || MON_PAGE, (Math.floor(i / MON_PAGE) + 1) * MON_PAGE)); };
 const MON_FOLD_MIN = 3;    // a run of this many same results in a row folds into its last one
 // A row's summary: the report's first two lines (the monitor's name and the original dropped), 140 characters at most.
-const monLines = (n, names) => monStrip(choiceFree(String(n.text || "").split(/\n(?:```원문|원문[ \t]*\n)/)[0]), [...names, ntPlain(n.title)]).split("\n").map(l => monClean(l)).filter(Boolean);
+const MON_RAW = /\n(?:```원문|원문[ \t]*\n)/;   // where a report's folded original starts
+const monLines = (n, names) => monStrip(choiceFree(String(n.text || "").split(MON_RAW)[0]), [...names, ntPlain(n.title)]).split("\n").map(l => monClean(l)).filter(Boolean);
 function monSummary(n, names) {
   const lines = monLines(n, names).filter(l => !/^(?:새로 생겼어요|사라졌어요)$/.test(l));   // a section heading of the card, not news
   const s = lines.slice(0, 2).join(" · ");
@@ -458,6 +459,9 @@ function monSummary(n, names) {
 }
 // The row's second line, only when it says something its first line (the source) does not: a report that is one sentence is said once.
 const monSumNode = (n, names, src) => { const s = monSummary(n, names); return s === src ? null : el("div", { class: "fr-sum", text: s }); };
+// A row unfolds only when the whole card says more than the row does: more lines than the two it shows, a summary cut short, or the folded original.
+// A report said whole on its row is not a button and shows every word (owner 2026-11-11: a card that grew on a tap and showed nothing new).
+const monHasMore = (n, names) => { const l = monLines(n, names); return l.length > 2 || l.slice(0, 2).join(" · ").length > 140 || MON_RAW.test(String(n.text || "")); };
 const monFoldKey = (n, names) => `${n.tone}|${monSummary(n, names)}`;
 // One source of the feed: the watch's name on one computer (a peer's report of the same name is its own row).
 const monSrcKey = n => `${n.pc ? n.pc.name : ""}|${ntPlain(n.title)}`;
@@ -499,9 +503,9 @@ const monReadAll = (btn, list) => busy(btn, async () => {
 // A report that waits on the owner carries 답하러 가기 on the row itself. A decision is always the whole card: it is answered in place.
 function monRowNode(n, names) {
   if (ntIsDec(n) || n.item) return monNoticeNode(n, names);   // a report about an app item shows the item (a mail row) as the app draws it
-  const key = `n:${n.id}`, src = ntPlain(names[0] || n.title) || "알림";
+  const key = `n:${n.id}`, src = ntPlain(names[0] || n.title) || "알림", more = monHasMore(n, names);
   if (n.id === MON.want) MON.open.add(key);
-  if (MON.open.has(key)) {
+  if (more && MON.open.has(key)) {
     const full = monNoticeNode(n, names);
     if (!full) return null;
     full.classList.add("fr-open");
@@ -509,7 +513,7 @@ function monRowNode(n, names) {
     return full;
   }
   const need = monNeed(n);
-  return el("div", { class: `bm alert rc fr${n.read ? "" : " un"}`, "data-nid": n.id, role: "button", tabindex: "0", "aria-expanded": "false", "aria-label": `${src} 소식 펼치기`, onclick: () => monToggle(key), onkeydown: ev => monKey(ev, () => monToggle(key)) },
+  return el("div", { class: `bm alert rc fr${n.read ? "" : " un"}${more ? "" : " fr-all"}`, "data-nid": n.id, role: more ? "button" : null, tabindex: more ? "0" : null, "aria-expanded": more ? "false" : null, "aria-label": more ? `${src} 소식 펼치기` : null, onclick: more ? () => monToggle(key) : null, onkeydown: more ? ev => monKey(ev, () => monToggle(key)) : null },
     el("div", { class: "rc-hd" }, el("span", { class: "rc-src", text: src }), n.pc ? el("span", { class: "tag", text: n.pc.name }) : null, need ? monTag("ask") : monTag(n.tone), el("span", { class: "rc-time", text: monWhen(n) })),
     monSumNode(n, names, src),
     need ? el("div", { class: "btns cc-act" }, el("button", { class: "btn tonal", type: "button", onclick: ev => { ev.stopPropagation(); noticeOpen(n); }, text: "답하러 가기" })) : null);
@@ -532,12 +536,13 @@ function monLogLine({ tone, main, sub, at, unread, nid, onclick, label }) {
 function monLogRow(n, names) {
   const key = `n:${n.id}`;
   if (n.id === MON.want) MON.open.add(key);
-  if (ntIsDec(n) || n.item || monNeed(n) || MON.open.has(key)) return monRowNode(n, names);
+  const more = monHasMore(n, names);
+  if (ntIsDec(n) || n.item || monNeed(n) || (more && MON.open.has(key))) return monRowNode(n, names);
   const lines = monLines(n, names);
   const chg = nwChangeNode(nwChangeLine(n.text)), plain = lines.filter(l => !l.includes("→")).map(l => l.replace(/^\[[^\]]*\]\s*/, ""));
   const main = chg || plain[0] || ntPlain(n.title) || "알림", sub = chg ? plain[0] || "" : plain[1] || "";
   const src = ntPlain(names[0] || n.title) || "알림";
-  return monLogLine({ tone: chg ? "changed" : n.tone, main, sub, at: n.updated || n.ts, unread: !n.read, nid: n.id, onclick: () => monToggle(key), label: `${src} 소식 펼치기` });
+  return monLogLine({ tone: chg ? "changed" : n.tone, main, sub, at: n.updated || n.ts, unread: !n.read, nid: n.id, onclick: more ? () => monToggle(key) : null, label: more ? `${src} 소식 펼치기` : null });
 }
 // The monitor's own latest run as the newest row: how it last ended and when it checks next (hub/monitors.ts watchFacts).
 function monRunRow(it) {

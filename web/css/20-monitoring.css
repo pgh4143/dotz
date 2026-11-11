@@ -166,6 +166,7 @@
 .mon-lr.un .mon-l1 { font-weight: 600; }
 .mon-l2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2); font: 400 12px/16px var(--font); }
 .mon-l2:empty { display: none; }
+.mon-lr:not([role="button"]) :is(.mon-l1, .mon-l2) { white-space: normal; overflow-wrap: anywhere; }   /* a row with nothing to unfold shows every word */
 .mon-lt { flex: none; color: var(--fg-3); font: 400 12px/16px var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mon-l1 .nw-chg s { color: var(--fg-3); }
 .mon-l1 .nw-chg em { font-style: normal; font-weight: 600; color: var(--accent); }
