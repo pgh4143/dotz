@@ -31,11 +31,11 @@ const stRow = (ic, title, sub, onclick, trail) => el("button", { class: "li tap"
   el("span", { class: "lead" }, icon(ic)),
   el("span", { class: "tx" }, el("div", { class: "hd", text: title }), sub ? el("div", { class: "sup", text: sub }) : null),
   trail === null ? null : el("span", { class: "li-end" }, trail === undefined ? null : trail, icon("chev", "chev")));
-// A setting with two values shows both of them as one segment (the same .seg the editors use), not a tag beside a chevron and not a pill that cycles.
+// A setting with exactly two values keeps its one right-hand control: the two-value pill (docs/ui-spec.md 두 값 설정), not a tag beside a chevron.
 const stToggle = (ic, title, sub, label, opts, value, onPick) => el("div", { class: "li" },
   el("span", { class: "lead" }, icon(ic)),
   el("span", { class: "tx" }, el("div", { class: "hd", text: title }), sub ? el("div", { class: "sup", text: sub }) : null),
-  liEnd(el("div", { class: "seg", role: "radiogroup", "aria-label": label }, ...opts.map(([v, t]) => el("button", { type: "button", role: "radio", class: v === value ? "on" : "", "data-v": v, "aria-checked": String(v === value), onclick: ev => onPick(v, ev.currentTarget) }, t)))));
+  liEnd(rowToggle({ label, opts, value, onPick: (v, btn) => onPick(v, btn) })));
 const stTag = (text, tone = "warn") => el("span", { class: `tag ${tone}${tone === "warn" ? " upd-new" : ""}`, text });
 
 /* ---------- one-line summaries under the link rows ---------- */
