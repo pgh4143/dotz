@@ -204,6 +204,7 @@ export const ko: Catalog = {
 	pendingAskEntry: (lane, at, text, cutFile) => `- 세션 ${lane} (${at}에 물음):\n${text}${cutFile ? `\n... (잘림; 질문 전문은 ${cutFile})` : ""}`,
 	retainNudge: koRetainNudge,
 	workerSwitched: model => `[dotz] 오너가 서브에이전트 모델을 ${model}(으)로 바꿨어요: 새 task 서브에이전트는 이 모델로 띄우세요(이미 도는 건 그대로).`,
+	limitStopAskNote: "[dotz gateway] 방금 보낸 메시지가 남은 사용량 한도가 낮다며 계속할지 멈출지 묻는 것처럼 보여요. 한도가 낮아도 일찍 멈추거나 묻지 마세요. 진짜 한도에 걸리면 게이트웨이가 오너 설정대로 처리하고 세션을 이어가요. 하던 일을 계속하세요.",
 	personalAskNote: "[dotz gateway] 방금 보낸 메시지가 채팅에서 개인·보안 정보(카드, 주소, 전화번호, 신분증, 비밀번호 등)를 묻는 것처럼 보여요. 이런 값은 채팅이 아니라 dotz_auth kind=form(또는 secret)으로만 요청하세요. 이미 보낸 메시지는 정정해서 폼으로 다시 요청하세요.",
 	authWaitNotice: (what, until) => `"${what}" 입력 창이 열려 있어서 ${until}까지 기다리는 중이에요. 입력을 마치거나 "취소"라고 보내면 이어서 처리할게요.`,
 	authOpenNotice: (what, until, where) => `"${what}" 입력 창을 웹앱에 열었어요(${until}까지). ${where} 그만두려면 여기서 "취소"라고 보내 주세요.`,

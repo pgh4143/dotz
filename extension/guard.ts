@@ -31,6 +31,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { broadSearchProblem, expandShellVars, shellText } from "./guard-shell.ts";
 import { grantedHere, ownerPickedHere, swapExpensiveModels, workerPin } from "./guard-expensive.ts";
 export { shellText };
+import { limitStopProblem } from "./guard-limit.ts";
 import { callRules, expandCellVars, OMO_PROJECTS, readPaths, workerTrail } from "./guard-notes.ts";
 import { dataDir, expensiveMatch, type GuardConfig, GUARD_DEFAULTS, installedOriginal, isMain, laneShareReason, loadGuardConfig, logOnce, stateDir, statePath as stateFile, SUB_COMPACT_STOP, SUB_COMPACT_WRAP_UP } from "./guard-config.ts";
 
@@ -1005,6 +1006,8 @@ export function installGuard(pi: any, config: GuardConfig = loadGuardConfig()): 
 			debug({ phase: "shared-write-block", tool });
 			return { block: true, reason: shared };
 		}
+		const limitStop = limitStopProblem(tool, event?.input);
+		if (limitStop) return { block: true, reason: limitStop };
 		if (!isMain(ctx)) return;
 		// A message to a finished worker revives it with its whole history, and it tends to redo its earlier steps.
 		const target = /^agent:\/\/([^/?#]+)/.exec(String(event?.input?.path ?? ""))?.[1];

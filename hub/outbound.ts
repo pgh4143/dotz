@@ -12,6 +12,7 @@ import { isNote, isOpenNudge, msg } from "./i18n.ts";
 import { stripSteerMark } from "./steer-mark.ts";
 import { normalizeAsk, plainBareAsk } from "./ask-normalize.ts";
 import { stripRecommendMark } from "./choices.ts";
+import { asksLimitStopInChat } from "./limit-ask.ts";
 import { asksPersonalInChat } from "./personal-ask.ts";
 import { answeredIds, answeredSince, broadcast, emit, emitDelivery, eventTarget, type HubEvent, ownerMessage, recentOwnerMessages, tailEvents, workAnswer } from "./events.ts";
 import { settleWaiting, type Waiting } from "./awaiting.ts";
@@ -438,6 +439,10 @@ export async function out(target: string, text: string, replyTo?: string, extra:
 			if (asksPersonalInChat(t)) {
 				log(`personal-data ask in chat to ${target}: the form (dotz_auth) is the only way to ask`);
 				steerOrchestrator(msg().personalAskNote);
+			}
+			if ((extra.source === undefined || extra.source === "orchestrator") && asksLimitStopInChat(t)) {
+				log(`limit-stop ask in chat to ${target}: the gateway applies the owner's setting at a real limit`);
+				steerOrchestrator(msg().limitStopAskNote);
 			}
 			const card = routed ? approvals.route(target, t, extra) : undefined;
 			routing.card = card;

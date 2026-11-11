@@ -542,3 +542,31 @@ test("a conversation on its own model pins its task workers on main's, and only 
 	expect(ownWorkerPin(file)).toBe("anthropic-subscription/claude-opus-5-5:high");
 	rmSync(dir, { recursive: true, force: true });
 });
+
+test("hooks: a stop line tied to a usage limit is refused on every path that carries orchestrator text, unless the owner's own words are quoted", async () => {
+	const { pi, handlers } = fakePi(join(dir, "agent-empty"));
+	installGuard(pi, noGate);
+	const ctx = { agent: { kind: "main" }, cwd: dir, sessionManager: { getSessionId: () => "limit-stop" } };
+	const call = (toolName: string, input: any) => handlers.tool_call[0]({ toolName, input }, ctx);
+	const ko = "한도가 5% 이하가 되면 새 일을 시작하지 않아요";
+	const en = "stop and report when the weekly limit drops below 10%";
+	for (const line of [ko, en, "전체 한도가 5%가 되면 멈추고 보고해요"]) {
+		expect((await call("dotz_lane", { action: "launch", brief: `Fix the parser.\n${line}\nDone when: tests pass` }))?.block).toBe(true);
+		expect((await call("dotz_lane", { action: "send", name: "a", text: line }))?.block).toBe(true);
+		expect((await call("dotz_lane", { action: "handover", name: "a", text: line }))?.block).toBe(true);
+		expect((await call("dotz_conv", { action: "send", key: "k", text: line }))?.block).toBe(true);
+		expect((await call("task", { prompt: `${line}\nDone when: x` }))?.block).toBe(true);
+		expect((await call("task", { tasks: [{ task: "ok\nDone when: x" }, { task: `${line}\nDone when: y` }] }))?.block).toBe(true);
+	}
+	for (const line of ["7일 한도 20% 남음", "한도가 빠듯해요: 큰 캡처를 프롬프트에 통째로 넣지 마세요", "Estimate: 10%", "coverage가 80% 아래면 멈추고 보고", "컨텍스트가 5% 남으면 멈춰요", "시험이 빨가면 멈추고 보고", "한도는 5%에서 멈추지 않고 0%까지 써요"]) {
+		expect([line, await call("dotz_lane", { action: "send", name: "a", text: line })]).toEqual([line, undefined]);
+		expect([line, await call("dotz_conv", { action: "send", key: "k", text: line })]).toEqual([line, undefined]);
+		expect([line, (await call("task", { prompt: `${line}\nDone when: x` }))?.block]).toEqual([line, undefined]);
+	}
+	const quoted = `${en}\nOwner words: "stop when the weekly limit is under 10%"`;
+	expect(await call("dotz_lane", { action: "send", name: "a", text: quoted })).toBeUndefined();
+	expect(await call("dotz_lane", { action: "send", name: "a", text: `${ko}\n오너 말: "한도 5% 밑이면 쉬어 줘"` })).toBeUndefined();
+	for (const empty of ['Owner words: ""', "Owner words:", 'Owner words: "  "', '오너 말: ""']) {
+		expect([empty, (await call("dotz_lane", { action: "send", name: "a", text: `${en}\n${empty}` }))?.block]).toEqual([empty, true]);
+	}
+});

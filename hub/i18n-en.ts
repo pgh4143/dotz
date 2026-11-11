@@ -208,6 +208,7 @@ export const en = {
 	laneHandover: (previous: string, tail: string | undefined) => `[handover] The previous conversation (${previous}) was rotated.${tail ? ` Its most recent exchanges, oldest first:\n${tail}\n\n${enRetainNudge}` : ""}`,
 	retainNudge: enRetainNudge,
 	workerSwitched: (model: string) => `[dotz] The owner set your subagent model to ${model}: start new task subagents on it (running ones keep theirs).`,
+	limitStopAskNote: "[dotz gateway] Your last message looks like it stops to ask whether to go on because the remaining usage limit is low. Do not stop early or ask on a low limit: at a real limit the gateway applies the owner's setting and resumes the session. Keep working.",
 	personalAskNote: "[dotz gateway] Your last message looks like it asks for personal or security data (card, address, phone, ID number, password and the like) in chat. Ask for such values only through dotz_auth kind=form (or secret), never in chat. Correct the message you sent and ask again through the form.",
 	// The gateway's own replies while a session waits on a dotz_auth request (hub/auth-wait.ts), posted to the owner's conversation.
 	authWaitNotice: (what: string, until: string) => `The "${what}" input form is open, so I'm waiting until ${until}. Fill it in or send "cancel" and I'll carry on.`,

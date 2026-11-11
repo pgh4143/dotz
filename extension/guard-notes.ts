@@ -8,7 +8,7 @@ export { expandCellVars, readPaths } from "./patch-reads.ts";
 
 // What the guard refuses, said once at session start: a refused call costs a full re-read of the context, so the first call follows the rule.
 export const callRules = (g: GuardConfig): string =>
-	`[orchestrator-guard] Call rules (a refused call is not run): a worker brief (task) has a line starting "Done when:" or "Acceptance:" with a check that can fail, stays under ${g.max_brief_chars} chars and pastes no code block over ${g.max_fence_lines} lines (give paths); \`git apply <x>.patch\` runs only after that patch was read with the read tool on the same path, or read('<path>') in an eval cell.`;
+	`[orchestrator-guard] Call rules (a refused call is not run): a worker brief (task) has a line starting "Done when:" or "Acceptance:" with a check that can fail, stays under ${g.max_brief_chars} chars and pastes no code block over ${g.max_fence_lines} lines (give paths) and no line that stops or pauses work at a low usage limit (the gateway handles a real limit; only \`Owner words: "…"\` passes); \`git apply <x>.patch\` runs only after that patch was read with the read tool on the same path, or read('<path>') in an eval cell.`;
 
 // What a parent needs to continue a worker that was cut (its process died with the previous session; a message to it cannot revive it):
 // OmO keeps the worker's session at <projects>/<repo>/senpi-task/children/<id>/sessions/<id>/*.jsonl (its first user message is the brief)
