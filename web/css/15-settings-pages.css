@@ -10,6 +10,10 @@
 :is(#settings, #notifications, #display, #update, #runtime, #messengers, #devices, #webaccess) .li > .lead:has(> .ic) .ic { width: 16px; height: 16px; }
 :is(#notifications, #update, #runtime) .hs-sw::before { content: ""; position: absolute; inset: -12px -4px; }
 
+/* a state said once at a row's right: the dot and its word */
+#models .fb-sw, #context .cx-state { display: inline-flex; align-items: center; gap: var(--sp-15); }
+#context .cx-state { color: var(--fg-2); }
+
 /* 모델 · 폴백: each target is a title and one list: its model and effort as rows with the picker on the right, then the numbered chain */
 #models .mt { gap: 0; }
 #models .mt-top { margin-bottom: var(--sp-1); }

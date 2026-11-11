@@ -128,7 +128,7 @@ test("phone 390px: the harness row shows current → latest, updates, and the se
 	state = { dotzIncoming: 1, harnesses: [harness(true)] };
 	calls.length = 0;
 	const v = await open(390, 844);
-	const s = await q<{ badge: string; hidden: boolean; sub: string; tags: string[]; upd: boolean; check: boolean; heads: number; switcher: boolean; note: boolean }>(v, `const b = document.querySelector("#nav-upd"), row = ${ROW}, secs = [...document.querySelectorAll("#runtime .sec")].filter(s => s.textContent.startsWith("작업 프로그램 버전")); return { badge: b.textContent, hidden: b.hidden, sub: row.querySelector(".sup").textContent, tags: [...row.querySelectorAll(".tag")].map(t => t.textContent), upd: [...row.querySelectorAll("button")].some(x => x.textContent.trim() === "업데이트"), check: [...${SEC}.querySelectorAll("button")].some(x => x.textContent.trim() === "확인"), heads: secs.length, switcher: !!row.querySelector("button[aria-label='OmO 바꾸기']"), note: document.querySelectorAll("#runtime .note").length === 1 }`);
+	const s = await q<{ badge: string; hidden: boolean; sub: string; tags: string[]; upd: boolean; check: boolean; heads: number; switcher: boolean; note: boolean }>(v, `const b = document.querySelector("#nav-upd"), row = ${ROW}, secs = [...document.querySelectorAll("#runtime .sec")].filter(s => s.textContent.startsWith("작업 프로그램 버전")); return { badge: b.textContent, hidden: b.hidden, sub: row.querySelector(".sup").textContent, tags: [...row.querySelectorAll(".tag")].map(t => t.textContent), upd: [...row.querySelectorAll("button")].some(x => x.textContent.trim() === "업데이트"), check: [...${SEC}.querySelectorAll("button")].some(x => x.textContent.trim() === "새 버전 확인"), heads: secs.length, switcher: !!row.querySelector("button[aria-label='OmO 바꾸기']"), note: document.querySelectorAll("#runtime .note").length === 1 }`);
 	expect(s.hidden).toBe(false);
 	expect(s.badge).toBe("dotz · OmO 새 버전");
 	expect(s.sub).toContain("지금 5.1.48 → 5.1.49");
@@ -139,7 +139,7 @@ test("phone 390px: the harness row shows current → latest, updates, and the se
 	expect(s.heads).toBe(1);
 	expect(s.switcher).toBe(true);
 	expect(s.note).toBe(true);
-	await run(v, `[...${SEC}.querySelectorAll("button")].find(b => b.textContent.trim() === "확인").click()`);
+	await run(v, `[...${SEC}.querySelectorAll("button")].find(b => b.textContent.trim() === "새 버전 확인").click()`);
 	await waitFor(v, `document.querySelector(".snack") && document.querySelector(".snack").textContent.includes("작업 프로그램")`);
 	await run(v, `[...${ROW}.querySelectorAll("button")].find(b => b.textContent.trim() === "업데이트").click()`);
 	await waitFor(v, `document.querySelector("#runtime").textContent.includes("업데이트 중")`);

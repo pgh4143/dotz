@@ -8,7 +8,8 @@ const updFresh = () => !!UPD.info && !UPD.info.error && !!HV.info && Date.now() 
 // 실행 하네스 (hub/harness-update.ts, /api/harness/update): the harness binary itself, checked beside dotz's own version.
 const HV = { info: null, timer: 0 };
 const updWhen = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
-const updVer = v => !v ? "알 수 없음" : v.kind === "git" ? `${v.release ? `v${v.release} · ` : ""}${v.commit.short} · ${updWhen(v.commit.date)}${v.branch !== "main" ? ` · ${v.branch}` : ""}` : v.kind === "tarball" ? `${v.release ? `v${v.release} · ` : ""}설치본 ${v.commit.short} · ${updWhen(v.installed)}${v.ref && v.ref !== "main" ? ` · ${v.ref}` : ""}` : v.kind === "install" ? `설치본 · ${updWhen(v.installed)}` : "알 수 없음";
+// A released version is the version: the commit and the branch are printed only for a checkout that has no release.
+const updVer = v => !v ? "알 수 없음" : v.kind === "git" ? (v.release ? `v${v.release}` : `${v.commit.short} · ${updWhen(v.commit.date)}${v.branch !== "main" ? ` · ${v.branch}` : ""}`) : v.kind === "tarball" ? (v.release ? `v${v.release} · 설치본` : `설치본 ${v.commit.short} · ${updWhen(v.installed)}${v.ref && v.ref !== "main" ? ` · ${v.ref}` : ""}`) : v.kind === "install" ? `설치본 · ${updWhen(v.installed)}` : "알 수 없음";
 // Released versions (hub/selfupdate.ts compareReleases): numeric on date, N, then the forced part; missing sorts below any version.
 const updRel = s => { const m = /^(\d{6})\.([1-3])(?:\.(\d+))?$/.exec(String(s || "").replace(/^v/, "")); return m ? [Number(m[1]), Number(m[2]), Number(m[3] || 0)] : null; };
 const updRelNewer = (disk, available) => { const a = updRel(disk), b = updRel(available); if (!b) return false; if (!a) return true; for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
@@ -219,9 +220,10 @@ const hvSub = h => {
 };
 function hvSwitcher(h) {
   const rt = hvRt().find(r => r.id === h.id);
-  const others = hvRt().filter(r => r.installed && r.id !== h.id).map(r => ({ value: r.id, label: r.label, sub: [r.version ? `v${r.version}` : "", hvRoles(r)].filter(Boolean).join(" · ") || undefined }));
-  if (!rt || !others.length) return null;
-  return el("button", { class: "btn tonal inrow", type: "button", "aria-label": `${h.name} 바꾸기`, "aria-haspopup": "listbox", "aria-expanded": "false", title: "작업 프로그램 바꾸기", onclick: ev => showMenu(ev.currentTarget, others, { onPick: id => rtFlow(hvRt().find(x => x.id === id)) }) }, icon("drop"));
+  // Every installed program is listed and the one in use carries the check, like any other choice menu.
+  const all = hvRt().filter(r => r.installed).map(r => ({ value: r.id, label: r.label, sub: [r.version ? `v${r.version}` : "", hvRoles(r)].filter(Boolean).join(" · ") || undefined }));
+  if (!rt || all.length < 2) return null;
+  return el("button", { class: "btn tonal inrow", type: "button", "aria-label": `${h.name} 바꾸기`, "aria-haspopup": "listbox", "aria-expanded": "false", title: "작업 프로그램 바꾸기", onclick: ev => showMenu(ev.currentTarget, all, { value: rt.roles.length ? h.id : "", onPick: id => { if (id !== h.id) rtFlow(hvRt().find(x => x.id === id)); } }) }, icon("drop"));
 }
 const hvNote = text => el("div", { class: "note", text });
 function hvJobLine(j) {
@@ -250,9 +252,9 @@ function hvSection() {
   });
   if (pending) list.push(hvJobLine(pending));
   else for (const h of hs) if (h.job && h.job.status !== "current") list.push(hvJobLine(h.job));
-  const notes = [hvNote("설치가 실패하면 지금 버전을 그대로 써요.")];
+  const notes = [hvNote("바꾼 뒤에는 어시스턴트와 세션을 다시 시작해야 적용돼요.")];
   return [el("div", { class: "sec sec-act" }, el("span", { text: "작업 프로그램 버전" }), hvNew() ? el("span", { class: "tag warn upd-new", text: "새 버전" }) : null,
-    el("button", { class: "btn tonal sm", type: "button", disabled: !!(HV.info && HV.info.checking), onclick: ev => hvCheck(ev.currentTarget) }, "확인")), el("div", { class: "list" }, ...list), ...notes];
+    el("button", { class: "btn tonal sm", type: "button", disabled: !!(HV.info && HV.info.checking), onclick: ev => hvCheck(ev.currentTarget) }, "새 버전 확인")), el("div", { class: "list" }, ...list), ...notes];
 }
 function updateSection() {
   const i = UPD.info;
@@ -263,13 +265,15 @@ function updateSection() {
   const jobRunning = job && job.status === "running";
   const { pending, c } = updState(i);
   const off = jobRunning || UPD.wait || UPD.checking ? { disabled: true } : {};
-  const rows = [li("앱 버전", UPD.checking ? "확인하는 중…" : `실행 중 ${updVer(run)}`, el("button", { class: "btn tonal inrow", type: "button", ...off, onclick: ev => updCheck(ev.currentTarget) }, "새 버전 확인"))];
+  // One row says the version; after a check its sub line also says it is the latest and when it was checked.
+  const latest = !!(c && c.ok && !updAvailable() && !pending);
+  const sub = UPD.checking ? "확인하는 중…" : [`실행 중 ${updVer(run)}`, latest ? "최신 버전이에요" : "", latest ? `확인 ${updWhen(c.at)}` : "", latest && c.ahead.length ? `로컬 커밋 ${c.ahead.length}개 (아직 올리지 않음)` : "", latest && c.dirty.length ? `커밋 안 한 변경 ${c.dirty.length}개` : ""].filter(Boolean).join(" · ");
+  const rows = [li("앱 버전", sub, el("button", { class: "btn tonal inrow", type: "button", ...off, onclick: ev => updCheck(ev.currentTarget) }, "새 버전 확인"))];
   if (c && !c.ok) rows.push(el("div", { class: "upd-box err" }, el("div", { class: "hd", text: c.error.reason }), el("div", { class: "sup" }, ...updCode(c.error.fix)), c.error.detail ? el("div", { class: "upd-detail", text: c.error.detail }) : null));
-  else if (c && !updAvailable()) rows.push(li("최신 버전이에요", `${c.version && c.version.release ? `v${c.version.release} · ` : ""}${c.upstream} · 확인 ${updWhen(c.at)}${c.ahead.length ? ` · ${c.upstream}에 없는 로컬 커밋 ${c.ahead.length}개 (아직 올리지 않음)` : ""}${c.dirty.length ? ` · 커밋 안 한 변경 ${c.dirty.length}개` : ""}`));
-  else if (c) {
+  else if (c && updAvailable()) {
     const more = c.incomingTotal - c.incoming.slice(0, 8).length;
     rows.push(el("div", { class: "upd-box" },
-      el("div", { class: "hd", text: c.available ? `새 버전 ${c.version && c.version.release ? c.version.release : "설치본"} → ${c.available} · ${c.upstream}` : `새 커밋 ${c.incomingTotal}개 · ${c.upstream}` }),
+      el("div", { class: "hd", text: c.available ? `새 버전 ${c.version && c.version.release ? c.version.release : "설치본"} → ${c.available}` : `새 커밋 ${c.incomingTotal}개 · ${c.upstream}` }),
       el("ul", { class: "upd-log" }, ...c.incoming.slice(0, 8).map(x => el("li", {}, el("code", { text: x.short }), el("span", { text: x.subject, title: x.subject }))), more > 0 ? el("li", { class: "dim" }, el("span", { text: `외 ${more}개` })) : null),
       c.available ? el("a", { class: "sup", href: `https://github.com/ddotz/dotz/releases/tag/v${c.available}`, target: "_blank", rel: "noopener", text: "릴리스 노트 보기" }) : null,
       c.blocked.length ? el("div", { class: "upd-block" }, ...c.blocked.map(b => el("div", { text: b }))) : null,

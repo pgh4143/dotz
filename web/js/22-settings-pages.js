@@ -31,11 +31,11 @@ const stRow = (ic, title, sub, onclick, trail) => el("button", { class: "li tap"
   el("span", { class: "lead" }, icon(ic)),
   el("span", { class: "tx" }, el("div", { class: "hd", text: title }), sub ? el("div", { class: "sup", text: sub }) : null),
   trail === null ? null : el("span", { class: "li-end" }, trail === undefined ? null : trail, icon("chev", "chev")));
-// A setting with exactly two values keeps its one right-hand control: the two-value pill (docs/ui-spec.md 두 값 설정), not a tag beside a chevron.
+// A setting with two values shows both of them as one segment (the same .seg the editors use), not a tag beside a chevron and not a pill that cycles.
 const stToggle = (ic, title, sub, label, opts, value, onPick) => el("div", { class: "li" },
   el("span", { class: "lead" }, icon(ic)),
   el("span", { class: "tx" }, el("div", { class: "hd", text: title }), sub ? el("div", { class: "sup", text: sub }) : null),
-  liEnd(rowToggle({ label, opts, value, onPick: (v, btn) => onPick(v, btn) })));
+  liEnd(el("div", { class: "seg", role: "radiogroup", "aria-label": label }, ...opts.map(([v, t]) => el("button", { type: "button", role: "radio", class: v === value ? "on" : "", "data-v": v, "aria-checked": String(v === value), onclick: ev => onPick(v, ev.currentTarget) }, t)))));
 const stTag = (text, tone = "warn") => el("span", { class: `tag ${tone}${tone === "warn" ? " upd-new" : ""}`, text });
 
 /* ---------- one-line summaries under the link rows ---------- */
@@ -57,6 +57,11 @@ function stUpdateSub() {
   if (updRestartPending()) return `새 버전 ${stUpdShort(i.disk)} 받음 · 재시작하면 적용돼요`;
   const c = updState(i).c;
   return `지금 ${stUpdShort(i.running) || "알 수 없음"}${c && c.ok && !updAvailable() ? " · 최신" : ""}`;
+}
+// The main conversation's context share, from the figure the page already holds (no request); empty until it is loaded.
+function stContextSub() {
+  const p = typeof C !== "undefined" && C ? ctxSession(MAIN) : null;
+  return p && p.running && p.percent != null ? `${Math.round(p.percent)}% 사용 중` : "";
 }
 function stRuntimeSub() {
   const names = [...new Set(hvRt().filter(r => (r.roles || []).length).map(r => r.label))];
@@ -83,11 +88,11 @@ function settingsList(go) {
   const om = M && M.orchestrator;
   const connected = P ? P.providers.filter(isConnected).length : null;
   const nodes = [
-    stSec("모델"), stList(
+    stSec("계정과 모델"), stList(
       stRow("key", "계정", [stAccountSub(), connected != null ? `${connected}개 연결` : ""].filter(Boolean).join(" · "), () => go("accounts")),
       stRow("model", "모델", om ? [modelName(om.model), thinkKo(om.thinking)].filter(Boolean).join(" · ") : "", () => openModels("orchestrator")),
       stRow("usage", "사용량과 월 한도", stUsageSub(), () => go("usage")),
-      stRow("context", "컨텍스트", "", () => go("context"))),
+      stRow("context", "컨텍스트", stContextSub(), () => go("context"))),
     stSec("연결"), stList(
       msHubRow(),
       webAccessRow(stRow),
@@ -111,6 +116,6 @@ function settingsList(go) {
 function displayPage() {
   return [stList(
     stToggle(themeIc(), "화면 모드", "", "화면 모드", [["light", "라이트"], ["dark", "다크"]], themeIs(), v => { if (v !== themeIs()) toggleTheme(); renderSettings(); }),
-    stToggle("chat", "대화 탭", chatTabMode() === "main" ? "채팅을 열면 메인 대화부터 시작해요" : "채팅을 열면 마지막으로 보던 대화부터 시작해요", "대화 탭", [["main", "메인"], ["last", "마지막"]], chatTabMode(), v => { chatTabModeSet(v); renderSettings(); }),
-    ...kbdRows())];
+    stToggle("chat", "대화 탭", chatTabMode() === "main" ? "채팅을 열면 메인 대화부터 시작해요" : "채팅을 열면 마지막으로 보던 대화부터 시작해요", "대화 탭", [["main", "메인"], ["last", "마지막"]], chatTabMode(), v => { chatTabModeSet(v); renderSettings(); })),
+    stSec("진단"), stList(...kbdRows())];
 }

@@ -110,7 +110,7 @@ async function fbKeyDialog(e, done) {
   const custom = e.key_file && e.key_file !== cur.file ? e.key_file : "";
   const file = input({ value: custom, placeholder: cur.file });
   const status = el("p", { class: "sup", text: cur.present ? `저장된 키: ${cur.masked}${e.key_file === cur.file ? " (사용 중)" : ""}` : "저장된 키가 없어요" });
-  const adv = el("details", custom ? { open: "" } : {}, el("summary", { class: "sup", text: "고급: 키 파일 이름으로 지정" }), el("p", { class: "sup", text: "키를 붙여 넣으면 이 칸은 쓰지 않아요." }), textField("파일 이름", file));
+  const adv = msAdvanced("data-fbk-advanced", Boolean(custom), () => el("div", { class: "col" }, el("p", { class: "sup", text: "키를 붙여 넣으면 이 칸은 쓰지 않아요." }), textField("파일 이름", file)), "고급: 키 파일 이름으로 지정");
   const saveWith = async (c, body) => { const r = await api("/api/apikeys", "PUT", body); key.value = ""; toast(`키를 확인하고 저장했어요 (${r.masked})`); done(r.file); c(); };
   const actions = [{ label: "취소", onclick: c => c() }];
   if (provider === "anthropic" && K.omo_anthropic) actions.push({ label: "OmO 키 쓰기", onclick: (c, b) => busy(b, () => saveWith(c, { from: "omo" })) });
@@ -174,7 +174,7 @@ function fbParts(L) {
     if (!ok && wasOpen) { fbOpen = null; renderModels(); }
   };
   const itemFor = (e, i) => {
-    const nm = modelName(fbBase(e.model)), inUse = used.has(fbRunId(e)), on = e.enabled !== false;
+    const nm = modelChipText(fbBase(e.model)), inUse = used.has(fbRunId(e)), on = e.enabled !== false;
     const facts = fbFacts(e), short = facts.slice(0, 2).join(" · ");
     const all = [fbBase(e.model), ...facts, e.key_file && e.workers ? "서브에이전트·세션도 사용" : ""].filter(Boolean).join(" · ");
     const grip = list.length > 1 ? el("button", { type: "button", class: "fb-grip", title: "끌어서 순서 바꾸기", "aria-label": `${nm} 순서 바꾸기, 위아래 화살표 키`, onkeydown: ev => {
@@ -191,7 +191,7 @@ function fbParts(L) {
         inUse ? el("span", { class: "tag pri", text: "사용 중" }) : null,
         fbDownTag(e),
         runs(e) ? null : el("span", { class: "tag warn", text: `여기서 못 써요` })),
-      el("button", { type: "button", class: "fb-sw", role: "switch", "aria-checked": String(on), title: on ? "켜짐 · 눌러서 끄기" : "꺼짐 · 눌러서 켜기", "aria-label": `${nm} ${on ? "끄기" : "켜기"}`, onclick: () => fbSave(L.id, list.map((x, j) => (j === i ? { ...x, enabled: !on } : x))) }, on ? "켜짐" : "꺼짐"),
+      el("button", { type: "button", class: "fb-sw", role: "switch", "aria-checked": String(on), title: on ? "켜짐 · 눌러서 끄기" : "꺼짐 · 눌러서 켜기", "aria-label": `${nm} ${on ? "끄기" : "켜기"}`, onclick: () => fbSave(L.id, list.map((x, j) => (j === i ? { ...x, enabled: !on } : x))) }, el("span", { class: `dot${on ? " ok" : ""}`, "aria-hidden": "true" }), on ? "켜짐" : "꺼짐"),
       grip,
       open(i) ? null : fbBar(e, true));
     if (grip) fbDrag(grip, node, i, move);

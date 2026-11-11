@@ -526,7 +526,7 @@ function selLabel(sel) {
 function renderContext() {
   const box = $("#context");
   if (!C) { clear(box).append(emptyNode("불러오는 중…")); return; }
-  const list = el("div", { class: "col" });
+  const list = el("div", { class: "col" }), offList = el("div", { class: "list" });
   // Exited lanes leave this list at once, like the lanes board; the orchestrator always stays.
   // Then each conversation with its own session, by the same row; a parked one shows its last figure.
   const convRows = (C.conversations || []).map(x => ({ ...x, name: targetName(x.key) }));
@@ -541,6 +541,12 @@ function renderContext() {
     // A waiting session whose process is off (it starts again on its next message) keeps 대기 like every other screen, and says why it has no numbers.
     const off = !p.running && (p.status === "idle" || !!p.key);
     const t = p.key || (p.kind === "lane" ? `lane:${p.name}` : MAIN), [word, tone] = runStatus(t, off ? "idle" : p.status, targetInfo(t).ask);
+    // A session that is not running is one plain list row (its display name, 꺼짐 said once at the right); only a running one keeps a card.
+    if (!p.running) {
+      offList.append(el("div", { class: "li", "data-cx-off": "1" }, el("span", { class: "tx" }, el("div", { class: "hd", text: p.kind === "orchestrator" ? botName : targetName(t) }), cs ? el("div", { class: "sup", text: cs.text }) : null),
+        liEnd(el("span", { class: "cx-state" }, el("span", { class: "dot", "aria-hidden": "true" }), "꺼짐"))));
+      continue;
+    }
     list.append(el("div", { class: "card" },
       el("div", { class: "heads" }, el("span", { class: `dot ${tone}` }), el("span", { class: "t", text: p.kind === "orchestrator" ? botName : p.name }), el("span", { class: "sp" }), word === statusKo("") ? null : el("span", { class: `tag ${tone}`, text: word })),   // a state nobody knows is left out, not named 알 수 없음
       p.model ? el("div", { class: "sup sub", text: selLabel(p.model) }) : null,
@@ -548,7 +554,7 @@ function renderContext() {
       p.running ? null : el("div", { class: "sup mt8", text: off ? "꺼져 있어요. 다음 메시지가 오면 다시 시작해요" : "실행 중이 아니에요" }),
       el("div", { class: "row mt12", style: "justify-content:space-between" }, cs ? el("span", { class: `tag ${cs.tone}`, text: cs.text }) : el("span"), btn)));
   }
-  clear(box).append(list, ...ctxModels());
+  clear(box).append(list, ...(offList.firstChild ? [offList] : []), ...ctxModels());
 }
 /* Per-model context window and auto-compaction point (PUT /api/context/model, stored in config context.models). */
 const ctxUser = n => n === "orchestrator" ? botName : n === "lanes" ? "새 세션 기본" : n;

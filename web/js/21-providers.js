@@ -80,14 +80,14 @@ function addProviderDialog() {
     }) });
     dlg && dlg.setActions(actions);
   }
-  const group = (title, hint, items) => {
+  const group = (title, items) => {
     const box = el("div", {}, el("div", { class: "sec", text: title }), el("div", { class: "list" }));
     for (const a of items) {
       const n = el("button", { type: "button", class: "li tap", "aria-pressed": "false", onclick: () => {
         if (a.kind === "oauth") { dlg.close(); startLogin(a); return; }
         pick = a; paintKey();
       } }, el("span", { class: "avatar", text: [...(a.name || a.id)][0] || "?" }), el("span", { class: "tx" }, el("div", { class: "hd", text: a.name || a.id })),
-        el("span", { class: "sup", text: a.add_account ? "계정 추가" : hint }), icon(a.kind === "oauth" ? "chev" : "key", "lead"));
+        liEnd(a.add_account ? el("span", { class: "sup", text: "계정 추가" }) : null, icon("chev")));   // the whole row is the tap target: the section says login or key, the arrow says it opens
       rowsByKey.set(a.id, n); box.lastChild.append(n);
     }
     return box;
@@ -97,8 +97,8 @@ function addProviderDialog() {
     if (!addable.length) body.append(el("p", { text: "추가할 공급자가 없어요" }));
     else {
       const pk = el("div", { class: "pickbox" });
-      if (login.length) pk.append(group("로그인", "계정으로 로그인", login));
-      if (keys.length) pk.append(group("API 키", "키 입력", keys));
+      if (login.length) pk.append(group("로그인", login));
+      if (keys.length) pk.append(group("API 키", keys));
       body.append(pk, keyBox);
     }
   } else { free = input({ type: "text" }); pick = { kind: "api_key" }; body.append(textField("공급자", free), keyBox); }

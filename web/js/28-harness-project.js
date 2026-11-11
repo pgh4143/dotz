@@ -159,7 +159,7 @@ function hFrom(stages, i) {
   return [el("span", { class: "hm-ar", "aria-hidden": "true" }, icon("chev")), el("div", { class: "hm-from", title: `${from}에서${lb ? ` · ${lb}` : ""}` }, `${from}에서`, lb ? el("b", { text: lb }) : null)];
 }
 const hNo = i => el("span", { class: "hm-no", "aria-hidden": "true", text: String(i + 1) });
-const hCount = (n, title) => (n ? el("span", { class: "tag hm-ct", title, text: String(n) }) : null);
+const hCount = (n, title) => (n ? el("span", { class: "tag hm-ct", title, text: `항목 ${n}` }) : null);
 // A source path as people read it (like custom.js shortPath): the last two names, the full path in the title.
 const hPath = p => { const parts = String(p).split("/").filter(Boolean); return parts.length > 2 ? `…/${parts.slice(-2).join("/")}` : String(p); };
 
@@ -172,7 +172,7 @@ function hStageCard(s, i, stages) {
       hNo(i),
       one ? el("span", { class: `dot ${H_TONE[one.status] || ""}` }) : null,
       el("span", { class: "l", text: one ? one.label : s.label }),
-      hCount(one ? s.chips.length : s.main.length + s.chips.length, "이 단계의 항목 수"),
+      one ? null : hCount(s.main.length + s.chips.length, "이 단계의 항목 수"),   // a one-item stage says its extras below (함께 실행되는 항목 · N)
       one && one.status !== "ok" ? el("span", { class: `tag ${H_TONE[one.status] || ""}`, text: H_STATE[one.status] || "" }) : null,
       bad.length ? el("span", { class: `tag ${bad.some(n => n.status === "err") ? "err" : "warn"}`, title: bad.map(n => n.label).join(", "), text: `주의 ${bad.length}` }) : null),
     one ? el("span", { class: "s", text: one.summary }) : null,

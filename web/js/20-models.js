@@ -85,7 +85,9 @@ function targetEdit(key, title, cur, confirmText, extra = {}) {
   const modelField = selectField("모델", modelName(model), () => modelItems(key, cur.model), model, v => { (pending[key] ||= {}).model = v; renderModels(); });
   // Effort is a dropdown next to the model, not a row of eight buttons (owner 2026-10-20: "드랍다운으로 모델이랑 추론정도 각각"), and it
   // lists what this model accepts, so picking another model rebuilds it with that model's levels.
-  const effField = selectField("추론 강도", thinking ? thinkKo(thinking) : "–", effortItems(model, thinking), thinking, v => { (pending[key] ||= {}).thinking = v; renderModels(); });
+  // A model with no level to choose (only 'off') gets no effort cell at all, not an empty "–" one.
+  const effItems = effortItems(model, thinking);
+  const effField = effItems.length > 1 ? selectField("추론 강도", thinking ? thinkKo(thinking) : "–", effItems, thinking, v => { (pending[key] ||= {}).thinking = v; renderModels(); }) : null;
   const info = (M.available || []).find(a => a.selector === model);
   const apply = el("button", { class: "btn", type: "button", disabled: !dirty, onclick: ev => busy(ev.currentTarget, async () => {
     const change = {};
@@ -93,7 +95,7 @@ function targetEdit(key, title, cur, confirmText, extra = {}) {
     if (p.thinking != null && p.thinking !== cur.thinking) change.thinking = p.thinking;
     await putModel(key, change, confirmText, `${modelName(model)} · ${thinkKo(thinking)}`);
   }) }, "적용");
-  const pick = el("div", { class: "mt-pick" }, el("div", { class: "mt-model" }, modelField), el("div", { class: "mt-eff" }, effField));
+  const pick = el("div", { class: "mt-pick" }, el("div", { class: "mt-model" }, modelField), effField ? el("div", { class: "mt-eff" }, effField) : null);
   const notes = [
     info && !info.reasoning && thinking && thinking !== "off" ? el("div", { class: "sup mt-note", text: "이 모델은 추론 강도를 쓰지 않아요" }) : null,
     dirty ? el("div", { class: "btns mt-apply" }, el("button", { class: "btn text", type: "button", onclick: () => { delete pending[key]; renderModels(); } }, "되돌리기"), apply) : null,

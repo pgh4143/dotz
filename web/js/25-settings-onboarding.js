@@ -137,9 +137,9 @@ function stFlash(sel, label = "저장했어요") {
   setTimeout(() => { if (b.isConnected && b.textContent === label) motionSwap(b, () => { b.textContent = was; }); }, 1800);
 }
 // The closed disclosure that keeps manual fields out of the default view: its body is built only when opened.
-function msAdvanced(attr, open, body) {
+function msAdvanced(attr, open, body, label = "직접 입력") {
   const box = el("div", { class: "ms-adv-body" });
-  const d = el("details", { class: "ms-adv", [attr]: "1", ...(open ? { open: true } : {}) }, el("summary", { class: "ms-adv-sum", text: "직접 입력" }), box);
+  const d = el("details", { class: "ms-adv", [attr]: "1", ...(open ? { open: true } : {}) }, el("summary", { class: "ms-adv-sum", text: label }), box);
   let built = false;
   const fill = () => { if (!built) { built = true; box.append(body()); } };
   // A redraw can replace this element before its toggle event arrives; filling it then would pull shared inputs (the Discord form) out of the new one.
