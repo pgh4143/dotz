@@ -1592,3 +1592,10 @@ test("a session's `resolves` closes only the questions of its own conversations;
 	for (const target of ["web", "ch:111"]) emit("outbox", { ts: rts(), kind: "out", source: "orchestrator", target, text: `[ask] 출시할까요?\n결정: 출시 ${target}\n**1) 네**\n**2) 아니오**` });
 	expect(resolveNotices({ match: "출시" }).resolved).toBe(2);
 });
+
+test("a quiet check's inbox event (source gateway) makes no 예약 notice; an owner schedule still does", () => {
+	emit("inbox", { ts: ts(), kind: "schedule", source: "gateway", channel: "web", id: "a1,b2", ids: ["a1", "b2"], quiet: true, text: "점검 하나 둘" });
+	expect(byText("점검 하나 둘")).toEqual([]);
+	emit("inbox", { ts: ts(), kind: "schedule", source: "schedule", channel: "web", id: "c3", text: "알려 줄 일" });
+	expect(byText("알려 줄 일")).toMatchObject([{ kind: "watch", title: "예약" }]);
+});

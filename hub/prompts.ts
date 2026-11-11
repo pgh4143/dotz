@@ -155,7 +155,14 @@ export function createPrompts(deps: PromptDeps) {
 		}
 		const note = deps.note(reply!.target, reply!.replyTo, text);
 		prompt.noted = note.trim();
-		if (deps.steer(note) !== false) return true;
+		if (deps.steer(note) !== false) {
+			// The owner's message is answered in this turn's final answer, so that answer must be posted, not kept as a quiet line.
+			if (current?.quiet) {
+				delete current.quiet;
+				save();
+			}
+			return true;
+		}
 		prompt.noted = undefined;
 		// The turn ended between the check and the steer: the message goes in as a normal prompt instead of waiting.
 		prompts.at(-1)!.steered = false;
@@ -631,15 +638,17 @@ export function createPrompts(deps: PromptDeps) {
 		p.done = true;
 		const silent = isSilent(t);
 		// A quiet check that found nothing to decide or report: one worklog line, no post, no push. Text it sent early with dotz_send stays a normal answer.
-		if (p.quiet && !silent && t && !LOUD.test(t) && !p.held?.length && deps.quietNote) {
-			save();
-			deps.log(`a quiet check answer for ${p.target ?? "-"} was kept in the worklog`);
-			return p.target ? deps.quietNote(p.target, t) : undefined;
+		const quiet = Boolean(p.quiet && !silent && t && !LOUD.test(t) && !p.held?.length && deps.quietNote);
+		if (quiet && p.target) {
+			deps.log(`a quiet check answer for ${p.target} was kept in the worklog`);
+			deps.quietNote!(p.target, t);
 		}
+		// From here a quiet answer is handled like "-": it posts nothing, and what gathered behind the prompt is released as below.
+		const hush = silent || quiet;
 		if (silent && t !== "-") deps.log(`a no-op answer for ${p.target ?? "-"} was not posted: ${t.slice(0, 160)}`);
-		if (p.target && !silent) receipted.delete(receiptKey(p.target));
-		if (!silent) closeResults(p.replyTo);
-		const ids = p.target && !silent ? [...(p.refs ?? []), ...burst.cover(p.target)] : [];
+		if (p.target && !hush) receipted.delete(receiptKey(p.target));
+		if (!hush) closeResults(p.replyTo);
+		const ids = p.target && !hush ? [...(p.refs ?? []), ...burst.cover(p.target)] : [];
 		save();
 		if (!p.target) return;
 		const target = p.target;
@@ -650,7 +659,7 @@ export function createPrompts(deps: PromptDeps) {
 		// (a schedule text said "tell web" while its final answer goes to "chat", both the main web conversation).
 		const key = head(t);
 		const prior = [...p.sent.filter(s => sameConv(s.target, target)).map(s => s.text), ...held];
-		const repeat = silent || !t || prior.some(h => h.includes(t) || (key.length >= NEAR_MIN && head(h) === key));
+		const repeat = hush || !t || prior.some(h => h.includes(t) || (key.length >= NEAR_MIN && head(h) === key));
 		if (repeat && !held.length) {
 			if (sentHere) deps.clearProgress(target);
 			return burst.close(target, ids);

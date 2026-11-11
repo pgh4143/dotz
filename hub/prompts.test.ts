@@ -1485,3 +1485,17 @@ test("a quiet check is not steered into the running turn of its conversation and
 	expect(state.steered).toEqual([]);
 	expect(open().find(p => p.text === "check")?.quiet).toBe(true);
 });
+
+test("an owner message steered into a running quiet check makes that turn's answer a normal one", () => {
+	const notes: string[] = [];
+	const { q, state, open } = setup([], [], { quietNote: (_target, text) => void notes.push(text) });
+	q.deliver("check", { target: "chat", quiet: true });
+	state.working = true;
+	q.onPrompt("check");
+	q.deliver("그것도 봐줘", { target: "chat", replyTo: "m1", owner: true });
+	expect(state.steered).toHaveLength(1);
+	expect(open().find(p => p.text === "check")?.quiet).toBeUndefined();
+	q.onAnswer("둘 다 정상이에요");
+	expect(state.posts.map(p => p.text)).toEqual(["둘 다 정상이에요"]);
+	expect(notes).toEqual([]);
+});

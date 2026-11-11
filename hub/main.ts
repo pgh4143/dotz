@@ -556,7 +556,8 @@ startSchedules((s, group) => {
 	if (s.kind === "check") {
 		const all = group ?? [s];
 		const text = all.length > 1 ? all.map((x, i) => `${i + 1}) [${x.id}] ${x.text}`).join("\n") : s.text;
-		const event = { ts: now(), kind: "schedule", source: "schedule", channel, id: all.map(x => x.id).join(","), ids: all.map(x => x.id), quiet: true, text };
+		// source "gateway" like wakeOnce: no 예약 notice in the bell and no card in the chat, the turn is the assistant's own
+		const event = { ts: now(), kind: "schedule", source: "gateway", channel, id: all.map(x => x.id).join(","), ids: all.map(x => x.id), quiet: true, text };
 		emit("inbox", event);
 		return void deliver(inboxText(event), { target: channel, quiet: true });
 	}
