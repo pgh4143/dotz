@@ -61,6 +61,7 @@
 #accounts .prow-lim .bar { flex: 1; max-width: 160px; margin-top: 0; }
 /* a card that holds accounts: the usage windows lead, small section names split it, 계정 추가 closes the accounts */
 #accounts .li.prow .prow-lim:first-child { margin-top: 0; }
+@media (pointer: coarse), (max-width: 639px) { #accounts .li.prow .ib { width: var(--btn-hit); height: var(--btn-hit); } }
 #accounts .li.acc-lbl { min-height: 0; }
 #accounts .li.acc-lbl .lbl { margin: 0; }
 #accounts .li.acc-add { min-height: 0; gap: var(--sp-2); color: var(--fg-2); }

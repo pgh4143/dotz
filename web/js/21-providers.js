@@ -30,7 +30,7 @@ function provRow(p, g, own) {
   const on = isConnected(p), key = p.auth === "api_key", tone = on ? "ok" : needsAttention(p) ? "warn" : "";
   const out = key ? "키 삭제" : "로그아웃";
   const act = p.can_add_account ? null
-    : p.can_login ? el("button", { class: `btn inrow ${on ? "text" : "tonal"}`, type: "button", onclick: () => startLogin(p) }, on ? "다시 로그인" : "로그인") : null;
+    : p.can_login ? el("button", { class: `btn inrow ${on ? "text" : "tonal"}`, type: "button", onclick: ev => busy(ev.currentTarget, () => startLogin(p)) }, on ? "다시 로그인" : "로그인") : null;   // the start can take seconds: the button stays off until the dialog is up, so a second press cannot start a second login
   const rm = (p.can_logout ?? p.removable) ? el("button", { class: "ib", type: "button", title: out, "aria-label": out, onclick: ev => busy(ev.currentTarget, () => logoutProvider(p)) }, icon("trash")) : null;
   const slot = key && g ? g.accounts[0] : null;
   const sub = [slot && slot.label !== "API 키" ? slot.label : "", p.account ? accName(p.account) : p.masked || "", p.in_use ? "지금 사용 중" : "", p.accounts > 1 ? `계정 ${p.accounts}개` : ""].filter(Boolean).join(" · ");
@@ -134,19 +134,25 @@ async function startLogin(p, pending) {
   const label = el("label", { for: code.id });
   const field = el("div", { class: "tf" }, label, code);
   const intro = el("p", { hidden: true });
+  const how = el("p", { class: "sup", hidden: true });   // where the code comes from, and what to do with it
   const picks = el("div", { class: "list", hidden: true });
   const ask = el("div", { class: "sup", hidden: true });
   // One filled button at a time: the page link leads until it was opened, then 완료 does.
   const open = el("a", { class: "btn", target: "_blank", rel: "noopener noreferrer" }, icon("open"), "로그인 페이지 열기");
   const openBox = el("div", {}, open);
-  let lastUrl = "", opened = false, choosing = false;
+  let lastUrl = "", opened = false, choosing = false, plain = false;
+  const paintHow = () => {
+    how.hidden = !plain;
+    how.textContent = !lastUrl ? "브라우저에서 로그인한 뒤 나온 코드나 주소를 아래에 붙여 넣어요." : opened ? "열린 페이지에서 로그인한 뒤 나온 코드나 주소를 아래에 붙여 넣어요." : "‘로그인 페이지 열기’를 눌러 로그인한 뒤, 나온 코드나 주소를 아래에 붙여 넣어요.";
+  };
   const paintActs = () => dlg.setActions([{ label: "취소", kind: "tonal", onclick: c => c() },
     ...(choosing ? [] : [{ label: "완료", kind: openBox.hidden || opened ? "pri" : "tonal", onclick: (c, btn) => submit(btn) }])]);
-  open.addEventListener("click", () => { opened = true; open.className = "btn tonal"; paintActs(); });
+  open.addEventListener("click", () => { opened = true; open.className = "btn tonal"; paintHow(); paintActs(); });
   const paintStep = v => {
     if (/^https?:\/\//.test(v.url || "")) { if (v.url !== lastUrl) opened = false; lastUrl = v.url; }
     const choose = !!(v.options && v.options.length), url = !choose && !!lastUrl, question = !choose && !url && !!v.prompt;
     intro.textContent = choose ? v.prompt || "" : ""; intro.hidden = !choose || !v.prompt;
+    plain = !choose && !question; paintHow();
     clear(picks); picks.hidden = !choose;
     for (const o of choose ? v.options : []) picks.append(el("button", { type: "button", class: "li tap", onclick: ev => { code.value = o; submit(ev.currentTarget); } },
       el("span", { class: "tx" }, el("div", { class: "hd", text: o })), icon("chev", "lead")));
@@ -197,7 +203,7 @@ async function startLogin(p, pending) {
   });
   dlg = dialog({
     title: p.can_add_account || p.add_account ? `${name} 계정 추가` : `${name} 로그인`,
-    body: [intro, openBox, field, ask, picks, msg], mid: true,
+    body: [intro, how, openBox, field, ask, picks, msg], mid: true,
     onclose: () => { stop(); if (!finished) api(`/api/providers/${enc(p.id)}/login`, "DELETE").catch(() => {}); },
   });
   paintStep(r);

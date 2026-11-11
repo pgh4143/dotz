@@ -43,7 +43,9 @@ function obApply(key, next) {
   const sameWait = next.state === "waiting" && was === "waiting";
   obStop(before);
   if (!sameWait) obAutoStop(before);
-  OB[key] = { ...before, manual: undefined, choices: undefined, ...next, timer: 0, swap: was != null && was !== next.state, ...(sameWait ? { autoTimer: before.autoTimer || 0 } : { autoTimer: 0 }) };
+  // When a run the owner started (or watched running) ends, the screen keeps the time: the status row says it after the panel is gone.
+  const doneAt = next.state !== "done" ? 0 : before.doneAt || (OB_PRESSED.has(key) || (was && was !== "done") ? Date.now() : 0);
+  OB[key] = { ...before, manual: undefined, choices: undefined, ...next, doneAt, timer: 0, swap: was != null && was !== next.state, ...(sameWait ? { autoTimer: before.autoTimer || 0 } : { autoTimer: 0 }) };
   if (next.state === "waiting" && !sameWait) { OB[key].autoTries = 0; OB[key].autoBusy = false; }
   obPaint(key);
   obPoll(key);
@@ -67,17 +69,18 @@ async function loadOnboarding(key) {
 }
 // The keys whose start is on its way: the pressed row says 연결하는 중 until the answer comes (the start can take a while), and a failure says what to do.
 const OB_WAIT = new Set();
+const OB_PRESSED = new Set();
 async function obStart(key) {
   if (OB_WAIT.has(key)) return;
   if (OB[key]) obAutoStop(OB[key]);
   delete OB[key];
-  OB_WAIT.add(key); obPaint(key);
+  OB_WAIT.add(key); OB_PRESSED.add(key); obPaint(key);
   try {
     await busy(null, async () => {
       try { obApply(key, await api(`/api/onboarding/${enc(key)}/start`, "POST")); }
       catch (e) { throw new Error(`연결을 시작하지 못했어요 · ${e.message}. 잠시 뒤에 다시 눌러 주세요`); }
     });
-  } finally { OB_WAIT.delete(key); obPaint(key); }
+  } finally { OB_WAIT.delete(key); OB_PRESSED.delete(key); obPaint(key); }
 }
 async function obPick(key, choice, btn) {
   await busy(btn, async () => { obApply(key, await api(`/api/onboarding/${enc(key)}/continue`, "POST", { choice })); });

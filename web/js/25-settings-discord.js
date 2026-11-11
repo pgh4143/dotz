@@ -111,7 +111,7 @@ function dcAdvanced(v) {
 function renderDiscord() {
   const box = $("#discord");
   if (!DCS.v) { clear(box).append(DCS.asked && DCS.fail ? emptyNode("Discord 설정을 불러오지 못했어요") : emptyNode("불러오는 중")); return; }
-  const v = DCS.v, m = msItem("discord"), [, , line] = dcStatus();
+  const v = DCS.v, m = msItem("discord"), line = [dcStatus()[2], msConnectedNote("discord")].filter(Boolean).join(" · ");
   const [tag, tone] = m ? msTag(m) : v.enabled ? (v.connected ? ["연결됨", "ok"] : v.error ? ["연결 안 됨", "err"] : ["연결됨", "ok"]) : ["설정 안 됨", "warn"];
   const guide = v.enabled ? [] : [el("div", { class: "list" }, el("div", { class: "li", "data-dc-guide": "1" }, el("details", {}, el("summary", { class: "sup", text: "연결하는 방법" }), el("ol", { class: "steps" },
     el("li", { text: "Discord 개발자 포털(discord.com/developers)에서 새 앱을 만들고 Bot 탭에서 MESSAGE CONTENT를 켠 뒤 봇 토큰을 복사해요" }),

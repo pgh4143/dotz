@@ -6,7 +6,7 @@ const UPD = { info: null, wait: null, timer: 0, at: 0, checking: false };
 const UPD_FRESH_MS = 5 * 60000;
 const updFresh = () => !!UPD.info && !UPD.info.error && !!HV.info && Date.now() - UPD.at < UPD_FRESH_MS;
 // 실행 하네스 (hub/harness-update.ts, /api/harness/update): the harness binary itself, checked beside dotz's own version.
-const HV = { info: null, timer: 0 };
+const HV = { info: null, timer: 0, press: false, at: 0 };
 const updWhen = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
 // A released version is the version: the commit and the branch are printed only for a checkout that has no release.
 const updVer = v => !v ? "알 수 없음" : v.kind === "git" ? (v.release ? `v${v.release}` : `${v.commit.short} · ${updWhen(v.commit.date)}${v.branch !== "main" ? ` · ${v.branch}` : ""}`) : v.kind === "tarball" ? (v.release ? `v${v.release} · 설치본` : `설치본 ${v.commit.short} · ${updWhen(v.installed)}${v.ref && v.ref !== "main" ? ` · ${v.ref}` : ""}`) : v.kind === "install" ? `설치본 · ${updWhen(v.installed)}` : "알 수 없음";
@@ -14,6 +14,7 @@ const updVer = v => !v ? "알 수 없음" : v.kind === "git" ? (v.release ? `v${
 const updRel = s => { const m = /^(\d{6})\.([1-3])(?:\.(\d+))?$/.exec(String(s || "").replace(/^v/, "")); return m ? [Number(m[1]), Number(m[2]), Number(m[3] || 0)] : null; };
 const updRelNewer = (disk, available) => { const a = updRel(disk), b = updRel(available); if (!b) return false; if (!a) return true; for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
 // `cmd` spans in server hints become <code>.
+const updAgo = at => { const t = Date.parse(at); return isNaN(t) ? "" : `${msAgo(t)} 확인`; };
 const updCode = s => String(s || "").split("`").map((p, i) => i % 2 ? el("code", { text: p }) : p);
 // A pulled-but-not-restarted update (running != disk), and the last check when it still describes the checkout. A check made
 // before the checkout moved (an update just landed) no longer describes it.
@@ -134,12 +135,18 @@ async function loadUpdate() {
   else if (HV.info && (HV.info.checking || hvJob())) HV.timer = setTimeout(loadUpdate, 2000);
   if (inSettings()) renderSettings();
 }
+// The pressed button says 확인하는 중… and the list stays; the cards' sub lines keep when it was checked after the band is gone.
 async function hvCheck(btn) {
+  if (HV.press) return;
+  HV.press = true;
+  renderSettings();
   await busy(btn, async () => {
     HV.info = await api("/api/harness/update/check", "POST");
+    HV.at = Date.now();
     const n = hvNew();
     toast(n ? `작업 프로그램 새 버전 ${n}개가 있어요` : "작업 프로그램은 최신이에요");
   });
+  HV.press = false;
   paintUpdBadge();
   renderSettings();
 }
@@ -211,7 +218,7 @@ const hvSub = h => {
   const rt = hvRt().find(r => r.id === h.id);
   const role = hvRoles(rt);
   const ver = `지금 ${h.current}${h.latest && h.latest !== h.current ? ` → ${h.latest}` : ""}`;
-  const withRole = s => (role ? `${s} · ${role}` : s);
+  const withRole = s => [s, role, HV.at ? `${msAgo(HV.at)} 확인` : ""].filter(Boolean).join(" · ");
   if (h.installMethod === "managed") return withRole(`${ver} · ${h.managedBy || "다른 프로그램"}이 관리해요`);
   if (h.installMethod === "app") return withRole(`${ver} · 앱으로 설치됨`);
   if (h.error) return withRole(`${ver} · ${h.error}`);
@@ -254,7 +261,7 @@ function hvSection() {
   else for (const h of hs) if (h.job && h.job.status !== "current") list.push(hvJobLine(h.job));
   const notes = [hvNote("바꾼 뒤에는 어시스턴트와 세션을 다시 시작해야 적용돼요.")];
   return [el("div", { class: "sec sec-act" }, el("span", { text: "작업 프로그램 버전" }), hvNew() ? el("span", { class: "tag warn upd-new", text: "새 버전" }) : null,
-    el("button", { class: "btn tonal sm", type: "button", disabled: !!(HV.info && HV.info.checking), onclick: ev => hvCheck(ev.currentTarget) }, "새 버전 확인")), el("div", { class: "list" }, ...list), ...notes];
+    el("button", { class: "btn tonal sm", type: "button", disabled: HV.press || !!(HV.info && HV.info.checking), onclick: ev => hvCheck(ev.currentTarget) }, HV.press ? "확인하는 중…" : "새 버전 확인")), el("div", { class: "list" }, ...list), ...notes];
 }
 function updateSection() {
   const i = UPD.info;
@@ -267,7 +274,7 @@ function updateSection() {
   const off = jobRunning || UPD.wait || UPD.checking ? { disabled: true } : {};
   // One row says the version; after a check its sub line also says it is the latest and when it was checked.
   const latest = !!(c && c.ok && !updAvailable() && !pending);
-  const sub = UPD.checking ? "확인하는 중…" : [`실행 중 ${updVer(run)}`, latest ? "최신 버전이에요" : "", latest ? `확인 ${updWhen(c.at)}` : "", latest && c.ahead.length ? `로컬 커밋 ${c.ahead.length}개 (아직 올리지 않음)` : "", latest && c.dirty.length ? `커밋 안 한 변경 ${c.dirty.length}개` : ""].filter(Boolean).join(" · ");
+  const sub = UPD.checking ? "확인하는 중…" : [`실행 중 ${updVer(run)}`, latest ? "최신 버전이에요" : "", latest ? updAgo(c.at) : "", latest && c.ahead.length ? `로컬 커밋 ${c.ahead.length}개 (아직 올리지 않음)` : "", latest && c.dirty.length ? `커밋 안 한 변경 ${c.dirty.length}개` : ""].filter(Boolean).join(" · ");
   const rows = [li("앱 버전", sub, el("button", { class: "btn tonal inrow", type: "button", ...off, onclick: ev => updCheck(ev.currentTarget) }, "새 버전 확인"))];
   if (c && !c.ok) rows.push(el("div", { class: "upd-box err" }, el("div", { class: "hd", text: c.error.reason }), el("div", { class: "sup" }, ...updCode(c.error.fix)), c.error.detail ? el("div", { class: "upd-detail", text: c.error.detail }) : null));
   else if (c && updAvailable()) {
@@ -295,7 +302,7 @@ function updateSection() {
 /* ---------- settings: 앱 알림 per class (hub/notify-route.ts pushClasses; GET/PUT /api/push/classes) ---------- */
 // The web app and the phone are one place, "앱 알림": one switch per notice class, the same on every device. The bell keeps every notice
 // either way; a switch decides whether that class notifies. Each messenger has its own 알림 switches in its connection sheet (설정 → 메신저).
-const NOTIFY_CLASSES = [["ask", "답변 필요", "질문 · 승인 · 로그인"], ["alert", "경고", "게이트웨이 오류 · 로그인 끊김 · 감시 반복 실패"], ["result", "결과", "세션 · 작업 완료 · 실패"],
+const NOTIFY_CLASSES = [["ask", "답변 필요", "질문 · 승인 · 로그인"], ["alert", "경고", "dotz 오류 · 로그인 끊김 · 감시 반복 실패"], ["result", "결과", "세션 · 작업 완료 · 실패"],
   ["news", "새 소식", "메일 · 카톡 · 댓글 · 감시 · 예약"], ["conv", "대화", "보고 있지 않은 대화의 새 답"], ["log", "진행", "진행 중 보고 · 작업 기록"]];
 // One plain row per class with a switch; `on(k)` reads a class's state, `set(k, on)` changes it, `only` limits the classes shown.
 const notifyRows = (on, set, only) => NOTIFY_CLASSES.filter(([k]) => !only || only.includes(k)).map(([k, label, desc]) => el("div", { class: "li", "data-notify": k }, el("span", { class: "tx" }, el("div", { class: "hd", text: label }), el("div", { class: "sup", text: desc })),

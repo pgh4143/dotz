@@ -282,7 +282,7 @@ function pushSection() {
       const label = `${g.name || "이 컴퓨터"} 알림`;
       rows.push(li("bell", label, g.online ? el("button", { type: "button", class: "hs-sw", role: "switch", "aria-checked": String(g.on), "aria-label": label, onclick: () => pushGw(g, !g.on) }) : el("span", { class: "sup", text: "연결 안 됨" })));
     }
-  } else if (!pushCapable()) rows.push(li("bell", ios && !standalone ? "iPhone은 홈 화면에 추가한 앱에서 알림을 켤 수 있어요" : "이 브라우저는 알림을 지원하지 않아요"));
+  } else if (!pushCapable()) rows.push(li("bell", ios && !standalone ? "iPhone은 홈 화면에 추가한 앱에서 알림을 켤 수 있어요" : "이 브라우저는 알림을 지원하지 않아요. Chrome이나 설치한 앱에서 켤 수 있어요"));
   else if (Notification.permission === "denied") rows.push(li("bell", "알림 권한이 막혀 있어요"));
   else if (!subscribed) rows.push(li("bell", "알림", el("button", { class: "btn inrow", type: "button", onclick: ev => pushEnable(ev.currentTarget) }, "알림 켜기")));
   const kinds = appNotifyRows();

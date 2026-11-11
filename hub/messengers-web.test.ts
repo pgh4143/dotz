@@ -58,6 +58,7 @@ let onboard: string[] = [];
 let picks: string[] = [];
 let startGate: Promise<void> | null = null;   // holds the answer of /start until a test lets it go
 let startFail = false;
+let testFail = false;
 const puts = inbox<any>();
 let ob: Record<string, any>;
 const idle = key => ({ key, state: "idle", step: null, owner: null, error: null, url: null, updated_at: new Date(0).toISOString() });
@@ -72,6 +73,7 @@ function reset() {
 	onboard = [];
 	startGate = null;
 	startFail = false;
+	testFail = false;
 	ob = Object.fromEntries(["discord", "jandi", "slack", "telegram"].map(k => [k, idle(k)]));
 }
 reset();
@@ -102,6 +104,7 @@ const hub = fakeHub({
 			if (b.allow) allow = b.allow;
 			return json(s);
 		}
+		if (/^\/api\/messengers\/[^/]+\/test$/.test(p) && req.method === "POST") return testFail ? json({ error: "답이 없어요" }, 502) : json({ results: [{ name: "메인", ok: true }] });
 		const o = p.match(/^\/api\/onboarding\/([^/]+)(?:\/(start|continue|cancel))?$/);
 		if (o) {
 			const key = o[1]!, action = o[2];
@@ -328,6 +331,26 @@ describe("메신저 설정", () => {
 		ob.jandi = idle("jandi");
 		await run(v, `loadOnboarding("jandi")`);
 		await waitFor(v, `!document.querySelector("#jandi [data-onb]") && [...document.querySelectorAll("#jandi .sec")].every(x => x.textContent !== "자동 연결")`);
+	}, 30_000);
+
+	test("이미 연결된 JANDI: 다시 연결이 끝나면 그 줄이 연결한 때를 말하고, 연결 확인이 자기 줄에 결과를 남기고, 숫자 id는 어느 서비스 id인지 앞에 달고 있다", async () => {
+		const it = items.find(m => m.id === "jandi");
+		it.enabled = true; it.state = "ok";
+		allow = ["123456789"];
+		const v = await open(390, 844, "light", "jandi");
+		await waitFor(v, `document.querySelector('#jandi [data-allow]')`);
+		expect(await ev<string>(v, `document.querySelector('#jandi [data-allow="123456789"] .hd').textContent`)).toBe("JANDI ID 123456789");
+		expect(await ev<string>(v, `document.querySelector("#jandi [data-ms-connect]").textContent`)).toBe("다시 연결");
+		expect(await ev<number>(v, `document.querySelectorAll("#jandi [data-ms-test-sum]").length`)).toBe(0);
+		await click(v, "#jandi [data-ms-test]");
+		await waitFor(v, `document.querySelector('#jandi [data-ms-test-row] [data-ms-test-sum]')`);
+		testFail = true;
+		await click(v, "#jandi [data-ms-test]");
+		await waitFor(v, `!document.querySelector("#jandi [data-ms-test-sum]") && document.querySelector('#jandi [data-ms-test-row] .dcs-err')`);
+		await click(v, "#jandi [data-ms-connect]");
+		await waitFor(v, `document.querySelector('#jandi [data-onb-state="waiting"]')`);
+		await click(v, "#jandi [data-onb-continue]");
+		await waitFor(v, `!document.querySelector("#jandi [data-onb]") && /연결했어요/.test(document.querySelector("#jandi [data-ms-status] .sup")?.textContent || "")`);
 	}, 30_000);
 
 	test("JANDI rooms stay read-only and 저장 sends only what changed", async () => {

@@ -67,12 +67,16 @@ async function loadMessengerSettings(id) {
   p.loading = false;
   if (current === id) renderMessenger(id);
 }
+// After a run the owner started ends, the row says when it did (the 자동 연결 panel is gone by then).
+const msConnectedNote = id => (OB[id] && OB[id].doneAt ? `${msAgo(OB[id].doneAt)} 연결했어요` : "");
 function msLine(id, m, s) {
   if (m && m.error) return m.error;
   if (!m) return "";
+  const run = OB[id] && OB[id].state;
+  if (OB_WAIT.has(id) || run === "running" || run === "waiting" || run === "failed") return "";   // the 자동 연결 row under the card says where it is
   if (!m.configured) return "연결을 누르면 자동으로 설정해요.";
   if (!m.enabled) return "설정은 돼 있어요. 켜기를 누르면 알림을 보내요.";
-  return id === "jandi" && s && s.rooms ? `방 ${s.rooms.items.length}개` : "";   // the tag beside it already says 연결됨
+  return [id === "jandi" && s && s.rooms ? `방 ${s.rooms.items.length}개` : "", msConnectedNote(id)].filter(Boolean).join(" · ");   // the tag beside it already says 연결됨
 }
 // JANDI's 나와의 대화 login: one row, every word from settings(); 다시 연결 (lost) is the lead, the other states offer a small button.
 function msSelfChatRow(id, s) {
@@ -140,11 +144,24 @@ async function msSave(btn) {
   if (current === p.id) renderMessenger(p.id);
   if (saved) stFlash(`#${p.id} [data-ms-save]`);
 }
-async function msTest(btn) {
+// The check leaves its result in its own row: "확인하는 중…" while it runs, then when it ran and how it went; a failure says what to do.
+async function msTest() {
   const p = MSS.page;
-  if (!p || !p.s) return;
-  await busy(btn, async () => { p.test = (await api(`/api/messengers/${enc(p.id)}/test`, "POST", {})).results; });
+  if (!p || !p.s || p.testing) return;
+  p.testing = true; p.testFail = "";
+  renderMessenger(p.id);
+  try { p.test = (await api(`/api/messengers/${enc(p.id)}/test`, "POST", {})).results; p.testAt = Date.now(); }
+  catch (e) { p.test = null; p.testFail = `확인하지 못했어요 · ${e.message}. 잠시 뒤에 다시 눌러 주세요`; }
+  p.testing = false;
   if (current === p.id) renderMessenger(p.id);
+}
+function msTestResult(p) {
+  if (p.testing) return el("div", { class: "sup", text: "확인하는 중…" });
+  if (p.testFail) return el("div", { class: "dcs-err", role: "alert", text: p.testFail });
+  if (!p.test) return null;
+  const bad = p.test.some(t => !t.ok);
+  return el("div", { class: "dcs-res" }, el("div", { class: "sup", "data-ms-test-sum": "1", text: `${msAgo(p.testAt)} 확인했어요 · ${!p.test.length ? "방이 없어요" : bad ? "보내지 못한 방이 있어요" : "정상이에요"}` }),
+    ...p.test.map(t => el("div", { class: t.ok ? "dcs-ok" : "dcs-err", text: t.ok ? `${t.name}: 보냈어요` : `${t.name}: ${t.error || "보내지 못했어요"}` })));
 }
 function msFieldInput(f) {
   const p = MSS.page;
@@ -209,14 +226,15 @@ function renderMessenger(id) {
         r.last_error ? el("div", { class: "dcs-err", text: r.last_error }) : null))),
     ...(s.rooms.hint ? [el("div", { class: "li" }, el("span", { class: "tx" }, el("div", { class: "sup", "data-ms-hint": "1", text: s.rooms.hint })))] : [])));
   if (!fresh) nodes.push(...msRelaySection(p, s));
-  // A person who is also one of the rooms shows by name with the id under it (Telegram's private chats); otherwise the id alone.
+  // A person who is also one of the rooms shows by name with the id under it (Telegram's private chats); a bare number says whose id it is.
   const who = a => (s.rooms ? s.rooms.items.find(r => String(r.id) === String(a) && r.name && r.name !== String(a)) : null);
+  const idOf = a => (/^-?\d+$/.test(String(a)) ? `${MS_LABELS[id]} ID ${a}` : String(a));
   if (s.allow && !fresh) nodes.push(el("div", { class: "sec", text: s.allow.label }), el("div", { class: "list" },
-    ...p.allow.map(a => { const r = who(a); return el("div", { class: "li", "data-allow": a }, el("span", { class: "tx" }, el("div", { class: "hd", text: r ? r.name : a }), r ? el("div", { class: "sup", text: a }) : null)); })));
+    ...p.allow.map(a => { const r = who(a); return el("div", { class: "li", "data-allow": a }, el("span", { class: "tx" }, el("div", { class: "hd", text: r ? r.name : idOf(a) }), r ? el("div", { class: "sup", text: idOf(a) }) : null)); })));
   // 연결 확인 is one row: the result shows in this row (under the title), the action sits in .li-end.
   if (!fresh) nodes.push(el("div", { class: "list" }, el("div", { class: "li", "data-ms-test-row": "1" }, el("span", { class: "tx" }, el("div", { class: "hd", text: "연결 확인" }),
-    p.test ? el("div", { class: "dcs-res" }, ...(p.test.length ? p.test.map(t => el("div", { class: t.ok ? "dcs-ok" : "dcs-err", text: t.ok ? `${t.name}: 보냈어요` : `${t.name}: ${t.error || "보내지 못했어요"}` })) : [el("div", { class: "sup", text: "방이 없어요" })])) : null),
-  liEnd(el("button", { type: "button", class: "btn tonal inrow", "data-ms-test": "1", onclick: ev => msTest(ev.currentTarget), text: "확인" })))));
+    msTestResult(p)),
+  liEnd(el("button", { type: "button", class: "btn tonal inrow", "data-ms-test": "1", disabled: !!p.testing, onclick: () => msTest(), text: "확인" })))));
   // The toggle event arrives after a redraw can already have replaced the element, so read the live state.
   const prev = box.querySelector("details[data-ms-advanced]");
   if (prev) p.advOpen = prev.open;
