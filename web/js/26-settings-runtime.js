@@ -52,7 +52,7 @@ function rtFlow(r) {
     paint();
   }
   const roleBar = () => el("div", { class: "rt-roles" }, el("span", { class: "sup", text: "적용 대상" }),
-    el("div", { class: "seg", role: "group" }, ...Object.entries(RT_ROLE).map(([k, v]) => el("button", { type: "button", class: roles.has(k) ? "on" : "", "aria-pressed": roles.has(k) ? "true" : "false", text: v, onclick: () => { roles.has(k) ? roles.delete(k) : roles.add(k); paint(); } }))));
+    el("div", { class: "seg", role: "radiogroup", "aria-label": "적용 대상" }, ...[["all", "둘 다"], ...Object.entries(RT_ROLE)].map(([k, v]) => { const on = k === "all" ? roles.size === 2 : roles.size === 1 && roles.has(k); return el("button", { type: "button", role: "radio", class: on ? "on" : "", "aria-checked": String(on), text: v, onclick: () => { roles.clear(); for (const x of k === "all" ? Object.keys(RT_ROLE) : [k]) roles.add(x); paint(); } }); })));
   async function check() {
     try { await api(`/api/runtimes/${r.id}/verify`, "POST", { real: true }); } catch (e) { toast(e.message, true); return; }
     checking = true; st = { running: true, done: 0, total: 0 }; rtLive = pull; clearInterval(timer); timer = setInterval(pull, 1000); paint();
@@ -69,7 +69,7 @@ function rtFlow(r) {
     if (r.hasAdapter) box.append(roleBar());
     const acts = [{ label: "취소", onclick: c => c() }];
     if (r.id !== "omp" && !running) acts.push({ label: report ? "다시 검사" : "작동 검사", kind: report ? "text" : "tonal", onclick: () => check() });
-    acts.push({ label: r.id === "omp" ? "사용" : "조정 후 사용", kind: "pri", disabled: running || !usable() || !roles.size, onclick: (c, btn) => busy(btn, async () => {
+    acts.push({ label: "바꾸기", kind: "pri", disabled: running || !usable() || !roles.size, onclick: (c, btn) => busy(btn, async () => {
       try { const res = await api(`/api/runtimes/${r.id}/use`, "POST", { roles: [...roles] }); toast(res.applies); c(); }
       catch (e) { await pull(); throw e; } }) });
     d.setActions(acts);

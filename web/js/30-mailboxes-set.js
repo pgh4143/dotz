@@ -187,17 +187,17 @@ function mxsSetNodes() {
     mxsSec("답장 쓸 때"), drafts || MXS.reply === b.id ? el("div", { class: "list" }, ...reply.map(([k, l, s, body]) => mxsItem(k, l, s, body)))
       : el("div", { class: "list" }, el("button", { class: "li", type: "button", onclick: () => { MXS.reply = b.id; mxsPaint(); } }, el("span", { class: "tx" }, el("span", { class: "hd", text: "말투와 기본 지시" }), el("span", { class: "sup", text: `${MXS_MODES[b.mode][0]} 메일함은 초안을 쓰지 않아서 접어 뒀어요` })), icon("drop"))),
     mxsSec("알림"), el("div", { class: "list" }, mxsRow("알림 켜기", quiet ? "조용히 모으는 메일함은 알리지 않아요" : "", mxsSw(!quiet && b.notify !== false, "알림 켜기", () => ap(x => { x.notify = x.notify === false; }), quiet))),
-    b.base ? null : el("div", { class: "mxs-del" }, el("button", { class: "btn danger sm", type: "button", onclick: () => mxsDelete(a, b) }, "메일함 지우기"))];
+    b.base ? null : el("div", { class: "mxs-del" }, el("button", { class: "btn danger sm", type: "button", onclick: () => mxsDelete(a, b) }, "메일함 삭제"))];
 }
 async function mxsDelete(a, b) {
   const n = mxsMails(a, b).length;
-  if (!(await ask(`${b.name} 지우기`, `${n ? `메일 ${n}통은` : "이 메일함의 메일은"} 일반으로 옮겨요. 메일은 지워지지 않아요.`, "지우기", true))) return;
+  if (!(await ask(`${b.name} 삭제`, `${n ? `메일 ${n}통은` : "이 메일함의 메일은"} 일반으로 옮겨요. 메일은 지워지지 않아요.`, "삭제", true))) return;
   try { await api("/api/mailbox/box", "DELETE", { app: a.key, id: b.id }); } catch (e) { toast(mxsErr(e), true); return; }
   await Promise.allSettled([loadIntegrations(), convLoad()]);
   MX.box = a.base.id;
   MX.scr = "";
   mxsGo("");
-  toast(`${b.name} 메일함을 지웠어요`);
+  toast(`${b.name} 메일함을 삭제했어요`);
 }
 
 /* ---- 메일함 추가 ---- */

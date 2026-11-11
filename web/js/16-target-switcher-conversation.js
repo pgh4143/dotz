@@ -151,10 +151,11 @@ function authCard(a) {
     inp.addEventListener("input", () => { inp.classList.remove("bad"); err.textContent = ""; });
     return el("div", { class: "fld" }, el("label", { for: inp.id, text: f.label + (f.optional ? "(선택)" : "") }), el("div", { class: "ctl" }, inp, eye), err);
   };
-  const rem = isForm ? el("input", { type: "checkbox", id: `au-${a.id}-remember` }) : null;
-  if (rem) rem.checked = !!a.remember;
+  // The app's own switch row (as 설정), not a browser checkbox: the whole row is the tap target.
+  const rem = isForm ? el("button", { type: "button", class: "hs-sw", role: "switch", "aria-checked": String(!!a.remember), "aria-label": "다음에도 쓰게 저장해 두기", id: `au-${a.id}-remember` }) : null;
+  const remRow = rem ? el("div", { class: "list" }, el("div", { class: "li tap", onclick: () => rem.setAttribute("aria-checked", String(rem.getAttribute("aria-checked") !== "true")) }, el("span", { class: "tx" }, el("div", { class: "hd", text: "다음에도 쓰게 저장해 두기" }), el("div", { class: "sup", text: "끄면 한 번 쓰고 지워요" })), liEnd(rem))) : null;
   const done = async (action, values) => {
-    try { await api(`/api/auth/${encodeURIComponent(a.id)}`, "POST", { action, ...(values ? { values } : {}), ...(rem && action === "submit" ? { remember: rem.checked } : {}) }); }
+    try { await api(`/api/auth/${encodeURIComponent(a.id)}`, "POST", { action, ...(values ? { values } : {}), ...(rem && action === "submit" ? { remember: rem.getAttribute("aria-checked") === "true" } : {}) }); }
     catch (e) {
       const bad = e && e.data && inputs.find(i => i.name === e.data.field);
       if (bad) { bad.classList.add("bad"); bad.closest(".fld").querySelector(".ferr").textContent = e.data.error === "required" ? "비워 둘 수 없어요" : "형식을 확인해 주세요"; bad.focus(); return; }
@@ -170,7 +171,7 @@ function authCard(a) {
   const card = el("form", { class: "au", "data-id": a.id },
     fsHead([el("span", { class: "fs-ey", text: a.kind === "approve" ? "승인 요청" : "입력 요청" }), el("h3", { class: "fs-t", id: `au-t-${a.id}`, text: a.title })], { close: () => { AUTH_HID.add(a.id); paintAuth(); } }),
     el("div", { class: "fs-body abd" }, el("p", { text: a.purpose }), ...(isForm ? a.fields.map((f, k) => wrap(f, inputs[k])) : inputs),
-    rem ? el("label", { class: "rem", for: rem.id }, rem, el("span", { text: "다음에도 쓰게 저장해 두기 (끄면 한 번 쓰고 지워요)" })) : null,
+    remRow,
     a.kind === "approve" ? null : el("div", { class: "note", text: "입력한 값은 이 컴퓨터의 비밀 파일에만 저장되고, 대화나 기록에는 남지 않아요." })),
     el("div", { class: "fs-ft row" }, no, ok));
   card.addEventListener("submit", ev => {

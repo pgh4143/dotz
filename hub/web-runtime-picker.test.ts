@@ -75,7 +75,7 @@ describe("settings: 작업 프로그램 picker", () => {
 		menus[0].opts.onPick("omp");
 		for (let i = 0; i < 20 && !dialogs[0]?.actions.length; i++) await Promise.resolve();
 		expect(dialogs[0].title).toBe("omp로 바꾸기");
-		const use = dialogs[0].actions.find(a => a.label === "사용");
+		const use = dialogs[0].actions.find(a => a.label === "바꾸기");
 		expect(use.disabled).toBe(false);
 		await use.onclick(() => {}, {});
 		expect(calls.filter(c => c[1].endsWith("/use"))).toEqual([["POST", "/api/runtimes/omp/use", { roles: ["orchestrator", "lanes"] }]]);

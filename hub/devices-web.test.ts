@@ -163,9 +163,10 @@ describe("연결된 기기 설정 화면", () => {
 		const v = await open(1280, 800);
 		await click(v, "#devices [data-dev-new]");
 		await waitFor(v, `document.querySelector("dialog[open] [data-dev-make]")`);
-		expect(await ev<string>(v, `${top}.querySelector(".steps").textContent`)).toContain("메신저");
+		expect(await ev<boolean>(v, `!${top}.querySelector(".steps") && !${top}.querySelector("[data-dev-qr]")`)).toBe(true);
 		await click(v, "dialog[open] [data-dev-make]");
 		await waitFor(v, `document.querySelector("dialog[open] [data-dev-code]")`);
+		expect(await ev<number>(v, `${top}.querySelectorAll(".steps li").length`)).toBe(3);
 		expect(await ev(v, `[${top}.querySelector("[data-dev-code]").textContent, ${top}.querySelector('input[name="dev-url"]').value]`)).toEqual(["482913", "https://dotz.example.com/pair"]);
 		expect(calls).toEqual(["POST code"]);
 		expect(await ev(v, `[${top}.querySelector("[data-dev-qr] path").getAttribute("d"), ${top}.querySelector("[data-dev-qr]").getAttribute("viewBox")]`)).toEqual([QR.path, `-4 -4 ${QR.size + 8} ${QR.size + 8}`]);

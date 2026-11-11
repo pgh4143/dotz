@@ -70,3 +70,6 @@
 #usage .rc-end { display: flex; align-items: center; gap: var(--sp-2); }
 #usage > .list + :is(.grid, .sec, .empty) { margin-top: var(--sp-3); }
 :is(#accounts, #messengers, #devices, #webaccess, #usage) > .note { margin: var(--sp-2) var(--sp-1) 0; }
+
+/* 계정 창: the delete actions stand together on the left of the button row */
+dialog.dlg .dact .ac-gap { margin-right: auto; }

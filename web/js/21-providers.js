@@ -296,7 +296,7 @@ async function loadQuota(fresh) {
       el("div", { class: "li", style: "display:block" }, el("div", { class: "hd", text: A.account_label || A.account }), cur ? el("div", { class: "sup", text: cur }) : null),
       ...all.slice(0, SHOWN).map(row), ...older));
     if (more) box.append(more);
-    if (all.length) box.append(el("button", { class: "btn text danger", type: "button", text: "기록 모두 지우기", onclick: () => dialog({ confirm: true, title: "기록을 모두 지울까요?", body: el("div", { class: "sup", text: `계정 전환 기록 ${all.length}개를 지워요. 되돌릴 수 없어요.` }), actions: [{ label: "취소" , onclick: c => c() }, { label: "모두 지우기", kind: "danger", onclick: c => { c(); drop("", "기록을 모두 지웠어요"); } }] }) }));
+    if (all.length) box.append(el("button", { class: "btn text danger", type: "button", text: "기록 모두 지우기", onclick: () => dialog({ confirm: true, title: "기록을 모두 지울까요?", body: el("div", { class: "sup", text: `계정 전환 기록 ${all.length}개를 지워요. 되돌릴 수 없어요.` }), actions: [{ label: "취소" , onclick: c => c() }, { label: "모두 지우기", kind: "danger fill", onclick: c => { c(); drop("", "기록을 모두 지웠어요"); } }] }) }));
   }
   if ((q.unavailable || []).length) {
     box.append(el("div", { class: "sec", text: "정보가 없어요" }));

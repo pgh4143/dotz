@@ -48,7 +48,7 @@ function dvOpen(d) {
     el("div", { class: "sup", text: `${dvDate(d.created)} 연결 · ${dvUsed(d)}` }),
     d.current ? el("div", { class: "tag ok dcs-saved", text: "지금 쓰고 있는 기기" }) : null);
   dialog({ title: d.name, body, mid: true, actions: [
-    { label: "해제", kind: "danger", onclick: async (c, b) => {
+    { label: "해제", kind: "danger fill", onclick: async (c, b) => {
       const text = d.current
         ? "이 기기는 바로 로그아웃돼요. 다시 쓰려면 메신저로 받은 코드로 새로 연결해야 해요."
         : `${d.name}의 로그인이 바로 끊겨요. 다시 쓰려면 코드로 새로 연결해야 해요.`;
@@ -80,23 +80,22 @@ function dvQr(q) {
 function dvNew(self) {
   const res = el("div", { class: "dcs-res" });
   const steps = self
-    ? ["아래에서 코드를 만들어요.", "'연결 화면 열기'를 눌러 코드와 이 기기 이름을 넣어요.", "패스키(Face ID, 지문, Windows Hello 등)로 확인하면 끝나요."]
-    : ["새 기기의 브라우저에서 이 웹앱 주소를 열어요. '기기 연결' 화면이 나와요.", "'코드 받기'를 누르면 6자리 코드가 메신저 알림으로 와요. 메신저를 볼 수 없으면 아래에서 바로 만들 수 있어요.", "코드와 기기 이름을 넣고 패스키(Face ID, 지문, Windows Hello 등)로 확인하면 끝나요."];
+    ? ["'연결 화면 열기'를 눌러 코드와 이 기기 이름을 넣어요.", "패스키(Face ID, 지문, Windows Hello 등)로 확인하면 끝나요."]
+    : ["새 기기의 브라우저에서 이 웹앱 주소를 열어요. '기기 연결' 화면이 나와요.", "QR을 찍거나 위의 코드를 넣어요.", "기기 이름을 넣고 패스키(Face ID, 지문, Windows Hello 등)로 확인하면 끝나요."];
   const make = btn => busy(btn, async () => {
     const o = await api("/api/devices/code", "POST", {});
     const addr = input({ value: o.url, readonly: true, name: "dev-url", onfocus: ev => ev.target.select() });
     clear(res).append(
       !self && o.qr ? dvQr(o.qr) : null,
       el("div", { class: "dv-code", "data-dev-code": o.code, text: o.code }),
+      el("ol", { class: "steps" }, ...steps.map(s => el("li", { text: s }))),
       el("div", { class: "tf" }, el("label", { text: "연결 화면 주소", for: addr.id }), el("div", { class: "ms-copy" }, addr,
         self ? el("a", { class: "btn tonal", href: o.url, target: "_blank", rel: "noopener", text: "연결 화면 열기" })
           : el("button", { type: "button", class: "btn tonal", onclick: () => { try { navigator.clipboard.writeText(o.url); } catch {} toast("복사했어요"); }, text: "복사" }))));
   });
   const body = el("div", { class: "col" },
-    self ? null : el("div", { class: "sup", text: "QR을 찍으면 연결돼요." }),
-    el("ol", { class: "steps" }, ...steps.map(s => el("li", { text: s }))),
     el("div", { class: "sup", text: "코드는 10분 동안 한 번만 쓸 수 있고, 메신저와 이 화면을 합쳐 한 시간에 3번까지 만들 수 있어요." }),
-    el("div", { class: "dcs-acts" }, el("button", { type: "button", class: "btn tonal", "data-dev-make": "1", onclick: ev => make(ev.currentTarget), text: "여기서 코드 만들기" })),
+    el("div", { class: "dcs-acts" }, el("button", { type: "button", class: "btn", "data-dev-make": "1", onclick: ev => make(ev.currentTarget), text: "여기서 코드 만들기" })),
     res);
   dialog({ title: self ? "이 기기에 패스키 추가" : "새 기기 연결", body, onclose: () => loadDevices(), mid: true });
 }

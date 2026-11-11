@@ -172,9 +172,9 @@ function prPick(p, o = {}) {
 // 지우기: an offline computer that paired with this one can be forgotten (DELETE /api/peers); an online, relay or public row never gets the button.
 function prForgetBtn(p, off) {
   if (!off || p.via || p.public) return null;
-  return el("button", { type: "button", class: "btn tonal inrow pr-forget", text: "지우기", "aria-label": `${p.name} 목록에서 지우기`, onclick: async () => {
-    if (!await ask(`${p.name} 지우기`, "내 컴퓨터 목록에서만 빼요. 그 컴퓨터는 그대로이고, 다시 켜면 목록에 돌아와요.", "지우기", true)) return;
-    try { await api(`/api/peers?url=${enc(p.url)}`, "DELETE"); toast(`${p.name}을(를) 지웠어요`); } catch (e) { toast(`${p.name}을(를) 지우지 못했어요`, true); }
+  return el("button", { type: "button", class: "btn tonal inrow pr-forget", text: "제거", "aria-label": `내 컴퓨터에서 ${p.name} 제거`, onclick: async () => {
+    if (!await ask(`내 컴퓨터에서 ${p.name} 제거`, "내 컴퓨터 목록에서만 제거해요. 그 컴퓨터는 그대로이고, 다시 켜면 목록에 돌아와요.", "제거", true)) return;
+    try { await api(`/api/peers?url=${enc(p.url)}`, "DELETE"); toast(`${p.name}을(를) 제거했어요`); } catch (e) { toast(`${p.name}을(를) 제거하지 못했어요`, true); }
     prLoad();
   } });
 }

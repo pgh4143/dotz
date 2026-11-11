@@ -352,7 +352,8 @@ async function openHSheet(id, focus = {}) {
   hHead();
   const body = clear($("#hs-body"));
   body.scrollTop = 0;
-  body.append(el("p", { class: "hs-desc", text: n.desc }));
+  const more = n.desc.startsWith(n.summary) ? n.desc.slice(n.summary.length).trim() : n.desc;   // the head already says the summary
+  if (more) body.append(el("p", { class: "hs-desc", text: more }));
   if (hOrigin()) body.append(hOriginLine(n));
   if (n.facts.length) body.append(el("div", { class: "sec", text: "지금 상태" }), el("div", { class: "hs-facts" }, ...n.facts.map(f => el("div", { class: "hs-fact" }, el("span", { class: "k", text: f.label }), el("span", { class: "v", text: f.value })))));
   body.append(...(hPj() ? [] : fcSheetSection(n, focus.feature)));

@@ -153,7 +153,7 @@ describe("메일함 설정", () => {
 		const v = await open("/#monitoring/i%3Amail/mail/b-pay/set");
 		await click(v, ".mxs-del .btn");
 		await waitFor(v, `document.querySelector("dialog[open]")`);
-		await run(v, `[...document.querySelectorAll("dialog[open] button")].find(b => b.textContent === "지우기").click()`);
+		await run(v, `[...document.querySelectorAll("dialog[open] button")].find(b => b.textContent === "삭제").click()`);
 		await waitForPosts(1);
 		expect(posts[0]).toEqual({ method: "DELETE", path: "/api/mailbox/box", body: { app: "mail", id: "b-pay" } });
 		await waitFor(v, `MX.scr === "" && MX.box === "base" && document.querySelector("#mon-tl > .mr")`);

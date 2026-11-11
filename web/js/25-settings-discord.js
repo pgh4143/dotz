@@ -54,7 +54,7 @@ async function dcCheck(btn) {
   renderDiscord();
 }
 async function dcClear(btn) {
-  if (!await ask("봇 토큰 지우기", "저장된 봇 토큰을 지워요. 게이트웨이를 다시 시작하면 Discord 연결이 끊겨요.", "지우기", true)) return;
+  if (!await ask("봇 토큰 삭제", "저장된 봇 토큰을 삭제해요. 게이트웨이를 다시 시작하면 Discord 연결이 끊겨요.", "삭제", true)) return;
   await busy(btn, async () => { DCS.v = await api("/api/discord/connection", "DELETE"); DCS.chk = null; DCS.err = ""; });
   renderDiscord();
 }
@@ -103,7 +103,7 @@ function dcAdvanced(v) {
     v.has_token ? el("div", { class: "tag ok dcs-saved", text: "저장됨" }) : null,
     DCS.err ? el("div", { class: "dcs-err", role: "alert", text: DCS.err }) : null,
     el("div", { class: "dcs-acts" }, el("button", { type: "button", class: "btn", "data-ms-save": "1", onclick: ev => dcSave(ev.currentTarget), text: "저장" }), el("button", { type: "button", class: "btn tonal", onclick: ev => dcCheck(ev.currentTarget), text: "연결 확인" }),
-      v.has_token ? el("button", { type: "button", class: "btn text", onclick: ev => dcClear(ev.currentTarget), text: "토큰 지우기" }) : null),
+      v.has_token ? el("button", { type: "button", class: "btn text", onclick: ev => dcClear(ev.currentTarget), text: "토큰 삭제" }) : null),
     dcChecked())];
   if (v.restart_needed) rows.push(el("div", { class: "li" }, el("span", { class: "tx" }, el("div", { class: "hd", text: "게이트웨이를 다시 시작하면 적용돼요" })), liEnd(el("button", { type: "button", class: "btn inrow", onclick: ev => dcRestart(ev.currentTarget), text: "다시 시작" }))));
   return el("div", { class: "list" }, ...rows);
