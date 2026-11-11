@@ -898,6 +898,55 @@ test("a failed nudge is no request of its own, and an answer in the conversation
 	expect(q.openRequests()).toEqual([]);
 });
 
+test("an answer with no message id from another scheduled item or a quiet check leaves a stopped scheduled item open, and a restart still replays it", async () => {
+	const { q, state, startTurn } = setup([], [], { regenerated: isOpenNudge, quietNote: () => {} });
+	startTurn("[dotz inbox] 예약 항목: morning brief", { target: "chat" });
+	q.settleTurn(true);
+	startTurn("[dotz inbox] 예약 항목: weather", { target: "chat" });
+	q.onAnswer("비가 와요.");
+	q.settleTurn();
+	startTurn("[dotz inbox] 점검", { target: "chat", quiet: true });
+	q.onAnswer("모두 정상이에요");
+	q.settleTurn();
+	await Promise.resolve();
+	expect(state.posts.map(p => p.text)).toEqual(["비가 와요."]);
+	expect(q.openRequests().length).toBe(1);
+	expect(q.reopen(t => t).texts).toEqual(["[dotz inbox] 예약 항목: morning brief"]);
+});
+
+test("the answer to a reminder closes only the id-less requests a provider error stopped, not a deferred one with a message id or one waiting on a worker", async () => {
+	const { q, startTurn } = setup([], [], { regenerated: isOpenNudge });
+	startTurn("[dotz inbox] 예약 항목: morning brief", { target: "chat" });
+	q.settleTurn(true);
+	startTurn("owner question", { target: "chat", replyTo: "m1" });
+	q.onAnswer("[later]");
+	q.settleTurn();
+	startTurn(ko.openRequests(q.openRequests(), false), { target: "chat" });
+	q.onAnswer("브리핑은 오늘 건너뛰었어요.");
+	q.settleTurn();
+	expect(q.openRequests().map(r => r.replyTo)).toEqual(["m1"]);
+});
+
+test("only the reminder's own text is a regenerated nudge: an owner message or a schedule that quotes it stays a request when its turn is stopped", () => {
+	const { q, startTurn } = setup([], [], { regenerated: isOpenNudge });
+	const nudge = ko.openRequests([{ target: "chat", workers: [] }], false);
+	startTurn(`왜 이런 알림이 왔어?\n${nudge}`, { target: "chat", replyTo: "m1" });
+	q.settleTurn(true);
+	startTurn(`[dotz inbox] 예약 항목: ${nudge}`, { target: "chat" });
+	q.settleTurn(true);
+	expect(q.openRequests().map(r => r.replyTo)).toEqual(["m1", undefined]);
+});
+
+test("a request the silent-wait check dropped is no longer listed and a restart does not replay it", () => {
+	const { q, startTurn } = setup();
+	startTurn("[dotz inbox] 예약 항목: morning brief", { target: "chat" });
+	q.settleTurn(true);
+	const [r] = q.openRequests();
+	q.dropOpen([r!]);
+	expect(q.openRequests()).toEqual([]);
+	expect(q.reopen(t => t).replayed).toBe(0);
+});
+
 // 2026-10-31 06:36 UTC: a channel-A worker was still running when the owner's channel-B message started a turn. OmO injected the
 // worker's completion into that turn and B posted A's answer. The prompt for B must say where another conversation's answer goes.
 test("a prompt for one conversation is told that another conversation's worker is still running", () => {

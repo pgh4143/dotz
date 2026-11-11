@@ -24,7 +24,10 @@ export type WaitSession = {
 	armed: (since: number) => boolean;
 	lastTurnEndAt: () => number;
 	wake: (open: OpenRequest[], last: boolean) => void;
-	/** Requests still open RETRY_MS after their last reminder: the check gives up on them, so no reminder ever follows the last one. */
+	/**
+	 * Requests with no message id and no worker that are still open RETRY_MS after their last reminder: the check gives up on them, so no
+	 * reminder ever follows the last one. A request with a message id stays: its answer must still reach that message, also after a restart.
+	 */
 	drop?: (open: OpenRequest[]) => void;
 };
 
@@ -50,7 +53,7 @@ export function createWaitCheck(deps: WaitCheckDeps) {
 			const listed = s.open();
 			const spent = listed.filter(r => {
 				const w = wakes.get(idOf(s, r));
-				return w !== undefined && w.count >= MAX_WAKES && t - w.at >= RETRY_MS;
+				return r.replyTo === undefined && r.workers.length === 0 && w !== undefined && w.count >= MAX_WAKES && t - w.at >= RETRY_MS;
 			});
 			if (spent.length && s.drop) {
 				deps.log(`${spent.length} open request(s) still unanswered after the last reminder: session ${s.key} drops them`);

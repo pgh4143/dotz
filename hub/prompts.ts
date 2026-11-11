@@ -650,9 +650,11 @@ export function createPrompts(deps: PromptDeps) {
 		if (silent && t !== "-") deps.log(`a no-op answer for ${p.target ?? "-"} was not posted: ${t.slice(0, 160)}`);
 		if (p.target && !hush) receipted.delete(receiptKey(p.target));
 		if (!hush) closeResults(p.replyTo);
-		// An answer that names no message closes the requests of its conversation that name none either and wait on no worker, older than
-		// this turn: nothing else marks them answered (2026-11-11: scheduled items stopped by a usage limit stayed open after their answers).
-		if (!hush && p.target && !p.replyTo) for (const d of openDeferred()) if (d.target === p.target && !d.replyTo && d.at <= p.at && !linksOf(d).some(l => !l.delivered && !l.cancelled)) d.done = true;
+		// The answer to the silent-wait reminder (it names no message here) settles the requests a provider error stopped before their own
+		// answer came, in its conversation and older than the reminder: the reminder listed them and told the run to finish or explain each
+		// (2026-11-11: scheduled items stopped by a usage limit stayed open after the answers to the reminders). Any other answer with no
+		// message id (another scheduled item, a quiet check) did not do their work, so it leaves them open for the run that resumes them.
+		if (!hush && p.target && !p.replyTo && deps.regenerated?.(p.text)) for (const d of openDeferred()) if (d.retry && d.target === p.target && !d.replyTo && d.at <= p.at && !linksOf(d).some(l => !l.delivered && !l.cancelled)) d.done = true;
 		const ids = p.target && !hush ? [...(p.refs ?? []), ...burst.cover(p.target)] : [];
 		save();
 		if (!p.target) return;

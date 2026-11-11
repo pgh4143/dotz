@@ -7,7 +7,7 @@ const TICK = 20_000;
 const request = (replyTo: string, at = 0): OpenRequest => ({ target: "web", replyTo, at, workers: [] });
 
 function setup(open: OpenRequest[]) {
-	const s = { t: 0, open, busy: false, down: false, workers: 0, armed: false, restarting: false, turnEnd: 0, wakes: [] as { ids: (string | undefined)[]; last: boolean }[], dropped: [] as (string | undefined)[] };
+	const s = { t: 0, open, busy: false, down: false, workers: 0, armed: false, restarting: false, turnEnd: 0, wakes: [] as { ids: (string | undefined)[]; last: boolean }[], dropped: [] as string[] };
 	const session: WaitSession = {
 		key: "main",
 		open: () => s.open,
@@ -18,7 +18,7 @@ function setup(open: OpenRequest[]) {
 		lastTurnEndAt: () => s.turnEnd,
 		wake: (list, last) => s.wakes.push({ ids: list.map(r => r.replyTo), last }),
 		drop: list => {
-			s.dropped.push(...list.map(r => r.replyTo));
+			s.dropped.push(...list.map(r => r.replyTo ?? "-"));
 			s.open = s.open.filter(r => !list.includes(r));
 		},
 	};
@@ -46,14 +46,22 @@ test("the wake repeats a bounded number of times, the last one says so, and then
 	expect(s.wakes.map(w => w.last)).toEqual([false, true]);
 });
 
-test("a request still open a retry interval after its last reminder is dropped, so no reminder follows the last one", () => {
-	const { s, run } = setup([request("a")]);
+test("a request with no message id still open a retry interval after its last reminder is dropped, so no reminder follows the last one", () => {
+	const { s, run } = setup([{ target: "web", at: 0, workers: [] }]);
 	run(QUIET_MS + RETRY_MS + TICK * 2);
 	expect(s.wakes.map(w => w.last)).toEqual([false, true]);
 	expect(s.dropped).toEqual([]);
 	run(RETRY_MS);
-	expect(s.dropped).toEqual(["a"]);
+	expect(s.dropped).toEqual(["-"]);
 	expect(s.open).toEqual([]);
+});
+
+test("a request with a message id, or one linked to a worker, is never dropped: its answer still has to reach that message", () => {
+	const { s, run } = setup([request("a"), { target: "web", at: 0, workers: [{ id: "st_a" }] }]);
+	run(RETRY_MS * 10);
+	expect(s.wakes.length).toBe(MAX_WAKES);
+	expect(s.dropped).toEqual([]);
+	expect(s.open.length).toBe(2);
 });
 
 test("no wake while a worker, a turn, an armed watch or a restart runs, and the quiet time starts over when it ends", () => {
