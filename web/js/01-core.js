@@ -138,11 +138,15 @@ function leftText(ms) {
   const m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
   return d ? `${d}일${h ? ` ${h}시간` : ""}` : h ? `${h}시간${mm ? ` ${mm}분` : ""}` : `${mm}분`;
 }
-// When a usage window or budget resets (epoch ms): the time left until then, or that it is resetting now.
+// When a usage window or budget resets (epoch ms): the time left until then with the browser's local clock time
+// ("3시간 38분 후 초기화 (오후 2시 18분)", the date first when it is not today), or that it is resetting now.
 function rel(ms) {
-  const d = ms - Date.now();
+  const now = Date.now(), d = ms - now;
   if (d <= 0) return "초기화 중";
-  return d < 60000 ? "1분 안에 초기화" : `${leftText(d)} 후 초기화`;
+  if (d < 60000) return "1분 안에 초기화";
+  const at = new Date(ms), t = new Date(now), h = at.getHours(), m = at.getMinutes();
+  const day = at.toDateString() === t.toDateString() ? "" : `${at.getMonth() + 1}월 ${at.getDate()}일 `;
+  return `${leftText(d)} 후 초기화 (${day}${h < 12 ? "오전" : "오후"} ${h % 12 || 12}시${m ? ` ${m}분` : ""})`;
 }
 const oneLine = s => String(s).replace(/\s+/g, " ").trim().slice(0, 160);
 // The one line a 생각 row shows: the model's thinking when it is Korean, else a Korean label (the raw English stays in the row's fold).
