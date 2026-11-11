@@ -5,6 +5,8 @@
 /* choose what to follow */
 .kk-pick-src { padding: var(--sp-1) 0 var(--sp-2); border-top: 1px solid var(--line); }
 .kk-pick-src > .kk-pr + .li { border-top: 1px solid var(--line); }
+#cm-pick .sec { margin-inline: var(--sp-4); }   /* section names start on the rows' left line */
+#cm-pick .sec + .kk-pick-src { border-top: 0; }
 #cm-pick .fs-hd { padding-left: max(var(--sp-4), env(safe-area-inset-left)); }   /* the head starts on the rows' left line (this sheet's rows sit at --sp-4 at every width) */
 #cm-empty + .btn { display: block; margin: calc(var(--sp-3) * -1) auto var(--sp-6); }
 .cm .kk-draft input.kk-ta { flex: 1; min-width: 0; min-height: 44px; padding: var(--sp-2) var(--sp-3); border-radius: 12px; border: 0; background: var(--ff-fill); color: inherit; font: 400 16px/22px var(--font); }

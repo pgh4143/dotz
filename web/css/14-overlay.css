@@ -76,7 +76,8 @@ dialog.fs-card::backdrop { background: var(--scrim); }
   .fs-bd.kb { bottom: auto; }
   .fs-card, .fs-card.tall, dialog.dlg.fs-card[open] { --fs-fill: var(--card); width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; background: var(--bg); box-shadow: none; padding-top: env(safe-area-inset-top); }
   dialog.dlg.fs-card[open] { height: var(--vvh, 100dvh); }
-  .fs-card:not(.mid) .btn.tonal, .fs-card:not(.mid) .btn.outlined { background: var(--card); }   /* the sheet is --bg and a pale button is --layer, the same grey in light: the button sits on --card */
+  .fs-card:not(.mid) .btn.tonal, .fs-card:not(.mid) .btn.outlined { background: var(--card); }
+  .fs-card:not(.mid) :is(.card, .list, .app-sw) :is(.btn.tonal, .btn.outlined) { background: var(--layer); }   /* but a pale button on a card inside the sheet keeps its own grey, or it would vanish into the card */   /* the sheet is --bg and a pale button is --layer, the same grey in light: the button sits on --card */
   .fs-hd { padding-left: max(var(--sp-4), env(safe-area-inset-left)); padding-right: max(var(--sp-2), env(safe-area-inset-right)); }
   .fs-body { padding-left: max(var(--sp-4), env(safe-area-inset-left)); padding-right: max(var(--sp-4), env(safe-area-inset-right)); }
   .fs-body.panel { margin: 0 max(var(--sp-2), env(safe-area-inset-left)); padding: var(--sp-4); }
