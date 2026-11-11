@@ -216,7 +216,7 @@ for (const [width, height] of [[390, 844], [1280, 900]] as const) {
 			const bar = `[...document.querySelectorAll(".bm.rc:not(.mr) .mtop")].find(b => b.offsetParent)`;
 			await waitFor(v, bar);
 			const names = () => q<string[]>(v, `return [...${bar}.querySelectorAll("button")].map(b => b.getAttribute("aria-label"))`);
-			expect(await names()).toEqual(["보관", "삭제", "안 읽음으로 표시", "답장", "전체답장", "전달", "초안 작성", "답장 안 함", "원문 접기"]);
+			expect(await names()).toEqual(["보관", "안 읽음으로 표시", "답장", "전체답장", "전달", "초안 작성", "답장 안 함", "원문 접기", "삭제"]);
 			const fit = await q<{ over: number; narrow: string[]; untitled: string[]; more: number }>(v, `const b = ${bar}, all = [...b.querySelectorAll("button")], w = b.getBoundingClientRect(); return { over: b.scrollWidth - b.clientWidth, narrow: all.filter(x => x.getBoundingClientRect().width < 35.5 || x.getBoundingClientRect().right > w.right).map(x => x.title), untitled: all.filter(x => !x.title || x.title !== x.getAttribute("aria-label")).map(x => x.outerHTML), more: b.querySelectorAll(".mr-more").length }`);
 			expect(fit).toEqual({ over: 0, narrow: [], untitled: [], more: 0 });
 			// on a phone a tap anywhere on a drawn button is that button: nine in the bar leave no room for 44px areas, and an area wider than its

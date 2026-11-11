@@ -88,7 +88,7 @@ function mxsConds(o, apply) {
 }
 const mxsJudge = (o, apply) => [el("div", { class: "mxs-jr" }, mxsSw(o.judge.on, "내용을 보고 판단", () => apply(x => { x.judge.on = !x.judge.on; }))),
   o.judge.on ? el("input", { class: "fi", value: o.judge.text, placeholder: "예: 강의 자료를 달라는 메일", "aria-label": "판단 설명", onchange: ev => apply(x => { x.judge.text = ev.target.value.trim(); }, false) }) : null];
-const mxsIcons = (o, apply) => el("div", { class: "mxs-chips", role: "radiogroup", "aria-label": "아이콘" }, ...MXS_ICONS.map(([n, label]) => el("button", { class: `chip mxs-ic${o.icon === n ? " on" : ""}`, type: "button", role: "radio", "aria-checked": String(o.icon === n), "aria-label": label, onclick: () => apply(x => { x.icon = n; }) }, mxIc(n))));
+const mxsIcons = (o, apply) => el("div", { class: "mxs-ig" }, el("div", { class: "mxs-h", text: "아이콘" }), el("div", { class: "mxs-chips", role: "radiogroup", "aria-label": "아이콘" }, ...MXS_ICONS.map(([n, label]) => el("button", { class: `chip mxs-ic${o.icon === n ? " on" : ""}`, type: "button", role: "radio", "aria-checked": String(o.icon === n), "aria-label": label, onclick: () => apply(x => { x.icon = n; }) }, mxIc(n)))));
 function mxsGreets(o, apply) {
   const row = (g, i) => el("div", { class: "mxs-g" }, el("div", { class: "tx" }, el("input", { class: "mxs-in", value: g.who, placeholder: "이름", "aria-label": "이름" }), el("input", { class: "mxs-in s", value: g.addr, placeholder: "주소나 @도메인", "aria-label": "주소" })),
     el("input", { class: "fi", value: g.hello, placeholder: "첫 인사", "aria-label": "첫 인사" }), el("button", { class: "ib", type: "button", "aria-label": "지우기", onclick: () => { if (i < o.greets.length) apply(x => { x.greets.splice(i, 1); }); else { MXS.blank--; mxsPaint(); } } }, icon("close")));

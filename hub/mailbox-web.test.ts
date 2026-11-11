@@ -143,6 +143,14 @@ describe("two accounts", () => {
 
 describe("moving", () => {
 	const pickBox = (v: View, name: string) => run(v, `[...document.querySelectorAll(".menu .mi")].find(b => b.querySelector(".ml").firstChild.textContent === ${JSON.stringify(name)}).click()`);
+	// 옮기기 is an item of the bar's ⋯ menu; picking it opens the boxes menu
+	const moveSel = async (v: View) => {
+		await waitFor(v, `document.querySelector('#mbox-bar [data-k="mail-more"]')`);
+		await run(v, `document.querySelector('#mbox-bar [data-k="mail-more"]').click()`);
+		await waitFor(v, `document.querySelector(".menu .mi")`);
+		await pickBox(v, "메일함 옮기기");
+		await waitFor(v, `document.querySelector(".menu")`);
+	};
 	const openMove = async (v: View, key: string) => { await run(v, `${rowJs(key)}.querySelector('[data-k="mail-move"]').click()`); await waitFor(v, `document.querySelector(".menu")`); };
 
 	test("the row button offers this account's other boxes, posts the move, shows the small box, and 되돌리기 restores it", async () => {
@@ -186,8 +194,7 @@ describe("moving", () => {
 	test("a selection of mails from two accounts has no box to move to", async () => {
 		const v = await open();
 		await run(v, `${rowJs("p-2")}.querySelector(".mr-chk").click(); ${rowJs("w-2")}.querySelector(".mr-chk").click()`);
-		await waitFor(v, `document.querySelector('#mbox-bar [data-k="mail-move-sel"]')`);
-		await run(v, `document.querySelector('#mbox-bar [data-k="mail-move-sel"]').click()`);
+		await moveSel(v);
 		await waitFor(v, `document.querySelector(".menu")`);
 		expect(await ev<number>(v, `document.querySelectorAll(".menu .mi").length`)).toBe(0);
 		expect(posts).toEqual([]);
@@ -196,8 +203,7 @@ describe("moving", () => {
 	test("the selection bar moves a selection of one account in one post", async () => {
 		const v = await open();
 		await run(v, `${rowJs("p-1")}.querySelector(".mr-chk").click(); ${rowJs("p-2")}.querySelector(".mr-chk").click()`);
-		await waitFor(v, `document.querySelector('#mbox-bar [data-k="mail-move-sel"]')`);
-		await run(v, `document.querySelector('#mbox-bar [data-k="mail-move-sel"]').click()`);
+		await moveSel(v);
 		await waitFor(v, `document.querySelector(".menu .mi")`);
 		await pickBox(v, "결제");
 		await waitForPosts(1);

@@ -106,8 +106,9 @@ async function mbRun(keys, action, quiet = false) {
 const mailOriginal = t => { const m = MAILS.get(t); return !!m && m.trashOriginal === true && !pqPc(t); };
 async function mbTrashOriginal(keys, orig) {
   const n = keys.length, rest = keys.filter(t => !orig.includes(t));
-  const what = n > 1 ? `메일 ${n}개를 삭제할까요? ${orig.length === n ? "원본" : `그중 ${orig.length}개는 원본`}도 메일함 휴지통으로 옮겨요` : "이 메일을 삭제할까요? 원본도 메일함 휴지통으로 옮겨요";
+  const what = n > 1 ? `메일 ${n}개를 삭제할까요? ${orig.length === n ? "원본" : `그중 ${orig.length}개는 원본`}도 메일함 휴지통으로 옮겨요. 휴지통에서 되살릴 수 있어요` : "이 메일을 삭제할까요? 원본도 메일함 휴지통으로 옮겨요. 휴지통에서 되살릴 수 있어요";
   if (!await ask("메일 삭제", what, n > 1 ? `${n}개 삭제` : "삭제", true)) return [];
+  mbDeleting();
   let res;
   try { res = (await api("/api/mail/delete-original", "POST", { keys: orig.map(mbKey) })).results.map(x => ({ ...x, key: `mail:${x.key}` })); }
   catch (e) { const note = (e && e.data && e.data.error) || (e && e.message) || "원본을 지우지 못했어요"; res = orig.map(key => ({ key, ok: false, note })); }
@@ -130,6 +131,8 @@ async function mbTrashOriginal(keys, orig) {
 const MB_UNDO_MS = 6000;
 // The one sentence under both 삭제 confirms (a row's ⋯ and an open mail): dotz drops the mail from its list. One mail that its mailbox will not trash stays there, so the box says so plainly;
 // of several, the ones a mailbox can trash go and the rest stay.
+// The answer to a 삭제 confirm can take a moment (the mailbox is asked): say at once that it is going on; the toast of the result replaces this one.
+const mbDeleting = () => toast("삭제하는 중이에요");
 const mailStays = n => n > 1 ? "메일함에는 남아 있을 수 있어요." : "메일함에는 그대로 남아 있어요.";
 async function mbTrash(keys) {
   keys = keys.filter(t => MAILS.has(t));
@@ -138,6 +141,7 @@ async function mbTrash(keys) {
   if (orig.length) return mbTrashOriginal(keys, orig);
   if (!keys.every(t => mailCan(t, "trash"))) {
     if (!await ask("메일 삭제", `${keys.length > 1 ? `메일 ${keys.length}개를` : "이 메일을"} 목록에서 지워요. ${mailStays(keys.length)}`, "삭제", true)) return [];
+    mbDeleting();
     const done = await mbRun(keys, "trash");
     mbLeave(keys);
     return done;
@@ -234,12 +238,12 @@ function mbPaintBar() {
     return;
   }
   const arch = mailFilterOf()[0] === "archived";
-  const acts = [["read", "읽음으로 표시", "check"], ["unread", "안 읽음으로 표시", "mail"], arch ? ["unarchive", "받은편지함으로", "inbox"] : ["archive", "완료(보관)", "archive"], ["trash", "삭제", "trash"]];
-  const owed = mbOwed(keys).length;
-  const btns = acts.map(([a, label, ic]) => mbBtn(label, ic, () => (a === "trash" ? mbTrash(keys) : mbRun(keys, a)).then(() => mbPaintBar()), { k: `mail-${a}`, short: MB_SHORT[a] }));
-  // 답장 안 함 sits before 삭제, and only while a chosen mail owes a reply; a mixed selection says how many it reaches.
-  if (owed) btns.splice(3, 0, mbBtn("답장 안 함", "replyoff", () => mbFyi(keys).then(() => mbPaintBar()), { k: "mail-fyi", cls: "mbox-fyi", count: owed < keys.length ? owed : 0 }));
-  if (keys.some(mxCanMove)) btns.unshift(mbBtn("메일함 옮기기", "folder", ev => mxMoveOpen(ev.currentTarget, keys), { k: "mail-move-sel", short: "옮기기" }));
+  // The two used most stand as words (읽음, 보관); the rest is in the ⋯, so 삭제 is never the button beside the × that clears the choice.
+  const owed = mbOwed(keys).length, run = a => (a === "trash" ? mbTrash(keys) : mbRun(keys, a)).then(() => mbPaintBar());
+  const btns = [["read", "읽음으로 표시", "check"], arch ? ["unarchive", "받은편지함으로", "inbox"] : ["archive", "완료(보관)", "archive"]].map(([a, label, ic]) => mbBtn(label, ic, () => run(a), { k: `mail-${a}`, short: MB_SHORT[a], cls: "mbox-w" }));
+  const items = [{ value: "unread", label: "안 읽음으로 표시" }, ...(keys.some(mxCanMove) ? [{ value: "move", label: "메일함 옮기기" }] : []), ...(owed ? [{ value: "fyi", label: `답장 안 함${owed < keys.length ? ` ${owed}개` : ""}` }] : []), { value: "trash", label: "삭제", danger: true }];
+  btns.push(el("button", { class: "mbox-b mbox-ic", type: "button", "data-k": "mail-more", title: "더 보기", "aria-label": "더 보기", "aria-haspopup": "listbox",
+    onclick: ev => { const b = ev.currentTarget; showMenu(b, items, { onPick: v => (v === "move" ? mxMoveOpen(b, keys) : v === "fyi" ? mbFyi(keys).then(() => mbPaintBar()) : run(v)) }); } }, icon("more")));
   bar.classList.add("on");
   clear(bar).append(chk, el("span", { class: "mbox-n", "aria-live": "polite", text: `${keys.length}개 선택` }), ...btns,
     el("button", { class: "mbox-b mbox-x", type: "button", "aria-label": "선택 해제", title: "선택 해제", onclick: () => { MBOX.sel.clear(); document.querySelectorAll("#mon-tl .mr.mr-sel").forEach(r => { r.classList.remove("mr-sel"); const c = r.querySelector(".mr-chk"); if (c) c.checked = false; }); mbPaintBar(); } }, icon("close")));
@@ -322,18 +326,21 @@ function mailRawBtn(d) {
 }
 function mailOpenBar(t, card) {
   const m = MAILS.get(t) || {}, unread = mailUnread(t, m), arch = !!m.archived, out = m.dir === "out";
-  const acts = [arch ? ["unarchive", "받은편지함으로", "inbox"] : ["archive", "보관", "archive"], ["trash", "삭제", "trash"], out ? null : unread ? ["read", "읽음으로 표시", "mailopen"] : ["unread", "안 읽음으로 표시", "mail"]].filter(Boolean);
+  // 삭제 is the last button of the bar, away from the ones used most.
+  const acts = [arch ? ["unarchive", "받은편지함으로", "inbox"] : ["archive", "보관", "archive"], out ? null : unread ? ["read", "읽음으로 표시", "mailopen"] : ["unread", "안 읽음으로 표시", "mail"]].filter(Boolean);
+  const act = ([a, label, ic]) => mbIco(label, ic, ev => busy(ev.currentTarget, async () => {
+    const done = a === "trash" ? await mbTrash([t]) : await mbRun([t], a);
+    if (done.length && a !== "trash" && a !== "read") { MBOX.sel.delete(t); if (monCtx === t && current === "chat") go("monitoring", MON.sel); }
+  }), `mail-open-${a}`);
   const raw = card && card.querySelector(":scope > .rc-raw");
   if (card) mailOpenSummary(t, card);
   return el("div", { class: "mtop", role: "toolbar", "aria-label": "메일 처리" },
-    ...acts.map(([a, label, ic]) => mbIco(label, ic, ev => busy(ev.currentTarget, async () => {
-      const done = a === "trash" ? await mbTrash([t]) : await mbRun([t], a);
-      if (done.length && a !== "trash" && a !== "read") { MBOX.sel.delete(t); if (monCtx === t && current === "chat") go("monitoring", MON.sel); }
-    }), `mail-open-${a}`)),
+    ...acts.map(act),
     ...MB_MODES.map(([k, label, ic]) => el("button", { class: "ib mtop-b mbox-mode", type: "button", "data-mode": k, title: label, "aria-label": label, onclick: () => { mbOpenReply(t, k); const s = tl.querySelector(":scope > .mbox-reply"); if (s) s.scrollIntoView({ block: "nearest" }); } }, icon(ic))),
     out ? null : mailDraftButton(t, "ib mtop-b mr-draft"),
     out ? null : mailFyiBtn(t),
-    raw ? mailRawBtn(raw) : null);
+    raw ? mailRawBtn(raw) : null,
+    act(["trash", "삭제", "trash"]));
 }
 
 /* ---------- 메일 쓰기: the floating button and its sheet ---------- */
@@ -370,16 +377,21 @@ function mbForm(st, host, o) {
   ccBtn.hidden = !ccRow.hidden;
   const to = field("to", "받는 사람", "쉼표로 여러 명");
   to.append(ccBtn);
+  // a missing 받는 사람 is said under its row and stays until something is typed there
+  const err = el("div", { class: "mbox-err", role: "alert", text: "받는 사람을 적어 주세요", hidden: true });
+  const toIn = to.querySelector("input");
+  toIn.addEventListener("input", () => { err.hidden = true; });
+  st.needTo = () => { err.hidden = false; toIn.focus(); };
   paintFiles();
   // append(null) would print the word "null": the quote block is added only when there is an original
-  clear(host).append(to, ccRow, field("subject", "제목", "제목"), body, files, picker);
+  clear(host).append(to, err, ccRow, field("subject", "제목", "제목"), body, files, picker);
   if (o.quote) host.insertBefore(o.quote, files);
   return { pick: () => picker.click(), body, files: paintFiles };
 }
 const mbPayload = (st, extra = {}) => ({ to: st.to.trim(), cc: st.cc.trim(), subject: st.subject.trim(), body: st.body, attachments: st.files.map(f => ({ name: f.name, path: f.path, size: f.size })), ...extra });
 const mbEmpty = st => !st.to.trim() && !st.cc.trim() && !st.subject.trim() && !st.body.trim() && !st.files.length;
 async function mbSave(st, extra, btn) {
-  if (!st.to.trim()) { toast("받는 사람을 적어 주세요", true); return null; }
+  if (!st.to.trim()) { st.needTo(); return null; }
   if (st.up.length) { toast("파일을 올리는 중이에요", true); return null; }
   let r = null;
   await busy(btn, async () => {
@@ -395,6 +407,9 @@ function mbFold(node, min) {
   node.classList.toggle("min", min);
   const b = node.querySelector(".mbox-min"), word = min ? "펼치기" : "최소화";
   b.setAttribute("aria-label", word); b.title = word; b.replaceChildren(icon(min ? "drop" : "minus"));
+  // folded, the bar names the mail (its subject, else who it goes to) instead of "새 메일"
+  const st = MBOX.cs && MBOX.cs.node === node ? MBOX.cs.st : null;
+  node.querySelector(".mbox-st").textContent = min && st ? st.subject.trim() || st.to.trim() || "새 메일" : "새 메일";
   const nr = $("#nav").getBoundingClientRect();
   node.style.setProperty("--mbox-lift", min && nr.height > 0 && nr.top > innerHeight / 2 ? `${Math.ceil(innerHeight - nr.top)}px` : "0px");
 }
@@ -409,7 +424,7 @@ function mbCompose(init = {}) {
   const close = async () => { if (!mbEmpty(st) && !await ask("작성 중인 메일", "쓰던 내용을 버릴까요?", "버리기", true)) return; leave(); };
   const save = ev => mbSave(st, {}, ev.currentTarget).then(r => { if (r) leave(); });
   node.append(
-    el("div", { class: "mbox-sh" }, el("span", { class: "mbox-st", text: "새 메일" }),
+    el("div", { class: "mbox-sh", onclick: ev => { if (node.classList.contains("min") && !ev.target.closest("button")) mbFold(node, false); } }, el("span", { class: "mbox-st", text: "새 메일" }),
       el("button", { class: "ib mbox-min", type: "button", "aria-label": "최소화", title: "최소화", onclick: () => mbFold(node, !node.classList.contains("min")) }, icon("minus")),
       el("button", { class: "ib mbox-close", type: "button", "aria-label": "닫기", title: "닫기", onclick: close }, icon("close"))),
     host,

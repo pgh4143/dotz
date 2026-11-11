@@ -100,6 +100,15 @@ describe("메일함 설정", () => {
 		expect(await ev<string[]>(v, `[...document.querySelectorAll(".mxs-ab .mxs-c .tx")].map(x => x.textContent)`)).toEqual(["죄송"]);
 	}, 40_000);
 
+	test("every add button is the small chip, and the icon row has a label and the chosen look of the app", async () => {
+		const v = await open(SET);
+		await openItem(v, "greet");
+		expect(await ev<boolean>(v, `[...document.querySelectorAll(".mxs-ab .mxs-c2")].every(b => b.offsetWidth < b.parentElement.clientWidth / 2)`)).toBe(true);
+		await openItem(v, "name");
+		await waitFor(v, `document.querySelector(".mxs-ig .mxs-ic.on")`);
+		expect(await ev<any>(v, `({ label: document.querySelector(".mxs-ig > .mxs-h").textContent, on: getComputedStyle(document.querySelector(".mxs-ic.on")).backgroundColor === getComputedStyle(document.querySelector(".mxs-mode.on") || document.body).backgroundColor, black: getComputedStyle(document.querySelector(".mxs-ic.on")).backgroundColor === getComputedStyle(document.body).color })`)).toMatchObject({ label: "아이콘", black: false });
+	}, 30_000);
+
 	test("the tone item reads the tone route only when it opens, and shows the first corrections", async () => {
 		const v = await open(SET);
 		await openItem(v, "tone");

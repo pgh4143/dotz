@@ -71,6 +71,9 @@ const mailChipCount = (k, loaded) => {
   const all = CVP.more && CVP.counts && (typeof MX === "undefined" || MX.acct === "all") ? CVP.counts.mail.filters[k] : undefined;
   return typeof all === "number" ? Math.max(all, loaded) : loaded;
 };
+// What an empty list of the mail app says, in the words of the tab it is under.
+const MAIL_EMPTY = { pending: "확인할 초안이 없어요", unread: "안 읽은 메일이 없어요", owed: "답장할 메일이 없어요", replied: "답장한 메일이 없어요", archived: "보관한 메일이 없어요", sent: "보낸 메일이 없어요" };
+const mailEmptyText = () => MAIL_EMPTY[mailFilterOf()[0]] || "받은 메일이 없어요";
 const mailFilterOf = () => MAIL_FILTERS.find(f => f[0] === MON.mailFilter) || MAIL_FILTERS[0];
 // A reply draft still in the owner's hands: waiting for 보내기 / 고치기 / 보내지 않기, or being rewritten after 고치기 (a peer's too, as its plain report).
 const mailDraftOpen = n => !!(n.decision && n.decision.draft) && drState(n.decision) === "open";
@@ -138,8 +141,7 @@ function monConvNode(t, label) {
   const clip = files.length ? el("span", { class: "mr-clip", title: `첨부파일 ${files.length}개`, "aria-label": `첨부파일 ${files.length}개` }, icon("clip"), String(files.length)) : null;
   return el("div", { class: `bm alert rc mr${m && n ? " mr-new" : ""}${m && MBOX.sel.has(t) ? " mr-sel" : ""}`, role: "button", tabindex: "0", "data-t": m ? t : null, "aria-label": `${m && n ? "안 읽음, " : ""}${title} ${m ? "원문 열기" : "대화 열기"}`, onclick: open,
     onkeydown: e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(); } } },
-    m && n ? el("span", { class: "dot pri mr-dot", "aria-hidden": "true" }) : null,
-    el("div", { class: "rc-hd" }, m ? mbLead(t, title) : null, el("span", { class: "rc-src", text: m ? m.dir === "out" ? `나 → ${mailSender(m.to) || "받는 사람"}` : mailSender(m.from) || label : label }), ...mxSender(t), stateTag, whyTag, ruleTag, tag, clip, when ? el("span", { class: "rc-time", text: when }) : null, m && m.dir !== "out" ? mailDraftButton(t, "ib mr-draft") : null, mxMoveBtn(t), m ? mailMenuBtn(t, () => orgMailItem(t)) : null),
+    el("div", { class: "rc-hd" }, m ? mbLead(t, title) : null, el("span", { class: "rc-src" }, m && n ? el("span", { class: "dot pri mr-dot", "aria-hidden": "true" }) : null, m ? m.dir === "out" ? `나 → ${mailSender(m.to) || "받는 사람"}` : mailSender(m.from) || label : label), ...mxSender(t), stateTag, whyTag, ruleTag, tag, clip, when ? el("span", { class: "rc-time", text: when }) : null, m && m.dir !== "out" ? mailDraftButton(t, "ib mr-draft") : null, mxMoveBtn(t), m ? mailMenuBtn(t, () => orgMailItem(t)) : null),
     el("div", { class: "rc-title", text: title }), chip,
     m && m.to ? el("div", { class: "mr-to", text: mailToText(m) }) : null,
     ...mailSumNodes(m, t, brief), ...(m ? orgMailRow(t) : []));
@@ -215,6 +217,7 @@ const mailActRun = (t, a, b) => a === "draft" ? mailDraftRun(t, b) : a === "dele
 async function mailDelete(t) {
   if (mailOriginal(t)) return mbTrash([t]);
   if (!await ask("메일 삭제", `이 메일을 목록에서 지워요. ${mailStays(1)}`, "삭제", true)) return;
+  mbDeleting();
   const pc = pqPc(t);
   await api(`/api/mail/${t.slice(5)}`, "DELETE");
   MAILS.delete(t); CONV.delete(t);
@@ -232,6 +235,6 @@ function mailMenuBtn(t, extra = () => []) {
     ev.stopPropagation();
     const b = ev.currentTarget, m = MAILS.get(t) || {};
     const more = extra();
-    showMenu(b, [...mailActs(m).map(a => ({ value: a, label: MAIL_ACT[a] })), ...more.map(x => ({ value: x.value, label: x.label }))], { onPick: v => { const x = more.find(i => i.value === v); if (x) x.run(); else busy(null, () => mailActRun(t, v, null)); } });
+    showMenu(b, [...mailActs(m).map(a => ({ value: a, label: MAIL_ACT[a], danger: a === "delete" })), ...more.map(x => ({ value: x.value, label: x.label }))], { onPick: v => { const x = more.find(i => i.value === v); if (x) x.run(); else busy(null, () => mailActRun(t, v, null)); } });
   }, onkeydown: ev => ev.stopPropagation() }, icon("more"));
 }

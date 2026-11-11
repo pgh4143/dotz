@@ -54,7 +54,9 @@
 .mxs-c2 .ic { width: 14px; height: 14px; }
 .mxs-ci { width: calc(var(--sp-10) * 4 + var(--sp-5)); max-width: 100%; height: var(--ctl-h); }
 .mxs-ic { padding: 0 var(--sp-3); }
-.mxs-ic.on { background: var(--fg); color: var(--bg); } @media (hover: hover) { .mxs-ic.on:hover { background: var(--fg); color: var(--bg); } }
+.mxs-ic.on { background: color-mix(in srgb, var(--accent) 10%, var(--card)); color: var(--accent); } @media (hover: hover) { .mxs-ic.on:hover { background: color-mix(in srgb, var(--accent) 10%, var(--card)); } }
+.mxs-ab > .mxs-c2 { align-self: flex-start; }   /* the add button is the small chip here too, not the width of the column */
+.mxs-ig { display: flex; flex-direction: column; gap: var(--sp-2); }
 .mxs-ic .ic { width: 16px; height: 16px; }
 .mxs-jr { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--ctl-h); }
 
