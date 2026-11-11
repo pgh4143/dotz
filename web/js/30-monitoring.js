@@ -240,7 +240,7 @@ const monFeedDay = t => kstDay(t) === kstDay(Date.now()) ? `오늘 ${kstHM(t)}` 
 function monFeedHead(list) {
   const live = list.filter(n => !monGone(n)), fresh = monNewest(live.filter(n => !n.read)), last = monNewest(live);
   if (fresh) return { hint: `${fresh.pc ? `${fresh.pc.name} · ` : ""}${monLine(fresh)}`, at: monNoticeAt(fresh) };
-  return last ? { hint: `마지막 소식 ${monFeedDay(ntAt(last))}`, at: monNoticeAt(last) } : { hint: "새 감시 소식이 없어요", at: "" };
+  return last ? { hint: `마지막 소식 ${monFeedDay(ntAt(last))}`, at: monNoticeAt(last) } : { hint: NM.loaded && NT.loaded ? "새 감시 소식이 없어요" : "", at: "" };   // not loaded, or failed: no "none" claim (the state card under the list says which)
 }
 // 답 필요: waits on the owner and is answered from here (an open decision, an [ask] report), never read by looking; 실패: a report that could not check.
 // A peer's open decision is answered here too (ntPost through the peer); a peer's loose [ask] waits in that computer's conversation.
@@ -273,7 +273,7 @@ function monRows(items, sel) {
     rows.push({ k: it.key, name: it.name, av: monIcon(it.ic), hint: it.hint, unread: it.unread, unreplied: it.unreplied | 0, badge: it.badge || null, chips: it.chips, sel: !!sel && it.key === sel.key && !MON.list, open: () => go("monitoring", monRowGo(it)) });
   }
   if (!added) { if (group !== MON_GROUP.app) rows.push({ header: MON_GROUP.app }); addRow(); }
-  if (!NM.loaded) rows.push({ header: NM.failed ? "모니터링을 불러오지 못했어요" : "모니터링 불러오는 중…" });
+  if (!NM.loaded) rows.push({ k: "state", state: NM.failed ? "failed" : "loading", hint: NM.failed ? "모니터링을 불러오지 못했어요" : "불러오는 중…" });
   return rows;
 }
 
@@ -842,7 +842,7 @@ function renderMonitoring() {
   if (!sel && !MON.list) { MON.miss = true; MON.list = true; convChrome(); }
   else if (sel && MON.miss) { MON.miss = false; MON.list = false; convChrome(); }
   $("#v-monitoring").classList.toggle("mon-two", !!sel && !!sel.mon && !MON.list);
-  const rows = monListRows(items, sel), sideSig = JSON.stringify([rows.map(r => [r.k, r.name, r.hint, r.unread, r.unreplied, r.badge, r.header, r.sel, r.chips, r.msig])]);
+  const rows = monListRows(items, sel), sideSig = JSON.stringify([rows.map(r => [r.k, r.name, r.hint, r.state, r.unread, r.unreplied, r.badge, r.header, r.sel, r.chips, r.msig])]);
   if (sideSig !== MON.side) {
     MON.side = sideSig;
     const top = side.scrollTop;
@@ -910,6 +910,7 @@ function monSideNodes(rows) {
   let list = null;
   for (const r of rows) {
     if (r.header) { out.push(el("div", { class: "mon-sec", role: "presentation", text: r.header })); list = null; continue; }
+    if (r.state) { out.push(emptyNode(r.hint, r.state === "failed" ? () => loadMonitors() : null)); list = null; continue; }
     if (!list) { list = el("div", { class: "mon-grp" }); out.push(list); }
     list.append(convRow(r));
   }

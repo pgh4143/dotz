@@ -64,7 +64,7 @@ function pmSessionRank(r) {
 function pmPaint() {
   if (current !== "project" || PM.open > 0) return;
   const root = $("#v-project"), D = PM.D, p = pmProject();
-  if (!p) { delete root.dataset.sig; clear(root).append(emptyNode(PM.fail || PRJ_FAIL ? "프로젝트를 불러오지 못했어요" : "불러오는 중…")); return; }
+  if (!p) { delete root.dataset.sig; clear(root).append(emptyNode(PM.fail || PRJ_FAIL ? "프로젝트를 불러오지 못했어요" : "불러오는 중…", PM.fail || PRJ_FAIL ? () => Promise.all([pmLoad(), prjLoad()]) : null)); return; }
   if (p.builtin) { cmPaint(root, p, D); return; }
   const q = { ...p, record: (D && D.record) || p.record }, rows = pmSessionRows(p, D);
   // A phone shows one screen at a time, so its app bar carries the project's name (the prototype's detail); wide keeps the list beside it under "프로젝트".

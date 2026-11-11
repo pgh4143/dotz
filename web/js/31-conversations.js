@@ -376,6 +376,8 @@ function convCards(rows) {
   }
   return nodes;
 }
+// The two fixed rows alone cannot tell a list still loading, or one that failed, from a settled one: the line under them says which (never both, never before the first load).
+const cvState = () => CV.loaded ? null : CV.failed ? emptyNode("대화 목록을 불러오지 못했어요", () => convLoad()) : emptyNode("불러오는 중…");
 const FIXED_DESC = { alert: "경고와 결정 요청", worklog: "야간 정리와 세션 진행 기록" };
 
 /* ---- a long list: a page of projects, 읽음 처리 ---- */
@@ -466,7 +468,7 @@ function convPaint() {
   mailSentPaint();
   mbReplyPaint();
   if (monCtx && isSettingsT(target)) MON.sel = monItemOf(target) || MON.sel;   // the monitor list may have loaded after this conversation opened
-  const items = monCtx ? monItems() : null, rows = items ? monListRows(items, items.find(i => i.key === MON.sel) || null) : convRows(), sig = JSON.stringify([rows.map(r => [r.t, r.k, r.key, r.name, r.last, r.unread, r.badge, r.dotOnly, r.header, r.hint, r.sel, r.need, r.more, r.empty]), target, current, !!monCtx]);
+  const items = monCtx ? monItems() : null, rows = items ? monListRows(items, items.find(i => i.key === MON.sel) || null) : convRows(), sig = JSON.stringify([rows.map(r => [r.t, r.k, r.key, r.name, r.last, r.unread, r.badge, r.dotOnly, r.header, r.hint, r.sel, r.need, r.more, r.empty]), target, current, !!monCtx, CV.loaded, CV.failed]);
   if (!monCtx && !KK.loaded && !KK.asked && typeof INTG !== "undefined" && INTG.items.some(i => i.key === "kakao")) { KK.asked = true; kkLoadRooms(); }
   if (sig !== convSig) {
     convSig = sig;
@@ -476,7 +478,7 @@ function convPaint() {
     const end = () => { const n = ([...convSide.querySelectorAll(".cv-sec")].find(s => s.textContent === "진행 중") || {}).nextElementSibling || convSide.querySelector('.cv-row[data-t="worklog"]'); return n ? n.getBoundingClientRect().bottom + convSide.scrollTop : 0; };
     const top = convSide.scrollTop, was = end();
     // A conversation opened from 모니터링 keeps 모니터링's own panel (sections, cards, bars: 30-monitoring.js), never the chat list's rows.
-    clear(convSide).append(...(monCtx ? monSideNodes(rows) : convCards(rows)));
+    clear(convSide).append(...(monCtx ? monSideNodes(rows) : [...convCards(rows), cvState()].filter(Boolean)));
     if (monCtx) monDecorateRows(convSide, items);
     convSide.scrollTop = top && Math.round(top + end() - was);
   }

@@ -237,18 +237,21 @@ function resetLine(p, name, k) {
       el("span", { class: "rc-end" }, el("b", { text: `${held}개` }), el("button", { class: "btn tonal inrow", type: "button", disabled: !(held > 0 && usable), "aria-label": `${name} ${label} 사용`, onclick: use }, "사용"))),
     sub ? el("div", { class: "sup", text: sub }) : null);
 }
+// The bar above the cards: when it was read, and the one 새로고침 (also the way out of a failed read: no second retry button).
+const quotaBar = at => el("div", { class: "tools-bar" }, el("span", { class: "sup", text: at ? monTime(at) : "" }),
+  el("button", { class: "btn text sm", type: "button", onclick: ev => busy(ev.currentTarget, () => loadQuota(true)) }, icon("refresh"), "새로고침"));
 async function loadQuota(fresh) {
   clearTimeout(quotaTimer);
   const box = $("#usage");
+  if (!box.firstChild) box.append(emptyNode("불러오는 중…"));
   let q;
   // the cards are titled by provider name (providerName reads P), so a direct open of 사용량 loads the providers too
   try { [q] = await Promise.all([api(fresh === true ? "/api/quota?fresh=1" : "/api/quota"), P ? null : loadProviderData().catch(() => null)]); }
-  catch (e) { clear(box).append(emptyNode("사용량을 불러오지 못했어요", () => loadQuota(true))); return; }
+  catch (e) { clear(box).append(quotaBar(""), emptyNode("사용량을 불러오지 못했어요")); return; }
   noteQuota(q);
   if (current === "usage") quotaTimer = setTimeout(loadQuota, 60000);
   clear(box);
-  box.append(el("div", { class: "tools-bar" }, el("span", { class: "sup", text: q.fetched_at ? monTime(q.fetched_at) : "" }),
-    el("button", { class: "btn text sm", type: "button", onclick: ev => busy(ev.currentTarget, () => loadQuota(true)) }, icon("refresh"), "새로고침")));
+  box.append(quotaBar(q.fetched_at));
   const grid = el("div", { class: "grid" });
   for (const p of q.providers || []) {
     // a subscription names its plan as Anthropic does (Pro, Max 5x, Max 20x, Ultra, ...; hub/usage-account.ts planName)
@@ -299,5 +302,5 @@ async function loadQuota(fresh) {
     box.append(el("div", { class: "sec", text: "정보가 없어요" }));
     box.append(el("div", { class: "list" }, ...q.unavailable.map(u => el("div", { class: "li", style: "display:block" }, el("div", { class: "hd", text: u.name || providerName(u.provider) }), el("div", { class: "sup", text: u.reason })))));
   }
-  if (!(q.providers || []).length && !(q.unavailable || []).length) box.append(emptyNode("사용량 정보가 없어요"));
+  if (!(q.providers || []).length && !(q.unavailable || []).length && !q.budget) box.append(emptyNode("사용량 정보가 없어요"));
 }

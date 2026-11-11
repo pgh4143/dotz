@@ -68,5 +68,5 @@
 /* 리셋권 row: the count and its 사용 button share the right edge where the other rows keep "N% 남음" */
 #usage .lim.rc .kv { align-items: center; }
 #usage .rc-end { display: flex; align-items: center; gap: var(--sp-2); }
-#usage > .list + :is(.grid, .sec) { margin-top: var(--sp-3); }
+#usage > .list + :is(.grid, .sec, .empty) { margin-top: var(--sp-3); }
 :is(#accounts, #messengers, #devices, #webaccess, #usage) > .note { margin: var(--sp-2) var(--sp-1) 0; }

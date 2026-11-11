@@ -344,7 +344,7 @@ function pjPaintRows() {
 }
 function renderProjects() {
   const box = $("#v-projects");
-  if (!PRJ) { delete box.dataset.sig; clear(box).append(emptyNode(PRJ_FAIL ? "프로젝트를 불러오지 못했어요" : "불러오는 중…")); return; }
+  if (!PRJ) { delete box.dataset.sig; clear(box).append(emptyNode(PRJ_FAIL ? "프로젝트를 불러오지 못했어요" : "불러오는 중…", PRJ_FAIL ? () => prjLoad() : null)); return; }
   const list = PRJ.projects || [];
   if (!list.length) {
     delete box.dataset.sig;

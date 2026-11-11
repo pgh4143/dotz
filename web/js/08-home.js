@@ -546,7 +546,7 @@ function renderHomeNow() {
     const [title, view] = HOME_KINDS[kind], nAtt = list.filter(e => e.tone).length, none = !list.length;
     const empty = !loaded[kind] ? "불러오는 중…" : kind === "limit" && HQ.error ? "사용량을 불러오지 못했어요" : "없어요";
     add(`group:${kind}`, itemCard(view, "",
-      hcHead(title, { dot: nAtt ? hcTone(list.some(e => e.tone === "err") ? "err" : "warn") : "", n: none ? null : String(list.length), menu: `group:${kind}` }),
+      hcHead(title, { dot: nAtt ? hcTone(list.some(e => e.tone === "err") ? "err" : "warn") : "", menu: `group:${kind}` }),
       none ? hcNone(empty) : el("div", { class: "glist", "data-cap": `group:${kind}` }, ...list.map(homeRow))));
   }
 
