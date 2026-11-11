@@ -112,7 +112,7 @@ describe("앱 인스턴스 at 390px", () => {
 		expect(names).toEqual(["i:mail=메일"]);
 		// the unread count is the row's own number; the line under the name does not say it again
 		expect(await q(v, `return ${rowOf("i:mail")}.querySelector(".nb:not(.unreplied)").textContent`)).toBe("3");
-		expect(await q(v, `return ${rowOf("i:mail")}.querySelector(".cv-p").textContent`)).not.toContain("안 읽음");
+		expect(await q(v, `return ${rowOf("i:mail")}.querySelector(".cv-b").textContent`)).not.toContain("안 읽음");   // the name and its line (the line is absent when there is nothing but the count to say)
 		await shot(v, "01-one-mail-row.png");
 		await run(v, `go("monitoring", "i:mail/mail-2/all")`);
 		await waitFor(v, `MON.sel === "i:mail" && MX.acct === "mail-2" && document.querySelector("#mon-tl .rc")`);

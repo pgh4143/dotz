@@ -96,6 +96,9 @@ body { display: flow-root; }
   .appbar h1, .appbar:not(.back) h1 { font-size: 20px; line-height: 28px; }
   .appbar .ib { width: 36px; height: 36px; }
 }
+/* The computer beside a title (.mon-pc, convTitle) stays on the title's one line when it fits; when it does not it wraps to a second row, which the bar clips (1lh), so the head never grows a second line. The row is one tap height tall so the clip is clean. */
+.appbar h1:has(> .mon-pc) { display: flex; flex-wrap: wrap; align-items: center; max-height: 1lh; line-height: var(--btn-hit); overflow: hidden; white-space: nowrap; }
+.appbar h1 > .ttx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 
 /* ---------- 홈: the prototype's layout (site/prototype/s-work.js home, proto.css .view / .col / .grid2 / .card) ----------

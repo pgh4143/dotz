@@ -37,15 +37,16 @@ describe("monStatus: connection > paused > fail > late > changed > ok > not run"
 	});
 });
 
-describe("monNeedLine: drafts > sent today; 미답장 and 안 읽음 are the row's own counts", () => {
-	test("미답장 and 안 읽음 are not said again on the line; a row with only 미답장 says a reply is waiting", () => {
-		expect(monNeedLine({ drafts: 0, unreplied: 2, unread: 0, sentToday: 0 })).toBe("답장을 기다리는 것이 있어요");
-		expect(monNeedLine({ drafts: 1, unreplied: 2, unread: 3, sentToday: 4 })).toBe("답장 대기 1건 · 오늘 자동 답장 4건 보냄");
+describe("monNeedLine: sent today only; drafts, 미답장 and 안 읽음 are the row's own counts", () => {
+	test("drafts, 미답장 and 안 읽음 are not said again on the line", () => {
+		expect(monNeedLine({ drafts: 1, unreplied: 2, unread: 3, sentToday: 4 })).toBe("오늘 자동 답장 4건 보냄");
 		expect(monNeedLine({ drafts: 0, unreplied: 2, unread: 3, sentToday: 4 })).toBe("오늘 자동 답장 4건 보냄");
 	});
-	test("a row with only unread says when the last item came, never the count", () => {
+	test("a row with a count at its right says when the last item came, else nothing", () => {
 		expect(monNeedLine({ drafts: 0, unreplied: 0, unread: 3, sentToday: 0 }, false, "14:05")).toBe("마지막 소식 14:05");
-		expect(monNeedLine({ drafts: 0, unreplied: 0, unread: 3, sentToday: 0 })).toBe("새 소식이 있어요");
+		expect(monNeedLine({ drafts: 2, unreplied: 0, unread: 0, sentToday: 0 }, false, "14:05")).toBe("마지막 소식 14:05");
+		expect(monNeedLine({ drafts: 0, unreplied: 2, unread: 0, sentToday: 0 })).toBe("");
+		expect(monNeedLine({ drafts: 0, unreplied: 0, unread: 3, sentToday: 0 })).toBe("");
 	});
 	test("확인할 것 없어요 only when connected and every count is 0", () => {
 		expect(monNeedLine({ drafts: 0, unreplied: 0, unread: 0, sentToday: 0 })).toBe("확인할 것 없어요");
@@ -148,12 +149,12 @@ describe("screens", () => {
 		expect(got.lateState).toBe("늦어짐");
 	});
 
-	test("app rows leave 미답장 to the row's count and say 연결 끊김 for a disconnected app; 확인할 것 없어요 only for a connected one with nothing", async () => {
+	test("app rows leave every count to the row's number (a line without a time is empty) and say 연결 끊김 for a disconnected app; 확인할 것 없어요 only for a connected one with nothing", async () => {
 		const v = await open();
 		await v.evaluate(`(go("monitoring"), 0)`);
 		await v.evaluate(until(`PQ.loaded && monItems().some(i => i.pc)`, "peer rows not merged"));
 		const rows = await q<[string, string][]>(v, `return monRows(monItems(), null).filter(r => r.k && /^(i:|p:.*[|]i:)/.test(r.k)).map(r => [r.k, r.hint]);`);
-		expect(rows).toEqual([["i:mail", "답장 대기 1건"], ["i:kakao", "연결 끊김"], ["i:youtube", "확인할 것 없어요"], ["p:http://peer-b.invalid|i:mail", "peer-b에서 돌아요 · 답장 대기 2건"]]);
+		expect(rows).toEqual([["i:mail", ""], ["i:kakao", "연결 끊김"], ["i:youtube", "확인할 것 없어요"], ["p:http://peer-b.invalid|i:mail", "peer-b에서 돌아요"]]);
 	});
 
 	test("the 모니터링 nav badge is the one 답장 대기 number (rqWaiting); failing and disconnected rows are not in it but show as the small dot while it is 0", async () => {

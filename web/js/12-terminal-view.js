@@ -183,7 +183,7 @@ function termNode(a) {
 // Subagents have no link to the call that started them: each goes under the worker row whose run window holds its start.
 function paintWorkers() {
   if (!LG.workers.length) return;
-  const src = sourceOf(target), subs = SUBS[src] || [];
+  const src = subsSourceOf(target), subs = SUBS[src] || [];
   for (const w of LG.workers) {
     const end = w.tEnd || Infinity;
     const mine = subs.filter(x => x.started_at >= w.t - 2000 && x.started_at <= end + 1000);

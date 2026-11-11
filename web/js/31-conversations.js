@@ -500,7 +500,7 @@ function convTitle() {
   else if (current === "monitoring") $("#title").textContent = monConv() && narrowChat() ? monName() : titles.monitoring;
   if (current === "monitoring") $("#back .bk-l").textContent = monConv() && (MON.sel === RQ_KEY || MX.it) ? monName() : titles.monitoring;   // 답장 대기 has no item head: the bar names it (the prototype's ‹ 대기함)
   const tag = (current === "chat" && monCtx && convOnPhone()) || (monConv() && narrowChat()) ? pqLabel(monItems().find(i => i.key === MON.sel)) : null;
-  if (tag) $("#title").append(tag);
+  if (tag) $("#title").replaceChildren(el("span", { class: "ttx", text: $("#title").textContent }), tag);
   cvAppMenu.hidden = !(convOnPhone() && isLaneT(target));
   pjAppMenu.hidden = !(convOnPhone() && pjMenuOn());
   if (asBar) asBarSync(narrowChat() ? monDetailApp() : "");

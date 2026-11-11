@@ -136,6 +136,8 @@ describe("a monitor's conversation", () => {
 		await waitFor(v, `target === "settings:w:login-boutique-com"`);
 		const conv = await q<{ title: string; chip: string; sw: boolean }>(v, `return { title: document.querySelector("#title").textContent, chip: document.querySelector("#title .mon-pc").textContent, sw: !!document.querySelector("#app-sw") }`);
 		expect(conv.sw).toBe(false);
+		// the computer beside the title never makes a second row: the bar is as tall as the title's own row
+		expect(await q<boolean>(v, `const h = document.querySelector("#title"); return h.getBoundingClientRect().height === h.querySelector(".ttx").getBoundingClientRect().height`)).toBe(true);
 		await openScreen(v);
 		await waitFor(v, `document.querySelector('#app-sw .as-stat')`);
 		const s = { ...conv, stat: await q<string>(v, `return document.querySelector("#app-sw .as-stat").textContent`) };

@@ -76,7 +76,7 @@ function paneStrip(m) {
   paintTodo(m.todo, t);
   if (paintQueue(m.list, t) && m.p.stick) m.wrap.scrollTop = m.wrap.scrollHeight;
   k.run.hidden = !r.show; k.run.classList.toggle("warn", r.st === "rate-limited"); k.run.classList.toggle("only-subs", !r.has); k.runTx.textContent = r.text;
-  paintSubsBtn(k.subs, sourceOf(t), r.subs, r.has);
+  paintSubsBtn(k.subs, subsSourceOf(t), r.subs, r.has);
   const stop = (working || r.bg.length > 0) && !k.ta.value.trim();
   k.send.classList.toggle("stop", stop); k.send.setAttribute("aria-label", stop ? "중단" : "보내기"); k.send.title = stop ? "지금 하는 일 중단" : "";
   k.ta.placeholder = composerHint(t, false);

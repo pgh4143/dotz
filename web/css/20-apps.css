@@ -7,12 +7,6 @@
 #v-apps:not(.cv-listing) > .apps-pane { display: flex; }
 #v-apps > .cv-side { display: none; }
 
-/* the status dot on the app's own mark (a row and the header): green = running, red = no answer, gray = off / unknown */
-.cv-av.app-av { position: relative; }
-.app-dot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border: 2px solid var(--card); border-radius: 50%; background: var(--fg-3); }
-.app-dot.ok { background: var(--ok); }
-.app-dot.err { background: var(--err); }
-.app-dot.off { background: var(--line-2); }
 
 .apps-pane { flex-direction: column; min-width: 0; min-height: 0; }
 .apps-hd { display: flex; flex: none; align-items: center; gap: var(--sp-2); min-height: 56px; padding: var(--sp-2) var(--sp-1) var(--sp-3); }

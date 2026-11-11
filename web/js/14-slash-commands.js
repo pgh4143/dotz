@@ -326,7 +326,7 @@ function runLineOf(t) {
   const info = targetInfo(t), st = info.alive ? info.status : "";
   const on = st === "working" || st === "starting" || st === "rate-limited";
   // A request answered with [later] has no running turn, but its background work is still going: the line stays with that work.
-  const bg = on ? [] : workOfTarget(t), subs = runningSubs(sourceOf(t)).length, has = on || bg.length > 0;
+  const bg = on ? [] : workOfTarget(t), subs = runningSubs(subsSourceOf(t)).length, has = on || bg.length > 0;
   const text = bg.length ? workLine(bg) : has ? (st === "rate-limited" ? "사용량 한도로 대기 중" : "작업 중…") : "";
   // has: something is working (the left text); show: the line is there at all, which subagents alone also make (only their count then).
   return { st, on, bg, text, subs, has, show: has || subs > 0 };
@@ -347,7 +347,7 @@ function renderWorking() {
   // The send button is the one stop control (owner 2026-10-28): it stops the running turn, or, with no turn running, this conversation's background worker.
   const line = $("#runline"), stopMode = ((on && st !== "rate-limited") || bg.length > 0) && !ta.value.trim() && !ATT.length && !pkCount();
   line.hidden = !show; line.classList.toggle("warn", st === "rate-limited"); line.classList.toggle("only-subs", !has);
-  paintSubsBtn($("#runline-subs"), sourceOf(target), subs, has); paintSubsBtn($("#runstate-subs"), sourceOf(target), subs, true);
+  paintSubsBtn($("#runline-subs"), subsSourceOf(target), subs, has); paintSubsBtn($("#runstate-subs"), subsSourceOf(target), subs, true);
   $("#c-model").classList.toggle("run", on && st !== "rate-limited");
   const sb = $("#send-btn"); sb.classList.toggle("stop", stopMode); sb.setAttribute("aria-label", stopMode ? "중단" : "보내기"); sb.title = stopMode ? "지금 하는 일 중단" : "";
   if (on) {

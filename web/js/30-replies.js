@@ -385,9 +385,10 @@ function rqPaintHead(rows) {
     b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on));
     rollCount(b.querySelector(".n"), k === "all" || !n[k] ? "" : String(n[k]));
   }
-  const fast = (RQ.tab === "all" || RQ.tab === "ask") && n.ask >= TR.min, apps = new Set(rows.filter(r => r.state === "ask").map(r => rqFilterKey(r.pc, r.inst))).size;
-  const sending = rqSending(), text = [fast ? `앱 ${apps}곳에서 ${n.ask}건 기다려요` : RQ.tab === "sent" && n.sent ? `오늘 보낸 답장 ${n.sent}건` : "", sending ? `보내는 중 ${sending}건` : ""].filter(Boolean).join(" · ");
-  u.mt.textContent = text; u.fast.hidden = !fast; u.meta.hidden = !text;
+  // the count is said once, on the filter chips; the line under them keeps only what the chips do not say
+  const fast = (RQ.tab === "all" || RQ.tab === "ask") && n.ask >= TR.min;
+  const sending = rqSending(), text = [RQ.tab === "sent" && n.sent ? `오늘 보낸 답장 ${n.sent}건` : "", sending ? `보내는 중 ${sending}건` : ""].filter(Boolean).join(" · ");
+  u.mt.textContent = text; u.fast.hidden = !fast; u.meta.hidden = !text && !fast;
 }
 const RQ_PAGE = 200;   // rows drawn per section; 더 보기 adds a page (the failed section always draws all)
 // Keyed update of one box: a child stays when its key and signature are the same, the rest is removed, replaced or inserted in order.
@@ -425,7 +426,7 @@ function rqDescs(shown) {
   for (const [s, label] of RQ_SECS) {
     const part = shown.filter(r => r.state === s);
     if (!part.length) continue;
-    if (RQ.tab === "all") out.push({ key: `sec:${s}`, sig: `${label}|${part.length}`, make: () => el("div", { class: "sec" }, label, " ", el("span", { class: "meta", text: `${part.length}건` })) });
+    if (RQ.tab === "all") out.push({ key: `sec:${s}`, sig: label, make: () => el("div", { class: "sec", text: label }) });
     const lim = s === "fail" ? part.length : RQ.lim[s] || RQ_PAGE, rows = s === "fail" ? rqFailDescs(part) : part.slice(0, lim).map(r => rqRowDesc(r));
     if (part.length > lim) rows.push({ key: `more:${s}`, sig: String(part.length - lim), make: () => moreRow(`${part.length - lim}개 더 보기`, () => { RQ.lim[s] = lim + RQ_PAGE; MON.sig = ""; monSchedule(); }) });
     out.push({ key: `list:${s}`, sig: "", make: () => el("div", { class: "list rq-list" }), rows });

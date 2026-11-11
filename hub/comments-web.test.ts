@@ -243,11 +243,11 @@ describe("댓글 on a phone (390x844)", async () => {
 		await waitFor(v, `!CM.pickD && !ASC.h`);
 	});
 
-	test("the app list row carries the status line", async () => {
+	test("the app list row says no count in its line: 미답장 and 안 읽음 stay with the row's number", async () => {
 		await boot(v);
 		await run(v, `go("monitoring", "list")`);
-		await waitFor(v, `document.querySelector("#mon-side") && document.querySelector("#mon-side").textContent.includes("답장 대기 1건")`);
-		expect(await q(v, `return document.querySelector("#mon-side").textContent.includes("안 읽음 2")`)).toBe(false);
+		await waitFor(v, `document.querySelector("#mon-side") && document.querySelector("#mon-side .cv-row")`);
+		expect(await q(v, `const t = document.querySelector("#mon-side").textContent; return t.includes("답장 대기 1건") || t.includes("안 읽음 2")`)).toBe(false);
 	});
 });
 

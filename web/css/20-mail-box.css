@@ -72,11 +72,11 @@ span.mr-star:not(.on) { opacity: .45; }
 .mopen > .rc-raw > .rc-rawbody { margin-top: 0; }
 
 .mbox-fab { position: fixed; z-index: 40; right: 24px; bottom: 24px; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 56px; height: 56px; padding: 0 var(--sp-5); border: 0; border-radius: 28px; background: var(--accent); color: var(--on-accent); font: inherit; font-size: 15px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .16); cursor: pointer; }
-.mbox-fab-gap { flex: none; height: calc(var(--sp-12) + var(--sp-6)); }
+.mbox-fab-gap { flex: none; height: calc(var(--sp-12) + var(--sp-8)); }   /* the button's 56px and its 24px from the edge */
 .mbox-fab:hover { filter: brightness(1.06); }
 .mbox-fab .ic { width: 20px; height: 20px; }
 /* A phone keeps the button above the compact tab bar (web/css/01-tokens.css .side: a 46px row), not on top of its tabs. */
-@media (max-width: 639px) { .mbox-fab { right: 16px; bottom: calc(72px + env(safe-area-inset-bottom)); width: 56px; height: 56px; padding: 0; } .mbox-fab-t { display: none; } }
+@media (max-width: 639px) { .mbox-fab-gap { height: calc(var(--sp-12) + var(--sp-12) + var(--sp-8) + env(safe-area-inset-bottom)); } .mbox-fab { right: 16px; bottom: calc(72px + env(safe-area-inset-bottom)); width: 56px; height: 56px; padding: 0; } .mbox-fab-t { display: none; } }
 
 /* 메일 쓰기 is a centered sheet on a wide screen (ui-spec 시트·대화창: 560px, 20px corners, --pop, --float), a full screen on a phone (editing); minimized it docks as a bar at the bottom right */
 .mbox-sheet { position: fixed; z-index: 60; inset: 0; margin: auto; display: flex; flex-direction: column; width: min(560px, calc(100% - 48px)); height: fit-content; max-height: min(86dvh, 820px); border-radius: 20px; background: var(--pop); color: var(--fg); box-shadow: var(--float); overflow: hidden; }

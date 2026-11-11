@@ -1,9 +1,11 @@
 /* 답장 초안 카드 (web/js/10-reply-card.js) and the 답장 대기 screen (web/js/30-replies.js) */
 /* 머리: 한 줄 (받는 사람 + 출처), 상태는 오른쪽 (owner 2026-11-03: 머리줄은 한 줄, 초안이 주인공) */
 .rq-hd { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; min-height: 20px; color: var(--fg-3); font-size: var(--fs-meta); line-height: var(--lh-meta); }
-.rq-meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2); font-weight: 400; }
-.rq-meta .rq-wt { color: var(--fg); font-size: 13px; line-height: 18px; font-weight: 600; }
-.rq-meta .rq-src { color: var(--fg-3); font-weight: 400; }
+/* who the card answers is the line; where it came from and the computer follow only when they fit whole (a part that does not fit wraps under and is clipped, never cut to "· 노…") */
+.rq-meta { display: flex; flex: 1; flex-wrap: wrap; align-items: baseline; min-width: 0; max-height: 18px; overflow: hidden; white-space: nowrap; color: var(--fg-2); font-weight: 400; }
+.rq-meta .rq-wt { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; color: var(--fg); font-size: 13px; line-height: 18px; font-weight: 600; }
+.rq-meta .rq-src { flex: none; color: var(--fg-3); font-weight: 400; white-space: pre; }
+.rq-meta .mon-pc { flex: none; white-space: pre; }
 .rq-hd .rc-time { flex: none; }
 .rq-lb { margin-top: var(--sp-2); color: var(--fg-3); font: 500 var(--fs-meta)/var(--lh-meta) var(--font); }
 .rq-to { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; margin-top: var(--sp-2); }
@@ -34,8 +36,7 @@
 /* 메시지 답글 카드 (소개 페이지 댓글 답글 데모): 남의 글은 조용한 인용, 초안 글이 주인공(원칙 1·5). 게시물 제목과 첨부 안내는 회색으로 물러나요 */
 .rq[data-kind="comment"] .rq-sub { margin-top: var(--sp-15); color: var(--fg-2); font: 500 13px/19px var(--font); }
 .rq-orig .rq-ow { color: var(--fg-2); font-weight: 500; }
-.rq-att[data-k="none"] .dr-none:not(:has(.dr-wn)) { margin-top: var(--sp-2); padding: 0; background: none; color: var(--fg-3); font-size: 12px; line-height: 16px; }
-.rq-att[data-k="none"] .dr-none:not(:has(.dr-wn)) .ic { width: 14px; height: 14px; color: inherit; stroke-width: 2; }
+.rq-att[data-k="none"] .dr-none:not(:has(.dr-wn)) { margin-top: var(--sp-2); }
 /* 보냈어요: 버튼 행과 같은 높이, 그 자리에서 바뀝니다(원칙 6) */
 .rq-sent { display: flex; align-items: center; gap: var(--sp-15); height: var(--btn-h-sm); margin-top: var(--sp-3); color: var(--fg); font: 500 14px/20px var(--font); }
 .rq-sent .ic { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--ok); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -84,6 +85,8 @@
 /* 답장 대기 (web/js/30-replies.js): the prototype's #queue. Rows and tabs are the notice screen's own classes (09-notices-screen.css); the head sticks to the top of the scroll area. */
 .rq-hd2 { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: var(--sp-1); }
 .rq-hd2 .nsc-f { margin-top: 0; }
+/* a wide screen: 빠른 처리 sits at the tabs' right end, not on a row of its own; a phone keeps the rows stacked so the button never moves with the tab counts */
+@media (min-width: 640px) { .rq-hd2 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); } .rq-hd2 > .nsc-f { flex: none; max-width: 100%; margin-bottom: 0; } .rq-hd2 > .rq-qm { flex: 1; min-width: 0; margin-block: 0; } .rq-hd2 > .rq-chips { flex-basis: 100%; } }
 #v-monitoring.rq-on > .cv-head { display: none; }
 #v-monitoring.rq-on .tl-in { max-width: none; }
 .bm.q-fold .md > :not(:first-child) { display: none; }
@@ -91,7 +94,6 @@
 .rq-qm[hidden], .rq-fast[hidden], .rq-chips:empty { display: none; }
 .nsc-fb .n.err { color: var(--err); } .nsc-fb.on .n.err { color: inherit; }
 .rq-ls .sec { margin: var(--sp-6) var(--sp-1) var(--sp-2); } .rq-ls .sec:first-child { margin-top: 0; }
-.rq-ls .sec .meta { color: var(--fg-3); font-weight: 400; font-variant-numeric: tabular-nums; }
 .rq-r .hd { font-weight: 500; color: var(--fg); } .rq-r.sent .hd { font-weight: 400; color: var(--fg-2); }
 .rq-r .ln .tag { flex: 0 1 auto; min-width: 0; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rq-g .rq-retry { position: relative; z-index: 1; flex: none; align-self: center; height: var(--btn-h-sm); min-height: 0; }

@@ -88,12 +88,14 @@ describe.each([[390, 844], [1280, 900]])("another computer's comment app at %ipx
 		expect(gets).toContain("/api/comments/threads?app=youtube");
 		await run(v, `document.querySelector("#cm .kk-row").click()`);
 		await waitFor(v, `CM.open && !CM.loading && document.querySelector("#cm .kk-draft")`);
-		const got = await q<{ head: string; pc: string; chip: string; attach: string; acts: string[]; tabs: number; overflow: boolean }>(v, `
+		const got = await q<{ head: string; pc: string; chip: string; attach: string; acts: string[]; tabs: number; overflow: boolean; pcWhole: boolean }>(v, `
 			const c = document.querySelector("#cm .kk-draft"), txt = e => e ? e.textContent.trim() : "";
 			return { head: txt(c.querySelector(".rq-meta")), pc: txt(c.querySelector(".mon-pc")), chip: txt(c.querySelector(".dr-chip")), attach: txt(c.querySelector(".rq-att")),
 				acts: [...c.querySelectorAll(".rq-acts button")].map(txt), tabs: document.querySelectorAll("#cm .cm-tabs").length,
-				overflow: document.documentElement.scrollWidth > innerWidth };`);
+				overflow: document.documentElement.scrollWidth > innerWidth,
+				pcWhole: (() => { const m = c.querySelector(".rq-meta").getBoundingClientRect(), p = c.querySelector(".mon-pc").getBoundingClientRect(); return p.top >= m.bottom || (p.right <= m.right + 0.5 && p.bottom <= m.bottom + 2); })() };`);
 		expect(got.head).toBe("유튜브 · 유튜브 댓글 · 맥미니");
+		expect(got.pcWhole).toBe(true);   // the computer in a card's head shows whole or not at all, never cut mid-word
 		expect(got.pc).toBe("· 맥미니");
 		expect(got.chip).toBe("가나");
 		expect(got.attach).toBe("첨부: 없음 · 파일을 붙일 수 없는 곳이에요");

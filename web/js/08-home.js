@@ -252,7 +252,7 @@ function askOf(t) {
 const homeRunLine = t => { const r = S && S.runs && S.runs[t === MAIN ? "main" : t]; return r ? runText(r) : ""; };
 // end: the right end of the row. Not given: the state word. A text: a time (the dot says the state; the aria-label keeps the word). "": nothing.
 function homeNowRow(t, label, tone, head, end) {
-  const i = targetInfo(t), st = tone === "att" ? "warn" : targetState(t)[1], subs = SUBS[sourceOf(t)] || [], done = subs.filter(s => s.status !== "running").length;
+  const i = targetInfo(t), st = tone === "att" ? "warn" : targetState(t)[1], subs = SUBS[subsSourceOf(t)] || [], done = subs.filter(s => s.status !== "running").length;
   const lane = isLaneT(t) && S ? S.lanes.find(x => x.name === laneOf(t)) : null;
   if (lane && !homeRunLine(t)) laneLastFetch(lane.name);
   // A session waiting on the owner says its question, so the row tells what to answer.
@@ -612,7 +612,7 @@ const validTarget = t => t === MAIN || isFixedT(t) || isProjT(t) || (isLaneT(t) 
 const isModelT = t => isProjT(t) || (isMailT(t) && !!C && (C.conversation_kinds || []).includes("mail"));
 const isConvT = t => isProjT(t) || isFixedT(t) || isMailT(t) || isSettingsT(t);
 const sourceOf = t => t === MAIN || isConvT(t) || isRelayT(t) ? "orchestrator" : t;
-const targetOfSource = s => s === "orchestrator" ? MAIN : s;
+const targetOfSource = s => s === "orchestrator" ? MAIN : s.startsWith("conv:") ? s.slice(5) : s;
 // Owner-facing names: a project by its title (else its channel name), a session by its title (else its key).
 // The name of a target on the computer `pc` it belongs to (an item from another gateway carries pc = {name, url, bot}): there the main chat is
 // that gateway's own bot, never this one's (owner 2026-10-31: 맥북's question read "땃쥐" on 회사). No pc: this computer's targetName.

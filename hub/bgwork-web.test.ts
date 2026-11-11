@@ -244,6 +244,8 @@ test("a queued message is a bubble at the end of the timeline whose two actions 
 	await v.evaluate(`($("#runline-subs").click(), 0)`);
 	await waitFor(v, `SUBD && SUBD.sources.join() === "orchestrator" && !sheet.hidden`);
 	await v.evaluate(`(closeSheet(), 0)`);
+	// conversations never mix: the main chat's two subagents are not counted in a mail conversation or a project (each has its own session, hub/convsessions.ts)
+	expect(await q<[string[], number[]]>(v, `const ts = [MAIN, "mail:m1", "ch:12"]; return [ts.map(subsSourceOf), ts.map(t => runningSubs(subsSourceOf(t)).length)];`)).toEqual([["orchestrator", "conv:mail:m1", "conv:ch:12"], [2, 0, 0]]);
 
 	const press = (i: number, label: string) => v.evaluate(`([...document.querySelectorAll("#tl > .qd")][${i}].querySelectorAll("button") .forEach(b => b.textContent === ${JSON.stringify(label)} && b.click()), 0)`);
 	await press(0, "지금 끼워넣기");

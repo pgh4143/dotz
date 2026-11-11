@@ -22,31 +22,32 @@ async function loadApps() {
   appsLoadIcons();
   appsSchedule();
 }
-const APP_DOT = { running: "ok", unreachable: "err", off: "off" };
-const appsAv = (ic, status) => el("span", { class: "cv-av app-av", "aria-hidden": "true" }, icon(ic || "file"), el("i", { class: `app-dot ${APP_DOT[status] || ""}` }));
+// An app's icon: a name the icon set does not know (an app that sent none) takes the app list's file icon, never an empty box.
+const appsAv = ic => el("span", { class: "cv-av app-av", "aria-hidden": "true" }, icon(ICONS[ic] ? ic : "file"));
+// The state is said once, at the row's right as dot + word (appsBadge); the line under the name says only what the word does not (why it does not answer, what kind of app).
+const appsBadge = a => { const s = a.off ? APP_STATUS.off : APP_STATUS[a.status] || APP_STATUS.unknown; return [s[0], s[1]]; };
 const appsStatusLine = a => {
-  const s = APP_STATUS[a.status] || APP_STATUS.unknown;
-  if (a.source === "registry") return a.status === "unreachable" ? a.hint || "연결 끊김" : "모니터링에서 확인해요";
-  if (a.off) return "꺼 두었어요 · 켜면 다시 열 수 있어요";
-  return a.status === "unreachable" ? `응답 없음${a.reason ? ` · ${a.reason}` : ""}` : a.kind === "monitor" ? "상태만 확인하는 앱이에요" : s[0];
+  if (a.source === "registry") return a.status === "unreachable" ? a.hint || "" : "";
+  if (a.off) return "";
+  return a.status === "unreachable" ? a.reason || "" : a.kind === "monitor" ? "상태만 확인하는 앱이에요" : "";
 };
 
 // The list: 사용자 앱 (the manifests), then 모니터링 앱 (the shipped contact-first apps), then the manifests that did not load.
 function appsRows() {
   const rows = [], tools = APPS.items.filter(a => a.source === "manifest");
   rows.push({ header: "사용자 앱" });
-  if (!tools.length) rows.push({ k: "empty-apps", name: "아직 내 앱이 없어요", av: appsAv("add", ""), hint: "채팅에서 앱을 추가해 달라고 하면 돼요", open: () => go("chat") });
+  if (!tools.length) rows.push({ k: "empty-apps", name: "아직 내 앱이 없어요", av: appsAv("add"), hint: "채팅에서 앱을 추가해 달라고 하면 돼요", open: () => go("chat") });
   for (const a of tools) {
-    rows.push({ k: a.id, name: a.label, av: appsAv(a.icon, a.off ? "off" : a.status), hint: appsStatusLine(a), badge: a.off ? ["꺼짐", ""] : a.status === "unreachable" ? ["응답 없음", "err"] : null, sel: APP_STATE_ON() && a.id === APPS.sel && !APPS.list, open: () => go("apps", a.id) });
+    rows.push({ k: a.id, name: a.label, av: appsAv(a.icon), hint: appsStatusLine(a), badge: appsBadge(a), sel: APP_STATE_ON() && a.id === APPS.sel && !APPS.list, open: () => go("apps", a.id) });
   }
   const reg = APPS.items.filter(a => a.source === "registry");
   if (reg.length) {
     rows.push({ header: "모니터링 앱" });
-    for (const a of reg) rows.push({ k: `r:${a.id}`, name: a.label, av: appsAv(a.icon, a.status), hint: appsStatusLine(a), open: () => go("monitoring", `i:${a.id}`) });
+    for (const a of reg) rows.push({ k: `r:${a.id}`, name: a.label, av: appsAv(a.icon), hint: appsStatusLine(a), badge: appsBadge(a), open: () => go("monitoring", `i:${a.id}`) });
   }
   if (APPS.errors.length) {
     rows.push({ header: "불러오지 못한 앱" });
-    for (const e of APPS.errors) rows.push({ k: `e:${e.id}`, name: e.id, av: appsAv("file", "err"), hint: e.reason, badge: ["오류", "err"], open: () => dialog({ title: `${e.id}을(를) 불러오지 못했어요`, body: el("div", { class: "apps-err" }, el("p", { text: e.reason }), el("p", { class: "sup", text: e.dir })), mid: true }) });
+    for (const e of APPS.errors) rows.push({ k: `e:${e.id}`, name: e.id, av: appsAv("file"), hint: e.reason, badge: ["오류", "err"], open: () => dialog({ title: `${e.id}을(를) 불러오지 못했어요`, body: el("div", { class: "apps-err" }, el("p", { text: e.reason }), el("p", { class: "sup", text: e.dir })), mid: true }) });
   }
   if (!APPS.loaded) rows.push({ header: APPS.failed ? "앱을 불러오지 못했어요" : "앱 불러오는 중…" });
   return rows;
@@ -75,7 +76,7 @@ function appsHeader(a) {
   const hint = appsTool(a) && !a.off && a.status !== "unreachable" ? pkHint() : null;   // a phone: a line under the status, the title keeps its width
   return el("header", { class: "apps-hd" },
     appsNarrow() ? el("button", { class: "ib", type: "button", "aria-label": "앱 목록", title: "앱 목록", onclick: () => go("apps") }, icon("back")) : null,
-    appsAv(a.icon, a.off ? "off" : a.status),
+    appsAv(a.icon),
     el("div", { class: "apps-hb" }, el("h2", { class: "apps-n", text: a.label }), el("p", { class: "apps-p" }, st[0], a.reason && !a.off ? ` · ${a.reason}` : ""), appsNarrow() ? hint : null),
     appsNarrow() ? null : hint,
     appsTool(a) && !a.off ? el("a", { class: "ib", href: a.web.href, target: "_blank", rel: "noopener", "aria-label": "새 탭에서 열기", title: "새 탭에서 열기" }, icon("open")) : null,
@@ -162,7 +163,7 @@ function appsRender() {
 //   in monRows(), the row's opener:            open: () => it.tool ? go("apps", it.id) : go("monitoring", it.key)
 window.appsMonItems = () => APPS.items.filter(a => a.source === "manifest" && a.kind === "tool").map(a => ({
   key: `x:${a.id}`, id: a.id, tool: true, group: "앱", name: a.label, ic: a.icon, notices: [], mails: [], app: true, unread: 0, unreplied: 0,
-  hint: appsStatusLine(a), at: "",
+  hint: appsStatusLine(a), badge: appsBadge(a), at: "",
 }));
 
 loadApps();

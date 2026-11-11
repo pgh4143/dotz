@@ -172,14 +172,13 @@ const monUnread = list => list.reduce((c, n) => c + (n.read ? 0 : 1), 0);
 // its row and its conversation show.
 const MON_FEED = "감시 소식";
 // An app's row says what waits on the owner, never the latest item's title. `needs` = {drafts, unread, sentToday, unreplied} from GET /api/integrations (hub/integrations.ts):
-// at most two parts, the most important first (drafts, sent today); 미답장 and 안 읽음 are the row's own counts (31-conversations.js), so the line does not say them again (owner 2026-11-10).
-// The badge is the count that waits on him (drafts first, else unread). A row with only unread says when the last item came (`when`, ntTime of the newest), else 새 소식이 있어요.
+// the line says what was sent today; the counts that wait on him (drafts, 미답장, 안 읽음) are the row's own, at its right (31-conversations.js), so the line never says them again (owner 2026-11-10).
+// The badge is the count that waits on him (drafts first, else unread). A row with such a count says when the last item came (`when`, ntTime of the newest), else nothing.
 // "확인할 것 없어요" only for a connected app with every count 0; `down` (the app is disconnected) says 연결 끊김 instead.
 function monNeedLine(n, down, when) {
   const parts = [];
-  if (n.drafts) parts.push(`답장 대기 ${n.drafts}건`);
   if (n.sentToday) parts.push(`오늘 자동 답장 ${n.sentToday}건 보냄`);
-  return parts.join(" · ") || (n.unreplied ? "답장을 기다리는 것이 있어요" : n.unread ? (when ? `마지막 소식 ${when}` : "새 소식이 있어요") : down ? "연결 끊김" : "확인할 것 없어요");
+  return parts.join(" · ") || (n.drafts || n.unreplied || n.unread ? (when ? `마지막 소식 ${when}` : "") : down ? "연결 끊김" : "확인할 것 없어요");
 }
 // A watch an app owns (it.watches / it.watchesNot of GET /api/integrations, hub/integrations.ts) belongs to that app: no row of its own in 일반 모니터링,
 // its status is in the app's panel and a failing one marks the app's row.
@@ -286,7 +285,7 @@ const monTag = tone => { const t = MON_TONE[tone]; return t ? el("span", { class
 // the subject in bold, the body in paragraphs - with its state as a badge with the time. 보내기 sends, 고치기 asks "어떻게 고칠까요?" (the bot rewrites it),
 // 보내지 않기 is the quiet way out. The whole answer path is the notice's (answerInline / ntPost), so the chat card and this one stay in step.
 const DR = { edit: new Set(), manual: new Set(), note: {} };
-const DR_STATE = { open: ["승인 대기", "warn"], send: ["보냄", "ok"], edit: ["고침", "pri"], revising: ["고치는 중…", "pri"], drop: ["보내지 않음", ""], own: ["보낼 방법 전함", "pri"], expired: ["만료", ""], ignored: ["무시함", ""] };
+const DR_STATE = { open: ["확인 대기", "warn"], send: ["보냄", "ok"], edit: ["고침", "pri"], revising: ["고치는 중…", "pri"], drop: ["보내지 않음", ""], own: ["보낼 방법 전함", "pri"], expired: ["만료", ""], ignored: ["무시함", ""] };
 function drState(d) {
   if (d.state === "open" || d.state === "ignored") return d.state;
   if (d.draft && ntRevising({ kind: "decision", decision: d })) return "revising";   // 고치기 answered, the new draft has not landed
@@ -353,7 +352,7 @@ function draftCardNode(n, o = {}) {
   // A mail draft reads as the 답장 확인 sheet does (10-reply-card.js rqMailParts): the same head line, quote, subject, folded 받는이 and 첨부 줄, here in place.
   const mp = mail && dr.toLabel === "받는이" ? rqMailParts(dr, { t: d.to, pc: head.pc, edit: open, tail: head.tail, seen, src: "" }) : null;
   const card = rqCard({ key: `dr:${n.id}`, attrs: { "data-nid": n.id },
-    ...(mp ? { ...mp, cls: `bm alert rc dr ${st} ${mp.cls}` } : { cls: `bm alert rc dr ${st}`, head, label: q || null, labelCls: "rc-title dr-q",
+    ...(mp ? { ...mp, cls: `bm alert rc dr ${st} ${mp.cls}` } : { cls: `bm alert rc dr ${st}`, head, label: open ? null : q || null, labelCls: "rc-title dr-q",   // a waiting draft's title asks to confirm it: the state tag says so already
       recv, subject: dr.subject, ...(who && orig ? { original: { text: orig, ...(dr.ref ? { ref: dr.ref, t: d.to } : {}) } } : {}), brief: who ? (seen ? null : mailLinesNode(b.todo, b.questions)) : draftBriefNode(dr.brief, seen),
       // A draft always shows its 첨부 줄 right before 보내기; the files are editable while the draft waits.
       attach: draftFilesNode(dr, { t: d.to, edit: open }) }),

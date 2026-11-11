@@ -38,7 +38,7 @@ function renderBars() {
     const i = targetInfo(t);
     const k = attnKind(t);
     if (isFixedT(t)) return { t, name: targetName(t), tone: "", attn: "", status: "", unread: ts(t).unread, subs: 0 };
-    return { t, name: targetName(t), tone: k ? "warn" : targetState(t)[1], attn: k, status: targetState(t)[0], unread: ts(t).unread, subs: runningSubs(sourceOf(t)).length };
+    return { t, name: targetName(t), tone: k ? "warn" : targetState(t)[1], attn: k, status: targetState(t)[0], unread: ts(t).unread, subs: runningSubs(subsSourceOf(t)).length };
   };
   const A = alive.map(view), D = dead.map(view), FA = A.filter(v => isFixedT(v.t)), PA = A.filter(v => isProjT(v.t)), LA = A.filter(v => isLaneT(v.t));
   const cur = view(target), others = [...A, ...D].reduce((n, v) => n + (v.t === target ? 0 : v.unread), 0);

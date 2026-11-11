@@ -137,7 +137,7 @@ test("a draft sent back for 고치기 says 고치는 중… and gives way to the
 	})()`);
 	const sentBack = note("old", "answered", { answer: "2) 고치기 - 짧게", answered_at: now });
 	expect(JSON.parse((await run([sentBack])) as string)).toEqual([["old", "고치는 중…"]]);
-	expect(JSON.parse((await run([sentBack, { ...note("new", "open"), ts: later }])) as string)).toEqual([["new", "승인 대기"]]);
+	expect(JSON.parse((await run([sentBack, { ...note("new", "open"), ts: later }])) as string)).toEqual([["new", "확인 대기"]]);
 });
 
 for (const width of [1280, 390]) {

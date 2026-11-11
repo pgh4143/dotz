@@ -2,6 +2,8 @@
 let SUBS = {};
 const subKo = { running: "진행 중", done: "완료", failed: "실패", aborted: "중단됨" };
 const subTone = s => ({ running: "pri", done: "ok", failed: "err", aborted: "" })[s] || "";
+// Subagents are listed per agent session (hub/convsessions.ts): a conversation of its own has `conv:<its target>`, the main chat `orchestrator`. A conversation never shows another's.
+const subsSourceOf = t => (isConvT(t) ? `conv:${t}` : sourceOf(t));
 const runningSubs = src => (SUBS[src] || []).filter(s => s.status === "running");
 
 /* ---------- 백그라운드 작업: S.work from /api/state (hub/bgwork.ts). A request answered with [later] keeps working after its turn ended. ---------- */
@@ -69,7 +71,7 @@ function pickTarget(t) { setTarget(t); const v = viewFor(t); if ((current === "c
 const spawnOrder = list => list.sort((a, b) => (a.started_at || 0) - (b.started_at || 0) || String(a.id).localeCompare(String(b.id)));
 // Running ones only, in spawn order (oldest first, the newest added at the bottom); rows never reorder on progress.
 function renderSubs() {
-  const src = sourceOf(target);
+  const src = subsSourceOf(target);
   for (const box of document.querySelectorAll(".subs")) if (!box.closest(".pane-chat")) paintSubs(box, src);
   paneStrips();
 }

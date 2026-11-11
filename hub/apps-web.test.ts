@@ -65,7 +65,8 @@ describe("앱 at 390px", () => {
 		expect(list).toContain("불러오지 못한 앱");
 		expect(list).toContain("broken");
 		expect(await view.evaluate(`(() => document.querySelectorAll("#apps-side .cv-row").length)()`)).toBe(3);
-		expect(await view.evaluate(`(() => !!document.querySelector("#apps-side .app-dot.ok"))()`)).toBe(true);
+		// the state is said once, at the row's right as dot + word; no corner dot on the icon
+		expect(await view.evaluate(`(() => !!document.querySelector("#apps-side .cv-row .tag.ok") && !document.querySelector("#apps-side .app-dot"))()`)).toBe(true);
 		await Bun.write(join(SHOTS, "apps-list-390.png"), await view.screenshot());
 		await view.evaluate(`(() => { [...document.querySelectorAll("#apps-side .cv-row")].find(b => b.dataset.k === "mydocs").click(); return 0; })()`);
 		await waitFor(`!!document.querySelector("#apps-pane .apps-frame")`);

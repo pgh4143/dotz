@@ -144,23 +144,25 @@ const ASK_KEYS = ["n:http://mini.test|dp", "kakao:http://mini.test|PK1", "kakao:
 const rowOf = (key: string) => `document.querySelector('[data-qr="${key}"]')`;
 
 describe.each([[390, 844], [1280, 900]])("답장 대기 at %ipx", (width, height) => {
-	test("the tab counts, the sections and the nav badge are one number; asks are newest first; the meta row names the apps and offers 빠른 처리", async () => {
+	test("the tab counts, the sections and the nav badge are one number; asks are newest first; 빠른 처리 sits beside the tabs on a wide screen and under them on a phone", async () => {
 		const v = await boot(width, height);
 		await openQueue(v);
 		await waitFor(v, `document.querySelector("#nav-mon").textContent === "11"`);
-		const got = await q<{ tabs: string[]; secs: string[]; ask: string[]; meta: string; fast: boolean; nav: string; waiting: number; over: boolean; tab: string }>(v, `
-			const txt = e => e ? e.textContent.trim() : "";
+		const got = await q<{ tabs: string[]; secs: string[]; ask: string[]; meta: string; fast: boolean; nav: string; waiting: number; over: boolean; tab: string; beside: boolean }>(v, `
+			const txt = e => e ? e.textContent.trim() : "", mid = e => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; };
 			return { tabs: [...document.querySelectorAll(".rq-tabs .nsc-fb")].map(b => txt(b.querySelector(".n"))), secs: [...document.querySelectorAll(".rq-ls .sec")].map(txt),
 				ask: [...document.querySelectorAll(".rq-r.ask")].map(r => r.dataset.qr), meta: txt(document.querySelector(".rq-qm .meta")), fast: !document.querySelector(".rq-fast").hidden,
-				nav: txt(document.querySelector("#nav-mon")), waiting: rqWaiting(), over: document.documentElement.scrollWidth > innerWidth, tab: txt(document.querySelector(".rq-tabs .nsc-fb.on")) };`);
+				nav: txt(document.querySelector("#nav-mon")), waiting: rqWaiting(), over: document.documentElement.scrollWidth > innerWidth, tab: txt(document.querySelector(".rq-tabs .nsc-fb.on")),
+				beside: Math.abs(mid(document.querySelector(".rq-fast")) - mid(document.querySelector(".rq-tabs .nsc-fb"))) < 2 };`);
 		// 답 필요 5 + 실패 6 = the number on the nav, the home row and the list row; 보낸 것 2 stays out of it
 		expect(got.tabs).toEqual(["", "5", "6", "2"]);
 		expect(got.nav).toBe("11");
 		expect(got.waiting).toBe(11);
-		expect(got.secs).toEqual(["실패 6건", "답 필요 5건", "보낸 것 2건"]);
+		expect(got.secs).toEqual(["실패", "답 필요", "보낸 것"]);   // the count is said once, on the tabs
 		expect(got.ask).toEqual(ASK_KEYS);
-		expect(got.meta).toBe("앱 5곳에서 5건 기다려요");
+		expect(got.meta).toBe("");
 		expect(got.fast).toBe(true);
+		expect(got.beside).toBe(width >= 640);   // one row with the tabs when wide; a phone stacks them so the button does not move with the counts
 		expect(got.over).toBe(false);
 		expect(got.tab.startsWith("전체")).toBe(true);
 		// the list row of 모니터링 reads the same number

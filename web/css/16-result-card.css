@@ -197,6 +197,9 @@ a.dr-att:active { background: var(--active); }
 .dr-fm { flex: none; color: var(--fg-3); font-size: 12px; line-height: 16px; }
 .dr-none, .dr-warn { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-ctl); background: color-mix(in srgb, var(--warn) 12%, var(--card)); color: var(--fg); font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
 .dr-none .ic { color: var(--warn); }
+/* the 첨부 line saying there is none is a fact, not a warning (only .dr-warn and the cannot-attach note are bands): a quiet line */
+.dr-none:not(:has(.dr-wn)) { padding: 0; background: none; color: var(--fg-3); font-size: 12px; line-height: 16px; }
+.dr-none:not(:has(.dr-wn)) .ic { width: 14px; height: 14px; color: inherit; stroke-width: 2; }
 .dr-note, .dc-gone { color: var(--fg-3); font-size: 12.5px; line-height: 18px; }
 .dr-note { margin-top: var(--sp-1); }
 .dc-gone { padding: var(--sp-1) var(--sp-3) var(--sp-2); text-align: center; }
