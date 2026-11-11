@@ -1339,22 +1339,25 @@ function scriptIn(dir: string, script: string): Record<string, any> {
 }
 
 test("a post from the web app reads no notice; an answer from a messenger reads that room's earlier notices", () => {
-	emit("outbox", { ts: "2026-11-04T01:00:00.000Z", kind: "out", source: "gateway", target: "ch:9511", text: "[감시9511] 새 글이 올라왔어요" });
+	// relative to now: a watch report older than WATCH_DAYS is dropped as it is written, so a fixed date would age out of this test
+	const t0 = Date.now() - 3_600_000, at = (min: number) => new Date(t0 + min * 60_000).toISOString();
+	emit("outbox", { ts: at(0), kind: "out", source: "gateway", target: "ch:9511", text: "[감시9511] 새 글이 올라왔어요" });
 	const item = () => stored().find(n => n.open === "ch:9511" && n.kind === "watch")!;
 	expect(item().read).toBe(false);
-	emit("inbox", { ts: "2026-11-04T01:01:00.000Z", kind: "message", source: "web", channel: "ch:9511", text: "웹에서 쓴 글" });
+	emit("inbox", { ts: at(1), kind: "message", source: "web", channel: "ch:9511", text: "웹에서 쓴 글" });
 	expect(item().read).toBe(false);
-	emit("inbox", { ts: "2026-11-04T01:02:00.000Z", kind: "message", source: "discord", channel: "ch:9511", text: "디스코드에서 쓴 글" });
+	emit("inbox", { ts: at(2), kind: "message", source: "discord", channel: "ch:9511", text: "디스코드에서 쓴 글" });
 	expect(item().read).toBe(true);
 });
 
 test("opening a mail reads its new-mail notice; looking at any other conversation never reads a monitor report", () => {
-	emit("inbox", { ts: "2026-11-04T02:00:00.000Z", kind: "mail", incoming: true, mail: "m9521", from: "홍길동 <a@x.kr>", subject: "견적 보내드려요", conv: "mail:m9521" });
-	emit("outbox", { ts: "2026-11-04T02:00:00.000Z", kind: "out", source: "gateway", target: "ch:9522", text: "[감시9522] 가격이 바뀌었어요" });
+	const t0 = Date.now() - 3_600_000, at = (min: number) => new Date(t0 + min * 60_000).toISOString();
+	emit("inbox", { ts: at(0), kind: "mail", incoming: true, mail: "m9521", from: "홍길동 <a@x.kr>", subject: "견적 보내드려요", conv: "mail:m9521" });
+	emit("outbox", { ts: at(0), kind: "out", source: "gateway", target: "ch:9522", text: "[감시9522] 가격이 바뀌었어요" });
 	const mail = () => stored().find(n => n.key === "mail:m9521")!, report = () => stored().find(n => n.open === "ch:9522")!;
 	expect([mail().read, report().read]).toEqual([false, false]);
-	readConversationNotices("ch:9522", "2026-11-04T03:00:00.000Z", "viewed");
-	readConversationNotices("mail:m9521", "2026-11-04T03:00:00.000Z", "viewed");
+	readConversationNotices("ch:9522", at(1), "viewed");
+	readConversationNotices("mail:m9521", at(1), "viewed");
 	expect([mail().read, report().read]).toEqual([true, false]);
 	setViewing("tab-9522", "ch:9522", Date.now());
 	expect(report().read).toBe(false);
