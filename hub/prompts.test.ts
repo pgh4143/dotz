@@ -881,6 +881,23 @@ test("a turn stopped by a provider error before writing anything keeps its reque
 	expect(plain.open()).toEqual([]);
 });
 
+// 2026-11-11 08:01 KST: scheduled items (no message id) were stopped by a usage limit; every silent-wait nudge failed too and became
+// an id-less request of its own, and the answers that came after the pause closed none of them, so the nudge kept coming back.
+test("a failed nudge is no request of its own, and an answer in the conversation closes its requests that have no message id", async () => {
+	const { q, startTurn } = setup([], [], { regenerated: isOpenNudge });
+	startTurn("[dotz inbox] 예약 항목: morning brief", { target: "chat" });
+	q.settleTurn(true);
+	expect(q.openRequests().length).toBe(1);
+	startTurn(ko.openRequests(q.openRequests(), false), { target: "chat" });
+	q.settleTurn(true);
+	expect(q.openRequests().length).toBe(1);
+	startTurn(ko.openRequests(q.openRequests(), true), { target: "chat" });
+	q.onAnswer("오늘 캘린더에는 잡힌 일정이 없어요.");
+	q.settleTurn();
+	await Promise.resolve();
+	expect(q.openRequests()).toEqual([]);
+});
+
 // 2026-10-31 06:36 UTC: a channel-A worker was still running when the owner's channel-B message started a turn. OmO injected the
 // worker's completion into that turn and B posted A's answer. The prompt for B must say where another conversation's answer goes.
 test("a prompt for one conversation is told that another conversation's worker is still running", () => {

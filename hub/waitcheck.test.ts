@@ -7,7 +7,7 @@ const TICK = 20_000;
 const request = (replyTo: string, at = 0): OpenRequest => ({ target: "web", replyTo, at, workers: [] });
 
 function setup(open: OpenRequest[]) {
-	const s = { t: 0, open, busy: false, down: false, workers: 0, armed: false, restarting: false, turnEnd: 0, wakes: [] as { ids: (string | undefined)[]; last: boolean }[] };
+	const s = { t: 0, open, busy: false, down: false, workers: 0, armed: false, restarting: false, turnEnd: 0, wakes: [] as { ids: (string | undefined)[]; last: boolean }[], dropped: [] as (string | undefined)[] };
 	const session: WaitSession = {
 		key: "main",
 		open: () => s.open,
@@ -17,6 +17,10 @@ function setup(open: OpenRequest[]) {
 		armed: () => s.armed,
 		lastTurnEndAt: () => s.turnEnd,
 		wake: (list, last) => s.wakes.push({ ids: list.map(r => r.replyTo), last }),
+		drop: list => {
+			s.dropped.push(...list.map(r => r.replyTo));
+			s.open = s.open.filter(r => !list.includes(r));
+		},
 	};
 	const check = createWaitCheck({ sessions: () => [session], restarting: () => s.restarting, log: () => {}, now: () => s.t });
 	const run = (ms: number) => {
@@ -40,6 +44,16 @@ test("the wake repeats a bounded number of times, the last one says so, and then
 	run(RETRY_MS * 10);
 	expect(s.wakes.length).toBe(MAX_WAKES);
 	expect(s.wakes.map(w => w.last)).toEqual([false, true]);
+});
+
+test("a request still open a retry interval after its last reminder is dropped, so no reminder follows the last one", () => {
+	const { s, run } = setup([request("a")]);
+	run(QUIET_MS + RETRY_MS + TICK * 2);
+	expect(s.wakes.map(w => w.last)).toEqual([false, true]);
+	expect(s.dropped).toEqual([]);
+	run(RETRY_MS);
+	expect(s.dropped).toEqual(["a"]);
+	expect(s.open).toEqual([]);
 });
 
 test("no wake while a worker, a turn, an armed watch or a restart runs, and the quiet time starts over when it ends", () => {
@@ -75,7 +89,7 @@ test("a turn that ended a moment ago restarts the quiet time, and no open reques
 test("a new request gets its own wake even after an older one used up its bound", () => {
 	const { s, run } = setup([request("a")]);
 	run(RETRY_MS * 5);
-	s.open = [request("a"), request("b", s.t)];
+	s.open = [...s.open, request("b", s.t)];
 	run(QUIET_MS + TICK * 2);
 	expect(s.wakes.at(-1)!.ids).toEqual(["b"]);
 });

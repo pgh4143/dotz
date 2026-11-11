@@ -716,6 +716,7 @@ const waitCheck = createWaitCheck({
 	sessions: () => convs.all().map(c => ({
 		key: c.key,
 		open: c.queue.openRequests,
+		drop: c.queue.dropOpen,
 		busy: () => Boolean(orchBusy(c.o.orch)) || c.o.orch.status === "rate-limited",
 		down: () => c.o.orch.error !== undefined && !c.o.orch.error.probed,
 		workers: () => c.bg.running(),

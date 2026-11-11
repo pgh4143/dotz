@@ -320,7 +320,9 @@ export function createPrompts(deps: PromptDeps) {
 		// A turn stopped by a provider error before it wrote anything is not answered: its request stays open like a deferred one, so the
 		// run that resumes after the pause answers it in its own conversation and a restart replays it (2026-10-28 13:25Z on the Mac mini:
 		// the owner's message was closed as a turn that wrote no text while the account was rate-limited, and never answered).
-		if (failed && !p.done && p.target && !p.deferred && !p.last && !p.cancelled) {
+		// The silent-wait nudge is no request: the requests it names stay open on their own (2026-11-11: each nudge a usage limit stopped
+		// became one more id-less request, with a new time, so the bounded nudge started over for it).
+		if (failed && !p.done && p.target && !p.deferred && !p.last && !p.cancelled && !deps.regenerated?.(p.text)) {
 			p.deferred = true;
 			p.retry = true;
 			deferred.push(p);
@@ -648,6 +650,9 @@ export function createPrompts(deps: PromptDeps) {
 		if (silent && t !== "-") deps.log(`a no-op answer for ${p.target ?? "-"} was not posted: ${t.slice(0, 160)}`);
 		if (p.target && !hush) receipted.delete(receiptKey(p.target));
 		if (!hush) closeResults(p.replyTo);
+		// An answer that names no message closes the requests of its conversation that name none either and wait on no worker, older than
+		// this turn: nothing else marks them answered (2026-11-11: scheduled items stopped by a usage limit stayed open after their answers).
+		if (!hush && p.target && !p.replyTo) for (const d of openDeferred()) if (d.target === p.target && !d.replyTo && d.at <= p.at && !linksOf(d).some(l => !l.delivered && !l.cancelled)) d.done = true;
 		const ids = p.target && !hush ? [...(p.refs ?? []), ...burst.cover(p.target)] : [];
 		save();
 		if (!p.target) return;
@@ -731,11 +736,17 @@ export function createPrompts(deps: PromptDeps) {
 	/** The deferred prompts still waiting for their worker's answer (bgwork.ts ties a worker to one of them). */
 	const deferredOpen = () => openDeferred().flatMap(p => (p.target ? [{ target: p.target, replyTo: p.replyTo, at: p.at }] : []));
 
+	/** The silent-wait check gave up on these after its last reminder (hub/waitcheck.ts): they stop being listed and are not replayed. */
+	function dropOpen(list: { target: string; replyTo?: string; at: number }[]): void {
+		for (const r of list) for (const d of openDeferred()) if (d.target === r.target && d.replyTo === r.replyTo && d.at === r.at) d.done = true;
+		save();
+	}
+
 	/** Requests waiting on background work, with the workers linked to them. */
 	const openRequests = (): OpenRequest[] => openDeferred().flatMap(p => (p.target ? [{ target: p.target, ...(p.replyTo ? { replyTo: p.replyTo } : {}), at: p.at, workers: linksOf(p).map(({ id, description }) => ({ id, ...(description ? { description } : {}) })) }] : []));
 
 	/** Messages of this conversation with a turn of their own still to come: an answer to another message there does not settle them. */
 	const waitingIds = (target: string): string[] => [...openDeferred(), ...prompts.filter(p => !p.seen)].flatMap(p => (p.target && sameConv(p.target, target) ? [...new Set([...(p.refs ?? []), ...(p.replyTo ? [p.replyTo] : [])])] : []));
 
-	return { deliver, settleSteered: burst.settle, sent, holdEarly, cancel, retarget, markAnswered, isAnswered, redeliverSteered: burst.redeliver, onPrompt, onText, settleTurn, onAnswer, replay, reopen, waitingOnWorkers, deferredOpen, turnAt, queued: () => prompts.slice(), current: () => current, linkOf: (id: string) => links.get(id), link, workersSpawned, workersDone, workersSteered, resultFor, openRequests, waitingIds };
+	return { deliver, settleSteered: burst.settle, sent, holdEarly, cancel, retarget, markAnswered, isAnswered, redeliverSteered: burst.redeliver, onPrompt, onText, settleTurn, onAnswer, replay, reopen, waitingOnWorkers, deferredOpen, turnAt, queued: () => prompts.slice(), current: () => current, linkOf: (id: string) => links.get(id), link, workersSpawned, workersDone, workersSteered, resultFor, openRequests, dropOpen, waitingIds };
 }

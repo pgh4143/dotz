@@ -24,6 +24,8 @@ export type WaitSession = {
 	armed: (since: number) => boolean;
 	lastTurnEndAt: () => number;
 	wake: (open: OpenRequest[], last: boolean) => void;
+	/** Requests still open RETRY_MS after their last reminder: the check gives up on them, so no reminder ever follows the last one. */
+	drop?: (open: OpenRequest[]) => void;
 };
 
 type WaitCheckDeps = {
@@ -45,7 +47,16 @@ export function createWaitCheck(deps: WaitCheckDeps) {
 		const restarting = deps.restarting();
 		const open = new Set<string>();
 		for (const s of deps.sessions()) {
-			const requests = s.open();
+			const listed = s.open();
+			const spent = listed.filter(r => {
+				const w = wakes.get(idOf(s, r));
+				return w !== undefined && w.count >= MAX_WAKES && t - w.at >= RETRY_MS;
+			});
+			if (spent.length && s.drop) {
+				deps.log(`${spent.length} open request(s) still unanswered after the last reminder: session ${s.key} drops them`);
+				s.drop(spent);
+			}
+			const requests = s.drop ? listed.filter(r => !spent.includes(r)) : listed;
 			for (const r of requests) open.add(idOf(s, r));
 			if (!requests.length) {
 				quiet.delete(s.key);
