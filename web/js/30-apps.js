@@ -47,7 +47,7 @@ function appsRows() {
   }
   if (APPS.errors.length) {
     rows.push({ header: "불러오지 못한 앱" });
-    for (const e of APPS.errors) rows.push({ k: `e:${e.id}`, name: e.id, av: appsAv("file"), hint: e.reason, badge: ["오류", "err"], open: () => dialog({ title: `${e.id}을(를) 불러오지 못했어요`, body: el("div", { class: "apps-err" }, el("p", { text: e.reason }), el("p", { class: "sup", text: e.dir })), mid: true }) });
+    for (const e of APPS.errors) rows.push({ k: `e:${e.id}`, name: e.id, av: appsAv("file"), hint: e.reason, badge: ["오류", "err"], open: () => dialog({ title: "앱을 불러오지 못했어요", body: el("div", { class: "apps-err" }, el("p", {}, el("b", { text: e.id })), el("p", { text: e.reason }), el("p", { class: "sup", text: e.dir })), mid: true }) });
   }
   if (!APPS.loaded) rows.push({ header: APPS.failed ? "앱을 불러오지 못했어요" : "앱 불러오는 중…" });
   return rows;
@@ -105,7 +105,7 @@ async function appsToggle(a) {
   } catch (e) { toast(e.message, true); }
 }
 async function appsRemove(a) {
-  const sure = await ask(`${a.label} 제거`, "이 기기에서 앱을 목록에서 뺄게요. 파일은 custom/apps-removed에 남겨 두니 되돌릴 수 있어요.", "제거", true);
+  const sure = await ask(`${a.label} 제거`, "목록에서 빼요. 파일은 남아서 되돌릴 수 있어요.", "제거", true);
   if (!sure) return;
   try {
     await api(`/api/apps/${enc(a.id)}`, "DELETE");

@@ -268,6 +268,7 @@ describe("이 기기에서 쓰기, 제거 and 앱 추가 at phone width (390x844
 		await run(v, `document.querySelector('#mon-side [data-k="add-app"]').click()`);
 		await waitFor(v, `document.querySelector('.fs-card [data-k="new-app-text"]')`);
 		expect(await q<string[]>(v, `return [...document.querySelectorAll(".fs-card [data-app]")].map(e => e.dataset.app)`)).toEqual(["kakao"]);
+		expect(await q(v, `return document.querySelectorAll(".fs-card [data-app] .as-h").length`)).toBe(0);
 		expect(await q(v, `return document.querySelectorAll(".fs-card [data-tpl]").length`)).toBe(0);
 		await waitFor(v, `Math.round(document.querySelector(".fs-card").getBoundingClientRect().bottom) === innerHeight`);
 		const fit = await q<{ w: number; vw: number; top: number; bottom: number; vh: number }>(v, `const b = document.querySelector(".fs-card").getBoundingClientRect(); return { w: document.querySelector(".fs-card").scrollWidth, vw: innerWidth, top: b.top, bottom: b.bottom, vh: innerHeight }`);
@@ -306,7 +307,7 @@ describe("이 기기에서 쓰기, 제거 and 앱 추가 at phone width (390x844
 		await run(v, `PQ.list = [{ name: "Mac mini", url: "http://mini.example", online: true, items: { monitors: [], notices: [], conversations: [], integrations: [], available: [{ key: "instagram", label: "인스타그램", icon: "instagram", off: true, conv: [] }] } }]; go("monitoring"); asAddSheet()`);
 		try {
 			await waitFor(v, `document.querySelector(".fs-card [data-app]")`);
-			expect(await rows(".fs-card [data-app] .as-h")).toEqual(["Mac mini · 꺼져 있어요"]);
+			expect(await rows(".fs-card [data-app] .as-h")).toEqual(["Mac mini"]);
 			await shot(v, "11-phone-add-sheet-peer.png");
 		} finally {
 			await run(v, `PQ.list = []`);

@@ -165,8 +165,9 @@ describe.each([[390, 844], [1280, 900]])("답장 대기 at %ipx", (width, height
 		expect(got.beside).toBe(width >= 640);   // one row with the tabs when wide; a phone stacks them so the button does not move with the counts
 		expect(got.over).toBe(false);
 		expect(got.tab.startsWith("전체")).toBe(true);
-		// the list row of 모니터링 reads the same number
+		// the list row of 모니터링 reads the same number, and its line is the count per source (the home row's line), which adds up to it
 		expect(await q<number>(v, `return monItems().find(i => i.key === "replies").unread`)).toBe(11);
+		expect(await q<number>(v, `return monItems().find(i => i.key === "replies").hint.split(" · ").reduce((c, p) => c + Number(p.split(" ").pop()), 0)`)).toBe(11);
 		await Bun.write(join(SHOTS, `replies-${width}.png`), await v.screenshot());
 	});
 

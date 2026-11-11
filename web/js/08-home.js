@@ -295,8 +295,9 @@ function homeConvRow(c) {
     end ? el("span", { class: "hs", text: end }) : null);
 }
 // The two rows of 답변 필요 for what the apps hold: a title, the count per source under it (most first, none with 0) and the total as a badge at the right.
+const countsLine = by => [...by].filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).map(([name, c]) => `${name} ${c}`).join(" · ");
 function homeCountRow(k, title, by, n, open) {
-  const sub = [...by].filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).map(([name, c]) => `${name} ${c}`).join(" · ");
+  const sub = countsLine(by);
   return el("button", { class: "hr", type: "button", "data-k": k, onclick: open, "aria-label": `${title} · ${n}건` },
     el("span", { class: "hb" }, el("span", { class: "hn1" }, el("span", { class: "nm", text: title })), el("span", { class: "ha", text: sub })),
     el("span", { class: "nb unreplied", "aria-hidden": "true", text: n > 99 ? "99+" : String(n) }));

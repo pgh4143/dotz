@@ -239,7 +239,9 @@ describe("댓글 on a phone (390x844)", async () => {
 		expect(await q(v, `return document.querySelector('[data-setting="watch-posts"] .as-v').textContent`)).toBe("전부");
 		await run(v, `document.querySelector('[data-setting="watch-posts"] [data-k="pick-open"]').click()`);
 		await waitFor(v, `document.querySelector('#cm-pick[open] .kk-pick-src[data-src="youtube"] [data-k="all"]')`);
-		await run(v, `document.querySelector('#cm-pick [data-k="close"]').click(); ASC.h.close()`);
+		// the title is the sibling sheet's own heading (h2.fs-t, same size), and 지켜볼 글 고르기 is the settings list row: a button.li with a chevron
+		expect(await q(v, `const d = document.querySelector('#cm-pick'), t = d.querySelector('.fs-t'), b = d.querySelector('[data-k="posts"]'); return { tag: t.tagName, size: getComputedStyle(t).fontSize, row: b.tagName + (b.classList.contains('li') ? '.li' : ''), chev: !!b.querySelector('.li-end svg') }`)).toEqual({ tag: "H2", size: "20px", row: "BUTTON.li", chev: true });
+		await run(v, `document.querySelector('#cm-pick .fs-x').click(); ASC.h.close()`);
 		await waitFor(v, `!CM.pickD && !ASC.h`);
 	});
 

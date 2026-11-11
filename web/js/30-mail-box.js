@@ -128,13 +128,16 @@ async function mbTrashOriginal(keys, orig) {
 // time is up or the page goes away (Gmail's way, owner 11-03). A mailbox that will not follow, or an older hub, only drops the row from
 // dotz and cannot bring it back, so that asks first in the small confirm box.
 const MB_UNDO_MS = 6000;
+// The one sentence under both 삭제 confirms (a row's ⋯ and an open mail): dotz drops the mail from its list. One mail that its mailbox will not trash stays there, so the box says so plainly;
+// of several, the ones a mailbox can trash go and the rest stay.
+const mailStays = n => n > 1 ? "메일함에는 남아 있을 수 있어요." : "메일함에는 그대로 남아 있어요.";
 async function mbTrash(keys) {
   keys = keys.filter(t => MAILS.has(t));
   if (!keys.length) return [];
   const orig = keys.filter(mailOriginal);
   if (orig.length) return mbTrashOriginal(keys, orig);
   if (!keys.every(t => mailCan(t, "trash"))) {
-    if (!await ask("메일 삭제", `${keys.length > 1 ? `메일 ${keys.length}개를` : "이 메일을"} 목록에서 지워요. 메일함에는 남아 있을 수 있어요`, "삭제", true)) return [];
+    if (!await ask("메일 삭제", `${keys.length > 1 ? `메일 ${keys.length}개를` : "이 메일을"} 목록에서 지워요. ${mailStays(keys.length)}`, "삭제", true)) return [];
     const done = await mbRun(keys, "trash");
     mbLeave(keys);
     return done;

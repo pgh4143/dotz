@@ -253,7 +253,7 @@ function asAddPaint() {
     el("div", { class: "fs-body" }, box,
       ...(off.length ? [el("div", { class: "as-sec", text: "꺼 둔 앱" }), ...off.flatMap(a => [el("div", { class: "as-row", "data-app": a.key },
         el("span", { class: "as-ic", "aria-hidden": "true" }, icon(a.icon)),
-        el("span", { class: "as-b" }, el("span", { class: "as-n", text: a.label }), el("span", { class: "as-h", text: a.machine ? `${a.machine} · 꺼져 있어요` : "꺼져 있어요" })),
+        el("span", { class: "as-b" }, el("span", { class: "as-n", text: a.label }), a.machine ? el("span", { class: "as-h", text: a.machine }) : null),
         el("span", { class: "as-btns" },
           el("button", { class: "btn tonal inrow", type: "button", "data-k": `on:${a.key}`, onclick: () => asAdd(a.key, a.pc) }, "다시 켜기"),
           el("button", { class: "btn text inrow", type: "button", "data-k": `del:${a.key}`, "aria-expanded": String(asDelOpen(a)), onclick: () => asDelOpen(a) ? (AD.del = null, asAddPaint()) : asDelAsk(a) }, "삭제"))),

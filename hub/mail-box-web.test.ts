@@ -494,7 +494,7 @@ describe("삭제하면 원본도 삭제", () => {
 		expect(posts[0]!.path).toBe("/api/mail/delete-original");
 		await run(v, `mailDelete("mail:fx-c")`);
 		await waitFor(v, `document.querySelector("dialog[open]")`);
-		expect(await confirm(v)).toContain("메일함에는 그대로 남아 있어요");
+		expect(await confirm(v)).toContain("메일함에는 그대로 남아 있어요.");
 		await yes(v);
 		await posted(2);
 		expect(posts[1]).toEqual({ path: "/api/mail/fx-c", body: null });

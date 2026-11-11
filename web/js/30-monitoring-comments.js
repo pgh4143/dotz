@@ -102,7 +102,7 @@ function cmSourceNode(s) {
     // Config-only: the mail app (`mailApp`) is set in the source config (docs/comments-api.md); without it the card says no mail was made.
     el("div", { class: "kk-pr" }, el("span", { class: "cv-b" }, el("span", { class: "cv-n", text: "파일 요청 메일 초안" })),
       kkSwitch(!!s.autoMail, `${s.label} 파일 요청 메일 초안`, "mail", v => cmUpdate(s, { autoMail: v }), true)),
-    el("button", { class: "btn text", type: "button", "data-k": "posts", text: "지켜볼 글 고르기", onclick: () => cmPosts(s) }));
+    el("button", { class: "li tap", type: "button", "data-k": "posts", onclick: () => cmPosts(s) }, el("span", { class: "tx" }, el("div", { class: "hd", text: "지켜볼 글 고르기" })), el("span", { class: "li-end" }, icon("chev", "chev"))));
   if (p) {
     if (p.loading) node.append(el("div", { class: "kk-note", text: "불러오는 중…" }));
     else if (p.error && !p.list.length) node.append(el("div", { class: "kk-note", role: "status", text: p.error }));
@@ -122,7 +122,7 @@ function cmPickOpen(app) {
   if (CM.pickD) return;
   const d = CM.pickD = el("dialog", { class: "kk-pd kk-add", id: "cm-pick", "data-app": app, "aria-label": "지켜볼 글" },
     el("div", { class: "kk-pd-in" },
-      el("div", { class: "kk-pd-h" }, el("span", { class: "cv-b" }, el("span", { class: "cv-n", text: "지켜볼 글" })), el("button", { class: "ib fs-x", type: "button", "data-k": "close", "aria-label": "닫기", onclick: () => d.close() }, icon("close"))),
+      fsHead([el("h2", { class: "fs-t", text: "지켜볼 글" })], { close: () => d.close() }),
       el("div", { class: "kk-pd-b" })));
   cmPickPaint();
   d.addEventListener("click", ev => { if (ev.target === d) d.close(); });

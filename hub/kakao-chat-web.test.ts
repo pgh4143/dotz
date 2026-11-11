@@ -797,6 +797,14 @@ for (const [w, h] of [[1280, 800], [390, 844]] as const)
 			await run(v, `document.querySelector('dialog.kk-pd [data-k="close"]').click()`);
 			await waitFor(v, `!document.querySelector("dialog.kk-pd")`);
 		});
+
+		test("a person with nothing counted draws no empty section: no chart, no zero row, and the summary part is only its button", async () => {
+			reset();
+			await boot(v);
+			const s = await q<Record<string, any>>(v, `const d = document.createElement("dialog"), b = document.createElement("div"); kkPersonPaint(d, b, { stats: {} });
+				return { hist: b.querySelectorAll(".kk-hist").length, rows: b.querySelectorAll(".kk-prow").length, heads: b.querySelectorAll(".kk-dh").length, btn: b.querySelector('[data-k="analyze"]')?.tagName ?? null, stray: [...b.childNodes].filter(n => n.nodeType !== 1).length }`);
+			expect(s).toEqual({ hist: 0, rows: 0, heads: 1, btn: "BUTTON", stray: 0 });   // a section left out leaves nothing behind, not the word "null"
+		});
 	});
 
 describe("카카오톡 방 목록 실시간 갱신", async () => {

@@ -374,25 +374,29 @@ function kkPersonPaint(d, body, r) {
   const unanswered = Array.isArray(s.recentUnanswered) ? s.recentUnanswered : [];
   const sum = el("div", { class: "kk-sum" });
   const paintSum = a => clear(sum).append(...[
-    el("div", { class: "kk-dh", text: "요약 분석" }),
+    a && a.text ? el("div", { class: "kk-dh", text: "요약" }) : null,
     a && a.text ? el("div", { class: "kk-dt", text: a.text }) : null,
     a && a.at ? el("div", { class: "kk-sub", text: `${kstStamp(a.at)}에 만든 요약` }) : null,
     el("button", { class: "btn tonal", type: "button", "data-k": "analyze", text: a ? "다시 분석" : "요약 분석", onclick: ev => kkAnalyze(d, ev.currentTarget, paintSum) }),
   ].filter(Boolean));
   paintSum(r && r.analysis);
-  clear(body).append(
-    el("div", { class: "kk-psec" },
-      row("메시지", `이 방 ${s.roomMessages | 0}개 · 지켜보는 방 ${s.watchedMessages | 0}개 (${s.watchedRooms | 0}곳)`),
-      span ? row("기간", span) : null,
-      row(`답장 (${s.windowDays || 30}일)`, reply),
-      row("나를 부른 메시지", `${Math.round((s.mentionShare || 0) * 100)}% (${s.mentions | 0}개)`)),
-    el("div", { class: "kk-psec" }, el("div", { class: "kk-dh", text: "활동 시간" }), kkBars(s.hours || Array(24).fill(0), Array.from({ length: 24 }, (_, i) => String(i))),
-      el("div", { class: "kk-hax" }, el("span", { text: "0시" }), el("span", { text: "6시" }), el("span", { text: "12시" }), el("span", { text: "18시" }), el("span", { text: "24시" }))),
-    el("div", { class: "kk-psec" }, el("div", { class: "kk-dh", text: "요일" }), kkBars(s.weekdays || Array(7).fill(0), ["일", "월", "화", "수", "목", "금", "토"]),
-      el("div", { class: "kk-hax kk-hax7" }, ...["일", "월", "화", "수", "목", "금", "토"].map(t => el("span", { text: t })))),
+  // A section whose numbers are all 0 is not drawn: no empty charts, no "0개 · 0개 (0곳)".
+  const some = a => Array.isArray(a) && a.some(v => v > 0);
+  const rows = [
+    (s.roomMessages | 0) || (s.watchedMessages | 0) ? row("메시지", `이 방 ${s.roomMessages | 0}개 · 지켜보는 방 ${s.watchedMessages | 0}개 (${s.watchedRooms | 0}곳)`) : null,
+    span ? row("기간", span) : null,
+    s.replyToOwnerMs !== undefined || s.ownerReplyMs !== undefined ? row(`답장 (${s.windowDays || 30}일)`, reply) : null,
+    s.mentions | 0 ? row("나를 부른 메시지", `${Math.round((s.mentionShare || 0) * 100)}% (${s.mentions | 0}개)`) : null,
+  ].filter(Boolean);
+  clear(body).append(...[
+    rows.length ? el("div", { class: "kk-psec" }, ...rows) : null,
+    some(s.hours) ? el("div", { class: "kk-psec" }, el("div", { class: "kk-dh", text: "활동 시간" }), kkBars(s.hours, Array.from({ length: 24 }, (_, i) => String(i))),
+      el("div", { class: "kk-hax" }, el("span", { text: "0시" }), el("span", { text: "6시" }), el("span", { text: "12시" }), el("span", { text: "18시" }), el("span", { text: "24시" }))) : null,
+    some(s.weekdays) ? el("div", { class: "kk-psec" }, el("div", { class: "kk-dh", text: "요일" }), kkBars(s.weekdays, ["일", "월", "화", "수", "목", "금", "토"]),
+      el("div", { class: "kk-hax kk-hax7" }, ...["일", "월", "화", "수", "목", "금", "토"].map(t => el("span", { text: t })))) : null,
     el("div", { class: "kk-psec" }, el("div", { class: "kk-dh", text: "답장을 기다리는 메시지" }),
       ...(unanswered.length ? unanswered.map(m => el("div", { class: "kk-pun" }, el("span", { class: "kk-sub", text: kstStamp(m.at) }), el("span", { class: "kk-put", text: m.text }))) : [el("div", { class: "kk-sub", text: "없어요" })])),
-    sum);
+    sum].filter(Boolean));
 }
 async function kkAnalyze(d, btn, paint) {
   const id = KK.open, uid = d.getAttribute("data-uid");

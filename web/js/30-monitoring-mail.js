@@ -217,7 +217,7 @@ const mailActRun = (t, a, b) => a === "draft" ? mailDraftRun(t, b) : a === "dele
 // 삭제: the mail leaves dotz on the computer that holds it (DELETE /api/mail/<key>); the real mailbox keeps it, unless the app's 삭제하면 원본도 삭제 is on (mbTrash). A newer message of the thread brings it back.
 async function mailDelete(t) {
   if (mailOriginal(t)) return mbTrash([t]);
-  if (!await ask("메일 삭제", "이 메일을 목록에서 지워요. 메일함에는 그대로 남아 있어요", "삭제", true)) return;
+  if (!await ask("메일 삭제", `이 메일을 목록에서 지워요. ${mailStays(1)}`, "삭제", true)) return;
   const pc = pqPc(t);
   await api(`/api/mail/${t.slice(5)}`, "DELETE");
   MAILS.delete(t); CONV.delete(t);

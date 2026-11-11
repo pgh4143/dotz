@@ -226,7 +226,7 @@ test("390px: the terminal's 더 보기 button uses a listed size and a readable 
 });
 test("390px: the kakao hour and weekday axes use a listed size and a readable line", async () => {
 	const k = await page(390, "light", `go("monitoring", "i:kakao")`, `KK.loaded && KK.rooms.length > 0`);
-	await k.evaluate(`void (KK.open = "r1", KK.msgs = [{ authorId: "u1", sender: "정우", fromMe: false, text: "안녕" }], kkPerson("u1"))`);
+	await k.evaluate(`void (KK.open = "r1", KK.msgs = [{ authorId: "u1", sender: "정우", fromMe: false, text: "안녕" }], api = async () => ({ stats: { hours: Array.from({ length: 24 }, (_, i) => (i === 9 ? 3 : 0)), weekdays: [1, 0, 2, 0, 0, 0, 0] } }), kkPerson("u1"))`);
 	await waitFor(k, `!!document.querySelector("dialog[open] .kk-hax")`);
 	await shot(k, "8-kakao-axis");
 	await typeOk(k, ".kk-hax span");

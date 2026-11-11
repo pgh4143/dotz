@@ -107,9 +107,11 @@ const rqAskCount = () => rqRows().filter(r => r.state === "ask").length;
 function rqMonItem() {
   const rows = rqRows().filter(r => r.state !== "sent"), n = rows.length;
   if (!n && MON.sel !== RQ_KEY) return null;
-  const names = [...new Set(rows.map(r => rqAppName(r.inst) || r.app).filter(Boolean))], at = Math.max(0, ...rows.map(r => r.at || 0));
+  // the line under the name is the home row's (08-home.js homeRepliesRow): the count per source, the total at the row's right
+  const by = new Map(), at = Math.max(0, ...rows.map(r => r.at || 0));
+  for (const r of rows) { const k = r.app || "기타"; by.set(k, (by.get(k) || 0) + 1); }
   return { key: RQ_KEY, group: "", name: "답장 대기", ic: "send", notices: [], mails: [], unread: n, rq: true,
-    hint: n ? `${names.slice(0, 3).join(" · ")} 답장 ${n}건` : "기다리는 답장이 없어요", at: at ? new Date(at).toISOString() : "" };
+    hint: n ? countsLine(by) : "기다리는 답장이 없어요", at: at ? new Date(at).toISOString() : "" };
 }
 // Opens the queue, filtered to one app of one computer when given (an app's own 답장 대기 button).
 function rqOpen(inst, pc) { RQ.just.clear(); RQ.app = inst ? rqFilterKey(pc || null, inst) : ""; MON.sig = ""; go("monitoring", RQ_KEY); }

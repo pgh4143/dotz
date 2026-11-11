@@ -111,7 +111,7 @@ async function pick(v: View, t: string, label: string) {
 const menuLabels = (v: View) => q<string[]>(v, `return [...document.querySelectorAll(".menu .mi")].map(b => b.textContent)`);
 const confirmDelete = async (v: View) => {
 	await waitFor(v, `document.querySelector("dialog[open] .btn.danger")`);
-	expect(await q<string>(v, `return document.querySelector("dialog[open] .dbody").textContent`)).toBe("이 메일을 목록에서 지워요. 메일함에는 그대로 남아 있어요");
+	expect(await q<string>(v, `return document.querySelector("dialog[open] .dbody").textContent`)).toBe("이 메일을 목록에서 지워요. 메일함에는 그대로 남아 있어요.");
 	await run(v, `document.querySelector("dialog[open] .btn.danger").click()`);
 };
 
