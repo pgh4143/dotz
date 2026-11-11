@@ -90,5 +90,3 @@
 .cm .kk-st { color: var(--fg-3); }
 .cm .kk-m.pend.failed .kk-st { color: var(--err); }
 
-/* 인스타그램 DM thread: one line per message (20-monitoring.css .dm-m), so nothing overlaps */
-.cm .dm-m { padding: var(--sp-2) 0; }

@@ -317,7 +317,7 @@ function msgNode(e) {
       const { tone: mark, claim, text: parsed, emoji } = e.kind === "out" || e.kind === "lane_report" ? statedTone(noHandoff(text), true) : { tone: "", text };
       const isNote = e.kind === "out" && !!e.update_key && !e.live && (fromLane || (typeof e.target === "string" && e.target.startsWith("lane:"))) && !parseChoices(parsed).blocks.length;
       // A stored [run] or [wait] draws no tag of its own: syncLiveTags gives the newest report the state of now.
-      const parked = parkedTone(mark) && !e.live && !isNote, tone = parked ? "" : isNote ? mark || "run" : mark;
+      const parked = parkedTone(mark) && !e.live && !isNote, tone = parked || (mark === "done" && asProposalPending(parsed)) ? "" : isNote ? mark || "run" : mark;
       // The marker is a status tag in front of the first line (02-basic-markdown.js toneLead), for the orchestrator and a session alike.
       const body = isNote ? noteText(parsed.replace(/^진행 중:\s*/, "")) : parsed;
       const name = e.kind === "lane_report" ? String(e.lane ?? "") : fromLane ? targetName(e.source) : e.target === "alert" ? "알림" : e.target === "worklog" ? "작업내역" : isRestart(e) ? "게이트웨이" : e.relay ? targetName(e.target) : botName;

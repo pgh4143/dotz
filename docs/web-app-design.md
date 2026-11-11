@@ -1183,7 +1183,7 @@ dotz 웹앱의 `views` 배열(`web/js/04-state.js:36`)은 23개예요. 설정 �
 ### 항목: 감시 소식 (key `notice`)
 
 - 목적: 어떤 행도 소유하지 않은 감시와 예약 결과 소식을 모아서 보여주고, 모든 일반 모니터링 상태를 한눈에 보여줘요. 알림 채널의 글과 거기서 묻는 결정은 여기 안 나와요(채팅의 알림 대화에 있어요).
-- 구성: 필터 바 `.mon-bar`(소식이 7건 이상이거나 답 필요/안 읽은 실패가 있을 때만), `모니터링 상태` 개요(`.mon-ov`), 소식 본문. 머리는 `monHead`.
+- 구성: 필터 바 `.mon-bar`(소식이 7건 이상이거나 답 필요/안 읽은 실패가 있을 때만), `모니터링 상태` 개요(`.mon-ov`; 폰에서는 머리 한 줄 `button.mon-ov-h`(이름 + 상태별 개수 `.mon-ov-sum` + 화살표)로 접혀 있고 누르면 행이 펼쳐져요, 넓은 화면은 펼쳐진 채), 소식 본문. 머리는 `monHead`.
 - 기능: 개요 행 탭으로 해당 모니터링 열기(`go("monitoring", i.key)`). 소식은 6건 이하면 전체 카드 최신순(`monFeedCards`), 7건 이상이면 구역 + 접힌 행(`monFeedNodes`). 필터 `전체 / 답 필요 / 실패`와 읽음 처리(아래 `소식 필터 바`). 더 보기, 접기, 답하러 가기.
 - 상태: 목록 행 힌트는 읽지 않은 최신 소식(다른 컴퓨터 것이면 `<컴퓨터> · 요약`), 없으면 마지막 소식이 있을 때 `마지막 소식 <오늘 HH:MM 또는 M월 D일>`, 아예 없으면 `새 감시 소식이 없어요`. 헤더 상태줄은 `답 필요 <n>건 · 안 읽음 <n>개`, 둘 다 없으면 `감시와 예약 결과`. 개요 정렬: 끊김, 실패, 늦어짐, 확인 전, 정상, 꺼짐 순이고 같은 순위에서는 다음 실행이 가까운 것 먼저. 개요가 비면 `아직 일반 모니터링이 없어요`. 개요 행의 다른 컴퓨터 항목이 다음 실행 시각을 안 보내면 막대 대신 `다른 컴퓨터`. 개요 한 줄 요약은 끊김이면 `연결 끊김 · <since>부터 · <다시 로그인 필요 또는 확인이 계속 실패해요>`, 아니면 `last_summary` 또는 `monRunLine`. 구역 제목(소식이 둘 이상 구역일 때): `답 필요`, `실패`, `소식`; 날짜 줄은 `dayLabel`(오늘 / 10월 25일 (토) 형식). 소식이 없고 불러오는 중이면 `불러오는 중…`, 없으면 `아직 소식이 없어요`, 필터 결과 없음은 `이 보기에 해당하는 소식이 없어요`. 항목 자체 힌트의 `monGone`: 사라진 감시의 소식은 힌트에서 제외.
 - 데이터: 알림 `NT.items`(kind `watch`, app 소속 아님), 다른 컴퓨터 알림(`pqMerge`가 `feed.notices`에 합침), 읽음 처리 `POST /api/notices/read`.
@@ -1374,12 +1374,12 @@ dotz 웹앱의 `views` 배열(`web/js/04-state.js:36`)은 23개예요. 설정 �
 ### 인스타그램 DM (댓글 앱 `instagram`의 DM 탭, 읽기만)
 
 - 목적: 받은 인스타그램 DM 대화와 메시지를 읽기만 해요(답장 없음, 작성창 없음).
-- 구성: 댓글 패널과 같은 `#cm-rooms`, `#cm-head`, `#cm-in`에 그려요. 목록: (댓글과 DM 둘 다 쓸 때) `.cm-tabs`, `.dm-bar`(안내 `받은 DM을 읽기만 해요. 답장은 보내지 않아요` + 버튼 `#dm-refresh`), `section.kk-watch`(aria `DM 대화`) 안 라벨 `대화`와 대화 행. 대화: 머리(아바타, 상대 이름, `받은 DM · 읽기만 해요`), 날짜 구분선, 메시지들(`.dm-m`: 보낸 사람(`나` 또는 상대)와 시각 줄, 아래 본문, 얼마 아래 엇선).
+- 구성: 댓글 패널과 같은 `#cm-rooms`, `#cm-head`, `#cm-in`에 그려요. 목록: (댓글과 DM 둘 다 쓸 때) `.cm-tabs`, `.dm-bar`(안내 `여기서는 DM에 답장할 수 없어요` + 버튼 `#dm-refresh`), `section.kk-watch`(aria `DM 대화`) 안 라벨 `대화`와 대화 행. 대화: 머리(아바타, 상대 이름 한 줄; 제목줄도 상대 이름), 날짜 구분선, 메시지들(카카오톡 방의 `kkMsgNode`로 그린 `.kk-m` 말풍선: 내 것은 오른쪽, 상대 것은 왼쪽, 시각은 묶음 끝), 맨 아래 작성창 자리에 한 줄 `#dm-ro.kk-ro` `여기서는 DM에 답장할 수 없어요`.
 - 기능: 대화 행 탭 `dmOpen`; `새로고침`(`dmRefresh`, `POST /api/ig-dm/refresh`로 한 번 가져온 뒤 목록을 다시 읽음; 바뀐 대화만 가져옴); 폰에서 뒤로가기 `dmClose`.
 - 상태: 새로고침 중 버튼 `불러오는 중…`(비활성), 평소 `새로고침`. 권한 없음(`perm: "missing"`)이면 허브가 준 `line` 문구(`#dm-perm`), 읽기 실패 `DM 목록을 불러오지 못했어요`(목록) / `DM을 불러오지 못했어요`(새로고침 오류 기본) 또는 서버 메시지, 대화 없음 `아직 받은 DM이 없어요`(`#dm-empty`, 권한 문제가 아닐 때). 대화 했 없음 `대화를 골라 주세요`, 로딩 `불러오는 중…`, 실패 메시지, 메시지 0개 `메시지가 없어요`. 본문 없을 때: 사진 `(사진)`, 동영상 `(동영상)`, 음성 `(음성 메시지)`, 파일 `(파일)`, 아무것도 없으면 `(내용 없음)`. DM 탭 자체는 DM이 켜져 있고 연결되어 있고 댓글도 지켜보는 소스가 있을 때만 보여요(`cmHasTabs`); 댓글 소스가 없고 DM만 있으면 열자마자 DM 탭으로 시작하고 탭 표시는 없어요. 다른 컴퓨터의 댓글 앱에서는 DM 탭이 없고 댓글만 보여요.
 - 데이터: `GET /api/ig-dm`(`{on, connected, perm, line, convs:[{id, peer, last, lastAt}]}`), `POST /api/ig-dm/refresh`, `GET /api/ig-dm/<id>`(`{peer, messages:[{id, mine, text, attach, at}]}`).
 - css: web/css/20-monitoring.css(`dm-*`), web/css/18-comments.css(`dm-*`), web/css/17-kakao.css(`kk-*`).
-- 근거: web/js/30-monitoring-comments-dm.js:5-100(`DM`, `dmLoadList`, `dmRefresh`, `dmRow`, `dmPaintRooms`, `dmOpen`, `dmReload`, `dmClose`, `dmMsgNode`, `dmPaintChat`), web/js/30-monitoring-comments.js:154-165(`cmHasTabs`, `cmTabs`, `cmTab`), :403(DM만 있을 때 기본 탭).
+- 근거: web/js/30-monitoring-comments-dm.js:5-100(`DM`, `dmLoadList`, `dmRefresh`, `dmRow`, `dmPaintRooms`, `dmOpen`, `dmReload`, `dmClose`, `dmAsKk`, `dmPaintChat`), web/js/30-monitoring-comments.js:154-165(`cmHasTabs`, `cmTabs`, `cmTab`), :403(DM만 있을 때 기본 탭).
 
 ### 메일함 목록 도구줄 (선택 막대, 별표, 체크박스)
 - 목적: 모니터링의 메일 목록 위에서 여러 메일을 골라 읽음, 보관, 삭제, 답장 안 함으로 한 번에 처리해요.

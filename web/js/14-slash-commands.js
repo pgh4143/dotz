@@ -295,7 +295,7 @@ async function sendChat(how) {
 // an inactive pane's mirror asks with open = false and gets its own conversation's hint (43-panes-mirror.js).
 function composerHint(t, open) {
   const info = targetInfo(t), gone = isLaneT(t) && info.known && !info.alive, off = gone && !info.resumable;
-  return off ? "종료된 세션이에요" : open && DC.cur ? "번호를 누르거나 직접 입력해 주세요" : gone ? "재개하면서 보내기" : open && modeOf() === "term" ? "메시지 또는 /명령" : isProjT(t) ? `${targetName(t)} 프로젝트의 ${botName}에게 메시지 · /명령` : isMailT(t) ? `이 메일 답장·전달은 ${botName}에게 · /명령` : `${targetName(t)}에게 메시지 · /명령`;
+  return off ? "종료된 세션이에요" : open && DC.cur ? "번호를 누르거나 직접 입력해 주세요" : gone ? "재개하면서 보내기" : open && modeOf() === "term" ? "메시지 또는 /명령" : isProjT(t) ? `${targetName(t)} 프로젝트의 ${botName}에게 메시지 · /명령` : isMailT(t) ? `이 메일 답장·전달은 ${botName}에게 · /명령` : isSettingsT(t) ? `${targetName(t)} 설정은 ${botName}에게 말해요 · /명령` : `${targetName(t)}에게 메시지 · /명령`;
 }
 // The composer follows the selected target and the view mode.
 function updateComposerMeta() {

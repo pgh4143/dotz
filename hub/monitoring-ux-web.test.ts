@@ -135,6 +135,10 @@ describe("a monitor row and its conversation", () => {
     expect(await q(v, `return [document.querySelectorAll("#mon-tl [data-run]").length, document.querySelectorAll("#mon-tl .mon-recheck").length]`)).toEqual([0, 1]);
     await Bun.write(join(SHOTS, "monitoring-390.png"), await v.screenshot());
     await run(v, `go("monitoring", "notice")`);
+    // A phone folds the status card to its one summary row (state counts) until it is tapped; a wide screen keeps it open.
+    await waitFor(v, `document.querySelector("#mon-tl .mon-ov-h")`);
+    expect(await q(v, `const h = document.querySelector("#mon-tl .mon-ov-h"); return [h.getAttribute("aria-expanded"), document.querySelectorAll("#mon-tl .mon-ov-row").length, /\\d/.test(h.querySelector(".mon-ov-sum").textContent)]`)).toEqual(["false", 0, true]);
+    await run(v, `document.querySelector("#mon-tl .mon-ov-h").click()`);
     await waitFor(v, `document.querySelectorAll("#mon-tl .mon-ov-row").length === 5`);
     await Bun.write(join(SHOTS, "monitoring-feed-390.png"), await v.screenshot());
     expect(await q<number>(v, `return document.documentElement.scrollWidth`)).toBeLessThanOrEqual(390);

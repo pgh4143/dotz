@@ -514,6 +514,7 @@ function convChrome() {
   $("#back").setAttribute("aria-label", up ? (MX.it && MX.scr ? "메일 목록으로" : "모니터링 목록으로") : "뒤로");
   bar.classList.toggle("back", back);
   bar.classList.toggle("cvconv", conv);
+  bar.classList.toggle("mon-in", narrowChat() && (monConv() || (!!monCtx && current === "chat")));   // an app, a mail or a room of 모니터링 on a phone: no usage ring, the title gets the room (20-monitoring.css)
   $("#v-chat").classList.toggle("cv-listing", convListing());
   const listing = current === "monitoring" && MON.list, was = $("#v-monitoring").classList.contains("cv-listing");
   $("#v-monitoring").classList.toggle("cv-listing", listing);

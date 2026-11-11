@@ -128,16 +128,17 @@ describe("인스타 DM on a phone (390x844)", async () => {
 		expect(refreshes).toBe(1);
 		const list = await q<{ peers: string[]; note: string }>(v, `return { peers: [...document.querySelectorAll("#cm .kk-row .cv-n")].map(n => n.textContent), note: document.querySelector("#cm .dm-note").textContent }`);
 		expect(list.peers).toEqual(["camp_lover", "ramen_fan"]);
-		expect(list.note).toContain("읽기 전용");
+		expect(list.note).toContain("답장할 수 없어요");
 		await shot(v, "instagram-dm-list-390.png");
 
 		await run(v, `document.querySelector('#cm .kk-row[data-conv="c1"]').click()`);
-		await waitFor(v, `DM.open && !DM.loading && document.querySelector("#cm .dm-m")`);
-		const chat = await q<{ bubbles: string[]; mine: number; xss: boolean; composer: boolean; overflow: boolean; heads: string[] }>(v, `return { bubbles: [...document.querySelectorAll("#cm .dm-mb")].map(b => b.textContent), mine: document.querySelectorAll("#cm .dm-m.mine").length, xss: !!document.querySelector("#cm .dm-mb b"), composer: !document.querySelector("#cm-foot").hidden, overflow: document.documentElement.scrollWidth > 390, heads: [...document.querySelectorAll("#cm .dm-mh")].map(h => h.textContent) }`);
+		await waitFor(v, `DM.open && !DM.loading && document.querySelector("#cm .kk-m")`);
+		// The messages are the KakaoTalk room's own bubbles; the title is the other person; the one line at the bottom replaces the composer.
+		const chat = await q<{ bubbles: string[]; mine: number; xss: boolean; composer: boolean; overflow: boolean; ro: string; title: string }>(v, `return { bubbles: [...document.querySelectorAll("#cm .kk-bub")].map(b => b.textContent), mine: document.querySelectorAll("#cm .kk-m.me").length, xss: !!document.querySelector("#cm .kk-bub b"), composer: !document.querySelector("#cm-foot").hidden, overflow: document.documentElement.scrollWidth > 390, ro: document.querySelector("#dm-ro").hidden ? "" : document.querySelector("#dm-ro").textContent, title: document.querySelector("#cm-head .cv-n").textContent }`);
 		expect(chat.bubbles).toEqual(["안녕하세요 <b>협찬</b> 문의드려요", "메일로 자세히 알려 주세요", "(사진)"]);
 		expect(chat.mine).toBe(1);
-		expect(chat.heads).toHaveLength(3);
-		expect(chat.heads.some(h => h.includes("나"))).toBe(true);
+		expect(chat.ro).toContain("답장할 수 없어요");
+		expect(chat.title).toBe("camp_lover");
 		expect(chat.xss).toBe(false);
 		expect(chat.composer).toBe(false);
 		expect(chat.overflow).toBe(false);

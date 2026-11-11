@@ -1131,6 +1131,15 @@ for (const [w, h] of [[390, 844], [1280, 800]] as const)
 			await light(v);
 		});
 
+		test("inside the 미답장 filter a row does not repeat the word 미답장; the other views still show it", async () => {
+			useOpen();
+			await boot(v);
+			const pill = (view: string) => q<boolean>(v, `KK.view = "${view}"; return !!kkRow(KK.rooms.find(r => r.chatId === "300")).querySelector(".tag.unreplied")`);
+			expect(await pill("all")).toBe(true);
+			expect(await pill("unreplied")).toBe(false);
+			await run(v, `KK.view = "all"`);
+		});
+
 		test("a room that is not watched opens read-only: no composer, a 감시 시작 bar that starts watching it", async () => {
 			useOpen();
 			await boot(v);

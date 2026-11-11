@@ -46,7 +46,11 @@
 
 /* 감시 소식 opens with this: one compact row per plain monitor, what needs the owner first */
 .mon-ov { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3); border-radius: var(--r-card); background: var(--card); }
-.mon-ov-h { padding: 0 var(--sp-1) var(--sp-1); color: var(--fg); font: 700 14px/20px var(--font); }
+.mon-ov-h { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: var(--btn-hit); padding: 0 var(--sp-1); border: 0; background: transparent; color: var(--fg); font: 700 14px/20px var(--font); text-align: left; cursor: pointer; }
+.mon-ov-ht { flex: none; }
+.mon-ov-sum { min-width: 0; color: var(--fg-3); font: 400 12px/16px var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon-ov-h .chev { flex: none; width: 14px; height: 14px; margin-left: auto; color: var(--fg-3); transform: rotate(90deg); transition: transform var(--m-fast) var(--m-ease); }
+.mon-ov-h[aria-expanded="false"] .chev { transform: none; }
 .mon-ov-row { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; min-width: 0; padding: var(--sp-2); border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; }
 @media (hover: hover) { .mon-ov-row:hover { background: var(--hover); } }
 .mon-ov-hd { display: flex; align-items: center; gap: var(--sp-15); min-width: 0; }
@@ -58,16 +62,6 @@
 /* the top of an older page: the reports above load when this reaches the view (the button under it stays as a fallback) */
 .mon-sentinel { width: 100%; height: 1px; }
 
-/* 모니터링 > 인스타그램 DM (web/js/30-monitoring-comments-dm.js): 읽기만 하는 스레드 (owner 2026-11-03).
-   말풍선을 쌓지 않고 한 메시지 한 줄 - 보낸 사람·시각 줄, 아래 본문, 메시지 사이는 얇은 선. 겹치거나 둥근 회색 알약이 생기지 않아요. */
-.dm-m { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; padding: var(--sp-2) var(--sp-05); }
-.dm-m + .dm-m { border-top: 1px solid var(--line); }
-.dm-mh { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
-.dm-mn { min-width: 0; color: var(--fg); font: 600 13px/20px var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dm-mt { flex: none; color: var(--fg-3); font: 400 var(--fs-meta)/var(--lh-meta) var(--font); font-variant-numeric: tabular-nums; }
-.dm-mb { color: var(--fg); font: 400 var(--fs-body)/var(--lh-body) var(--font); overflow-wrap: anywhere; }
-.dm-m.mine .dm-mn { color: var(--fg-2); }
-.dm-m.mine .dm-mb { color: var(--fg-2); }
 /* 대화로 이어가기 (30-monitoring.js monHead / monTopNodes): the item's own settings conversation, one small button in the head.
    It sits on the page (--bg), where a --layer tonal button would vanish, so it takes the card colour like a chip. */
 .mon-continue { flex: none; }
@@ -171,3 +165,5 @@
 .mon-l1 .nw-chg s { color: var(--fg-3); }
 .mon-l1 .nw-chg em { font-style: normal; font-weight: 600; color: var(--accent); }
 #mon-tl > .mon-chips { justify-content: flex-start; margin-top: var(--sp-2); }
+/* the inner screens of 모니터링 on a phone (an app, a mail, a room) drop the usage ring from the app bar: the title keeps the room (31-conversations.js convChrome) */
+.appbar.mon-in .ustrip { display: none; }

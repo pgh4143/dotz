@@ -109,8 +109,6 @@
 .app-sw > .as-conn + .as-row, .app-sw > .as-conn + .as-sec + .as-row { border-top: 0; }
 /* 승인 대기 is a sub-heading inside 자동 초안과 승인, not a section of its own. */
 .app-sw > .as-sub { margin: var(--sp-2) 0 0; padding: var(--sp-1) var(--sp-4) 0; color: var(--fg-3); font: 600 12px/18px var(--font); }
-.as-every-wrap { flex: none; display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: var(--sp-2); }
-.as-every { flex: none; width: 68px; height: 32px; text-align: right; }
 .as-unit { color: var(--fg-3); font: 400 12px/18px var(--font); }
 /* 자동 초안 규칙 (32-app-settings.js arNodes): the 기본 규칙 box and a rule's form take the row's full width; the boxes grow with their text. */
 .as-col { flex-direction: column; align-items: stretch; gap: var(--sp-2); }

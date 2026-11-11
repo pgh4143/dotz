@@ -578,12 +578,13 @@ function kkAddOpen() {
 }
 function kkRow(r) {
   const on = KK.open === r.chatId, sub = kkSubLine(r), time = r.lastAt ? el("span", { class: "kk-t", text: kkListTime(r.lastAt) }) : null;
+  const owed = r.unreplied && kkViewOf()[0] !== "unreplied";   // inside the 미답장 filter every row is one, so the word is not repeated; the unread number stays
   return el("button", { class: `cv-row pv kk-row${r.unread ? " unread" : ""}${on ? " on" : ""}`, type: "button", "data-chat": r.chatId, "aria-current": on ? "true" : null, onclick: () => kkOpen(r.chatId) },
       kkAvatar(r.name),
       el("span", { class: "cv-b" }, kkLine1(r, el("span", { class: "cv-n", title: r.name, text: r.name })), sub ? el("span", { class: "cv-p", text: sub }) : null),
       // The row end like every list: the time on top, 미답장 and the unread count under it.
-      time || r.unread || r.unreplied ? el("span", { class: "cv-m" }, time, r.unread || r.unreplied ? el("span", { class: "kk-rmeta" },
-        r.unreplied ? unrepPill() : null,
+      time || r.unread || owed ? el("span", { class: "cv-m" }, time, r.unread || owed ? el("span", { class: "kk-rmeta" },
+        owed ? unrepPill() : null,
         r.unread ? el("span", { class: "nb", "aria-label": `읽지 않은 메시지 ${r.unread}개`, text: r.unread > 99 ? "99+" : String(r.unread) }) : null) : null) : null);
 }
 function kkPaintRooms() {
@@ -659,7 +660,7 @@ const kkDateNode = t => el("div", { class: "kk-date", text: kkDate(t) });
 const kkMarkNode = () => el("div", { class: "kk-new", role: "separator", "aria-label": "여기부터 읽지 않은 메시지" }, el("span", { text: "여기까지 읽었어요" }));
 function kkMsgNode(m, first, last) {
   if (kkSys(m)) { const line = kkSysText(m.text); return line ? el("div", { class: "kk-sys", role: "note", "data-log": m.logId, text: line }) : null; }
-  const group = !!(KK.room && KK.room.group), { text, ph } = kkBody(m);
+  const group = m.group ?? !!(KK.room && KK.room.group), { text, ph } = kkBody(m);
   // Plain words with an address: the address is a link and each one gets a preview card under the bubble.
   const urls = !m.media && !ph ? kkUrls(text) : [];
   const bub = (m.media && kkMediaNode(m, m.media)) || el("div", { class: `kk-bub${ph ? " ph" : ""}${urls.length ? " kk-lb" : ""}` }, urls.length ? kkLinkText(text) : text);

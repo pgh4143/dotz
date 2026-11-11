@@ -97,9 +97,7 @@ function asStatRow(app, m, i) {
       ...(i && i.reason ? [el("span", { class: "as-h as-why", text: `이유: ${i.reason}` })] : [])),
     i && i.every_minutes ? (app.includes("~")
       ? el("span", { class: "as-v", text: `${i.every_minutes}분마다` })
-      : el("span", { class: "as-every-wrap" },
-        el("input", { class: "as-in as-every", type: "number", min: 1, max: 10080, inputmode: "numeric", "aria-label": `${i.name} 감시 주기(분)`, title: "감시 주기(분)", "data-k": `every:${i.id}`, value: String(i.every_minutes), onchange: ev => asEvery(app, i, ev.target.value) }),
-        el("span", { class: "as-unit", text: "분" }))) : null,
+      : asStepper(`${i.name} 감시 주기(분)`, i.every_minutes, 1, 10080, v => asEvery(app, i, v), "분", `every:${i.id}`)) : null,
     i && i.dot !== "ok" ? el("button", { class: "btn tonal inrow", type: "button", "data-k": `retry:${i.id}`, onclick: () => asRetry(app, i.id, i.down) }, i.down ? "다시 연결" : "다시 시도") : null,
     !i && st && st.tone === "err" ? el("span", { class: "tag err", text: st.text }) : null);
 }
@@ -109,9 +107,11 @@ function asPickRow(app) {
   return srcs.length ? el("div", { class: "as-row", "data-setting": "watch-posts" }, el("span", { class: "as-b" }, el("span", { class: "as-n", text: "지켜볼 글" })),
     el("span", { class: "as-v", text: cmWatchWord(srcs) }), el("button", { class: "btn tonal inrow", type: "button", "data-k": "pick-open", onclick: () => cmPickOpen(app) }, "고르기")) : null;
 }
+// A description that only says the switch's own name or its state (켜져 있어요 / 꺼져 있어요) adds nothing next to the switch: it is left out.
+const asEcho = (name, t) => { const a = String(name || "").replace(/\s/g, ""), b = String(t || "").replace(/\s/g, ""); return !b || /^(켜|꺼)져있어요$/.test(b) || a.includes(b); };
 function asFeatRow(app, f) {
   return el("div", { class: "as-row as-feat", "data-feature": f.id },
-    el("span", { class: "as-b" }, el("span", { class: "as-n", text: f.name }), el("span", { class: "as-h", text: f.status })),
+    el("span", { class: "as-b" }, el("span", { class: "as-n", text: f.name }), asEcho(f.name, f.status) ? null : el("span", { class: "as-h", text: f.status })),
     kkSwitch(f.on, f.name, `feat:${f.id}`, on => asFeatSet(app, f.id, on)));
 }
 async function asPatch(app, values) {
@@ -354,12 +354,17 @@ function asControl(f, set) {
     b.classList.add("as-in"); b.dataset.k = f.key;
     return b;
   }
-  const num = f.type === "number";
-  const c = el("input", { class: "fi as-in", type: num ? "number" : "text", ...(num ? { min: f.min, max: f.max, inputmode: "numeric" } : {}), "aria-label": f.label, "data-k": f.key, onchange: () => set(num ? Number(c.value) : c.value.trim()) });
+  if (f.type === "number") return asStepper(f.label, f.value, f.min, f.max, set, f.unit || (/\(([^)]+)\)\s*$/.exec(f.label) || [])[1] || "", f.key);
+  const c = el("input", { class: "fi as-in", type: "text", "aria-label": f.label, "data-k": f.key, onchange: () => set(c.value.trim()) });
   c.value = String(f.value);
-  if (!num) return c;
-  const step = d => { const v = Math.min(f.max ?? Infinity, Math.max(f.min ?? -Infinity, Number(c.value) + d)); if (v !== Number(c.value)) { c.value = String(v); set(v); } };
-  return el("span", { class: "as-step" }, el("button", { class: "ib", type: "button", "aria-label": `${f.label} 줄이기`, text: "−", onclick: () => step(-1) }), c, el("button", { class: "ib", type: "button", "aria-label": `${f.label} 늘리기`, text: "+", onclick: () => step(1) }));
+  return c;
+}
+// The one control for a number (a period in minutes, a count): − and + around the field, with its unit after it. The check interval of an app, a watch's period and the login keeper's all use it.
+function asStepper(label, value, min, max, set, unit, k) {
+  const c = el("input", { class: "fi as-in", type: "number", min, max, inputmode: "numeric", "aria-label": label, "data-k": k, onchange: () => set(Number(c.value)) });
+  c.value = String(value);
+  const step = d => { const v = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, Number(c.value) + d)); if (v !== Number(c.value)) { c.value = String(v); set(v); } };
+  return el("span", { class: "as-step" }, el("button", { class: "ib", type: "button", "aria-label": `${label} 줄이기`, text: "−", onclick: () => step(-1) }), c, el("button", { class: "ib", type: "button", "aria-label": `${label} 늘리기`, text: "+", onclick: () => step(1) }), unit ? el("span", { class: "as-unit", text: unit }) : null);
 }
 /* ---- 자동 초안 규칙 (hub/app-settings.ts draft_rules, draft_default): the rules of a mail app, edited here or by the bot (bin/rules.ts) ---- */
 // A rule = 이름 (the badge), 언제 (a plain condition one short model call checks), 어떻게 (the draft's instruction) and 붙일 파일; the 기본 규칙 goes into every
@@ -439,7 +444,7 @@ function asConnNode(app) {
 function asSettingRow(app, f, feat, box) {
   const bound = feat && feat.features.find(x => x.setting === f.key), wait = bound && /승인 대기/.test(bound.status) ? bound.status : "";
   return el("div", { class: "as-row", "data-setting": f.key },
-    el("span", { class: "as-b" }, el("span", { class: "as-n", text: f.label }), f.blocked || f.help ? el("span", { class: "as-h", text: f.blocked || f.help }) : null, wait ? el("span", { class: "as-h", "data-wait": "1", text: wait }) : null),
+    el("span", { class: "as-b" }, el("span", { class: "as-n", text: f.label }), f.blocked || (f.help && !asEcho(f.label, f.help)) ? el("span", { class: "as-h", text: f.blocked || f.help }) : null, wait ? el("span", { class: "as-h", "data-wait": "1", text: wait }) : null),
     // A list is edited in the conversation (a change card); here it only says how many.
     f.type === "list" ? el("span", { class: "as-v", text: asFmt(f, f.value) }) : f.blocked ? Object.assign(kkSwitch(false, f.label, f.key, () => {}), { disabled: true }) : asControl(f, async v => {
       if (AS.busy[app]) return;
@@ -584,6 +589,16 @@ function asBarSync(app) {
 
 /* ---- the change card: a ```dotz-settings fence in an answer (mdHtml in 02-basic-markdown.js) ---- */
 const asId = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+// A change proposal in an answer that is not applied or cancelled yet: the answer has not done anything, so its head must not say 완료 (11-todo-strip.js).
+function asProposalPending(text) {
+  return [...String(text).matchAll(/```dotz-settings\n([\s\S]*?)```/g)].some(m => {
+    const src = m[1].trim();
+    let b = null;
+    try { b = JSON.parse(src); } catch { return false; }
+    const ch = b && b.changes && typeof b.changes === "object" ? Object.keys(b.changes) : [], fields = AS.by[String(b.app || "")] || [];
+    return ch.length > 0 && !AS.done[asId(src)] && !(fields.length && ch.every(k => (fields.find(x => x.key === k) || {}).memory));
+  });
+}
 function settingsCardHtml(src) {
   let b = null;
   try { b = JSON.parse(src); } catch { /* shown as unreadable below */ }

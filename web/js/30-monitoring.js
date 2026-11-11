@@ -14,7 +14,7 @@ const monitorsFresh = () => NM.loaded && Date.now() - NM.at < NM_FRESH_MS;
 const MON_GROUP = { app: "앱", plain: "일반 모니터링" };
 // sel: the open item's key ("notice", "i:<integration>", "m:<monitor name>"); list: the list is on screen instead of the item, on every width. An app's item has the whole column; a monitor opens beside the list of monitors (monListRows).
 // filter: 전체 / 답 필요 / 실패 of the open item; open: the rows unfolded ("g:<source>", "n:<notice id>"); more: pages shown per list; grew: older reports were just added above.
-const MON = { sel: "", list: true, shown: "", sig: "", side: "", seenT: 0, mailFilter: "all", mailIn: "all", filter: "all", open: new Set(), more: new Map(), grew: false, running: new Set(), autoArmed: false, olderBusy: false, want: "", hl: "", hlUntil: 0 };   // want: the notice a jump is reaching (monOpen in 30-notices.js); hl: the row it lit, lit again if a redraw replaces it
+const MON = { sel: "", list: true, shown: "", sig: "", side: "", seenT: 0, mailFilter: "all", mailIn: "all", filter: "all", open: new Set(), more: new Map(), grew: false, running: new Set(), autoArmed: false, olderBusy: false, want: "", hl: "", hlUntil: 0, ovOpen: undefined };   // want: the notice a jump is reaching (monOpen in 30-notices.js); hl: the row it lit, lit again if a redraw replaces it
 const monConv = () => current === "monitoring" && !MON.list;
 const monHash = () => (!MON.list && MON.sel ? `monitoring/${enc(MON.sel)}${mxHash(MON.sel)}` : "monitoring");
 // A mail is a conversation of 모니터링 (go() in 05-command-palette.js draws it with the chat view while the tab stays 모니터링); monItemOf: the list item it sits under.
@@ -107,7 +107,7 @@ function monProgNode(m, opts = {}) {
   const [text, tone] = monPTagOf(st.tag);
   const width = st.kind === "run" ? 35 : st.pct;
   const barTone = st.kind === "" || st.kind === "none" ? MON_BAR_TONE[st.tag] || "" : st.kind === "warn" && st.tag === "fail" ? "err" : "";
-  const bar = el("span", { class: `mon-prog${st.kind ? ` ${st.kind}` : ""}${barTone ? ` ${barTone}` : ""}`, "data-tone": barTone || null, role: "progressbar", "aria-label": `${monTitle(m)} 진행`, "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(Math.round(st.pct)), "aria-valuetext": line }, el("i", { style: `width:${width}%` }));
+  const bar = el("span", { class: `mon-prog${st.kind ? ` ${st.kind}` : ""}${barTone ? ` ${barTone}` : ""}`, "data-tone": barTone || null, role: "progressbar", "aria-label": `${monTitle(m)} 다음 확인까지`, "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(Math.round(st.pct)), "aria-valuetext": line }, el("i", { style: `width:${width}%` }));
   if (live && from > 0 && to > 0) { bar.dataset.from = String(from); bar.dataset.to = String(to); bar.dataset.short = opts.short ? "1" : ""; }
   // data-tag keeps the result the node was built with: the ticker only flips a live tag between it and 늦어짐, never to another result.
   const tag = text && opts.tag !== false ? el("span", { class: `mon-ptag${tone ? ` ${tone}` : ""}`, "data-tag": st.tag, "data-fixed": st.tag === "fail" || st.tag === "disconnected" || st.tag === "off" || st.tag === "run" ? "1" : null, text }) : null;
@@ -249,7 +249,7 @@ const monFailed = n => n.tone === "fail";
 const monNeedChips = need => (need ? [[`답 필요 ${need}`, "warn"]] : undefined);
 // The open item: the one picked, else on a wide screen the first (a phone shows its list until one is picked).
 const monSel = items => items.find(i => i.key === MON.sel) || null;
-const monName = () => { const it = monItems().find(i => i.key === MON.sel); return kkItem(it) && KK.open && KK.room ? KK.room.name : it ? mxsName() || it.name : titles.monitoring; };
+const monName = () => { const it = monItems().find(i => i.key === MON.sel); return kkItem(it) && KK.open && KK.room ? KK.room.name : CM.vis && CM.tab === "dm" && DM.open ? DM.open.peer : it ? mxsName() || it.name : titles.monitoring; };
 function monState(it) {
   if (it.off) return "연결 안 됨";
   // The progress block under the name already carries the two runs in words, so the state line says only where it stands.
@@ -548,9 +548,10 @@ function monLogRow(n, names) {
 function monRunRow(it) {
   const m = it.mon;
   if (!m.last_run) return null;
-  const next = [m.next_run ? `다음 확인 ${monTime(m.next_run)}` : "", m.every || ""].filter(Boolean).join(" · ");
-  const facts = [m.fails ? `연속 실패 ${m.fails}번` : "", monLastOk(m), monLastOut(m)].filter(Boolean);
-  return monLogLine({ tone: m.kind === "watch" ? m.last_result : "ok", main: monRunLine(m), sub: [...facts, next].join(" · "), at: m.last_run });
+  // The head's bar already says the state (정상) and the wait to the next check (다음 12분 후): the record keeps the result, the facts and the time.
+  const same = m.kind === "watch" && m.last_result === "ok" && monStatus(m).key === "ok";
+  const facts = [m.fails ? `연속 실패 ${m.fails}번` : "", monLastOk(m), monLastOut(m), m.every || ""].filter(Boolean);
+  return monLogLine({ tone: m.kind === "watch" ? m.last_result : "ok", main: same ? "확인했어요" : monRunLine(m), sub: facts.join(" · "), at: m.last_run });
 }
 // The question chips of a watch (asChipTexts): one row of small buttons under its log.
 function monRunChips(it) {
@@ -688,18 +689,26 @@ function monConvBtn(it) {
 // rows come first, so what needs the owner is at the top; a tap opens that monitor.
 // Every plain monitor of the list, this computer's and the others' (monItems already drops an app's own watches and merges the peers): a peer row
 // keeps its machine chip, and one whose hub sent no next run says '다른 컴퓨터' instead of drawing a bar from made-up times.
+// The line under a row's bar: why it is down, else the last report; the tag and the bar already say the result, so no report means no line.
+const monOvLine = m => { const t = m.connection === "disconnected" ? monConnLine(m) : monClean(m.last_summary || ""); return t ? el("span", { class: "mon-ov-s", text: t }) : null; };
 function monOverview(it) {
   if (it.key !== "notice") return null;
   const now = Date.now(), list = monItems().filter(i => i.mon);
   const rank = i => { const m = i.mon; return m.connection === "disconnected" ? 0 : m.last_result === "fail" ? 1 : m.paused ? 4 : (Date.parse(m.next_run) || Infinity) < now ? 2 : m.last_run ? 3 : 2; };
   const sorted = list.slice().sort((a, b) => rank(a) - rank(b) || (Date.parse(a.mon.next_run) || Infinity) - (Date.parse(b.mon.next_run) || Infinity));
-  return el("div", { class: "mon-ov" }, el("div", { class: "mon-ov-h", text: "모니터링 상태" }),
-    ...(sorted.length ? sorted.map(i => {
+  // Folded to its one summary row on a phone (the news come first); the same fold row as the project list's computer heads (18-lanes.js pcHead).
+  const open = MON.ovOpen ?? !narrowChat(), count = {};
+  for (const i of sorted) { const k = monStatus(i.mon, now).key; count[k] = (count[k] || 0) + 1; }
+  const sum = Object.keys(MON_PTAG).filter(k => count[k]).map(k => `${MON_PTAG[k][0]} ${count[k]}`).join(" · ");
+  const head = el("button", { class: "mon-ov-h", type: "button", "aria-expanded": String(open), "aria-label": `모니터링 상태${sum ? ` · ${sum}` : ""} · ${open ? "접기" : "펼치기"}`, onclick: () => { MON.ovOpen = !open; MON.sig = ""; monSchedule(); } },
+    el("span", { class: "mon-ov-ht", text: "모니터링 상태" }), sum ? el("span", { class: "mon-ov-sum", text: sum }) : null, icon("chev", "chev"));
+  return el("div", { class: "mon-ov" }, head,
+    ...(!open ? [] : sorted.length ? sorted.map(i => {
       const m = i.mon, peerBar = i.pc && !m.paused && !(Date.parse(m.next_run) > 0);   // a paused peer monitor draws the grey 꺼짐 bar like a local one
       return el("button", { class: "mon-ov-row", type: "button", "data-ov": i.key, onclick: () => go("monitoring", i.key) },
         el("span", { class: "mon-ov-hd" }, el("span", { class: "mon-ov-n", text: monTitle(m) }), i.pc ? el("span", { class: "tag", text: i.pc.name }) : null),
         peerBar ? el("span", { class: "mon-ov-peer", text: "다른 컴퓨터" }) : monProgNode(m, { compact: true }),
-        el("span", { class: "mon-ov-s", text: m.connection === "disconnected" ? monConnLine(m) : monClean(m.last_summary || "", monRunLine(m)) }));
+        monOvLine(m));
     }) : [el("div", { class: "mon-ov-empty", text: "아직 일반 모니터링이 없어요" })]));
 }
 function monTimeline(it) {
@@ -711,8 +720,7 @@ function monTimeline(it) {
   const sec = it.mon ? [el("div", { class: "mon-sec", role: "heading", "aria-level": "3", text: it.mon.kind === "schedule" ? "실행 기록" : "확인 기록" })] : [];
   if (nodes.length) return [...head, ...sec, ...nodes];
   if (head.length) return [...head, el("div", { class: "empty", text: "이 보기에 해당하는 소식이 없어요" })];
-  const next = it.mon && it.mon.next_run ? ` · 다음 확인 ${monTime(it.mon.next_run)}` : "";
-  return [el("div", { class: "empty", text: !NT.loaded && !NM.loaded ? "불러오는 중…" : it.mon ? `${monRunLine(it.mon)}${next}` : "아직 소식이 없어요" })];
+  return [el("div", { class: "empty", text: !NT.loaded && !NM.loaded ? "불러오는 중…" : it.mon ? monRunLine(it.mon) : "아직 소식이 없어요" })];
 }
 // The settings an item has: a local app's, a watch's (local or a peer's, forwarded by pqAct), a local schedule's (s:<id>, the screen only, no
 // conversation: 32-app-settings.js asEntry); none for a peer's app or schedule or an unreachable computer.

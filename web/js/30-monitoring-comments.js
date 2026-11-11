@@ -298,7 +298,7 @@ function cmSendNode(s) {
 function cmPaintChat(stick) {
   if (CM.tab === "dm") { dmPaintChat(); return; }
   const open = CM.open, v = CM.view;
-  cmFoot.hidden = true;   // drafts sit under the comment they answer (cmThreadNodes), not pinned here
+  cmFoot.hidden = true; dmRo.hidden = true;   // drafts sit under the comment they answer (cmThreadNodes), not pinned here
   const sig = open ? `${open.source}/${open.thread}/${open.title}/${v && v.thread.title}/${v && v.thread.thumb}` : "";
   if (sig !== CM.headSig) {
     CM.headSig = sig; clear(cmHead);

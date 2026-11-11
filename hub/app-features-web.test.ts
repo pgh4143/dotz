@@ -157,7 +157,7 @@ const suite = (label: string, width: number, height: number, tag: string) => des
 		await waitFor(v, `document.querySelector('#app-sw [data-k="feat:reels_approval"]').getAttribute("aria-checked") === "false"`);
 		expect(featPatches.slice(before)).toEqual([{ id: "reels_approval", on: false }]);
 		expect(JSON.parse(readFileSync(join(data, "custom/apps.json"), "utf8")).instagram.features).toEqual({ reels_approval: false });
-		expect(await q(v, `return document.querySelector('#app-sw [data-feature="reels_approval"] .as-h').textContent`)).toBe("꺼져 있어요");
+		expect(await q(v, `return document.querySelector('#app-sw [data-feature="reels_approval"] .as-h')`)).toBeNull();   // the switch says off; no line repeats it
 		await run(v, `document.querySelector('#app-sw [data-k="feat:reels_approval"]').click()`);
 		await waitFor(v, `document.querySelector('#app-sw [data-k="feat:reels_approval"]').getAttribute("aria-checked") === "true"`);
 	});

@@ -176,6 +176,8 @@ describe("monitor settings at desktop width", async () => {
 		expect(card.rows.some(r => r.includes("감시 주기") && r.includes("30 → 15"))).toBe(true);
 		const before = patches.length;
 		expect(stored().every_minutes).toBe(30);
+		// A proposal that is not applied yet has done nothing: the head must not read 완료 (11-todo-strip.js asks asProposalPending).
+		expect(await q(v, `const b = "\`\`\`dotz-settings\\n" + JSON.stringify({ app: "w:t-web", changes: { every_minutes: 15 } }) + "\\n\`\`\`"; return [asProposalPending(b), asProposalPending("그렇게 했어요")]`)).toEqual([true, false]);
 		await shot(v, "monitor-settings-desktop.png");
 		await run(v, `document.querySelector('#tl .as-card [data-as="apply"]').click()`);
 		await waitFor(v, `document.querySelector("#tl .as-done.applied")`);
